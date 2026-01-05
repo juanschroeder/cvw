@@ -78,6 +78,11 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="qmtechk7"} {
 }
 
 
+if {$board=="qmtechk7"} {
+    add_files -norecurse "../src/CopiedFiles_do_not_add_to_repo/ethernet/rmii_phy_if.v"
+    add_files -norecurse "../src/CopiedFiles_do_not_add_to_repo/ethernet/wally_eth_a1_rmii_shim.sv"    
+}
+
 # Temp
 set_param messaging.defaultLimit 100000
 
@@ -116,10 +121,11 @@ if {$board=="ArtyA7"} {
 
 
 # set for RuntimeOptimized implementation
-#set_property "steps.place_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
-#set_property "steps.route_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
+set_property "steps.place_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
+set_property "steps.route_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
 
-if {$board=="qmtechk7"} {
+#if {$board=="qmtechk7"} {
+if {$board=="DISABLEDDDD"} {
 
     # Disable mmcm IP XDC during top-level implementation (avoid TIMING-2/TIMING-4)
     set mmcm_xdc [lsort -unique [get_files -quiet -all "*sources_1/ip/mmcm/mmcm.xdc"]]

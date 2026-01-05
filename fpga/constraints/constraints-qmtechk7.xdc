@@ -25,12 +25,21 @@ set_property CLOCK_BUFFER_TYPE BUFG [get_nets wallypipelinedsoc/clk_out3_mmcm]
 set_property CLOCK_DEDICATED_ROUTE BACKBONE [get_nets default_50mhz_clk]
 
 ##### RVVI Ethernet (not working yet) ####
+#set_property IOSTANDARD LVCMOS33 [get_ports {phy_txd[*] phy_tx_en}]
+#set_property PACKAGE_PIN C16 [get_ports {phy_txd[0]}];
+#set_property PACKAGE_PIN U24 [get_ports {phy_txd[1]}];
+#set_property PACKAGE_PIN A20 [get_ports {phy_txd[2]}];
+#set_property PACKAGE_PIN B20 [get_ports {phy_txd[3]}];
+#set_property PACKAGE_PIN F20 [get_ports {phy_tx_en}]
+# assigning UNUSED pins in JP5 to prevent DRC warnings / errors
 set_property IOSTANDARD LVCMOS33 [get_ports {phy_txd[*] phy_tx_en}]
-set_property PACKAGE_PIN C16 [get_ports {phy_txd[0]}];
-set_property PACKAGE_PIN U24 [get_ports {phy_txd[1]}];
-set_property PACKAGE_PIN A20 [get_ports {phy_txd[2]}];
-set_property PACKAGE_PIN B20 [get_ports {phy_txd[3]}];
-set_property PACKAGE_PIN F20 [get_ports {phy_tx_en}]
+set_property PACKAGE_PIN Y25 [get_ports {phy_txd[0]}];
+set_property PACKAGE_PIN Y26 [get_ports {phy_txd[1]}];
+set_property PACKAGE_PIN W25 [get_ports {phy_txd[2]}];
+set_property PACKAGE_PIN W26 [get_ports {phy_txd[3]}];
+set_property PACKAGE_PIN V23 [get_ports {phy_tx_en}]
+set_property SLEW SLOW  [get_ports {phy_txd[*] phy_tx_en}]
+set_property DRIVE 4    [get_ports {phy_txd[*] phy_tx_en}]
 
 
 ##### GPI ####
@@ -48,6 +57,10 @@ set_max_delay -from [get_ports {GPI[*]}] 20.000
 set_property -dict { PACKAGE_PIN R26 IOSTANDARD LVCMOS33 } [get_ports { GPO[0] }] ; # LED2
 set_property -dict { PACKAGE_PIN P26 IOSTANDARD LVCMOS33 } [get_ports { GPO[1] }] ; # LED3
 set_property -dict { PACKAGE_PIN N26 IOSTANDARD LVCMOS33 } [get_ports { GPO[2] }] ; # LED4
+#################
+set_property -dict { PACKAGE_PIN E21 IOSTANDARD LVCMOS33 } [get_ports wally_gpioout2_j12];
+#################
+
 # RPI connector pins
 set_property -dict { PACKAGE_PIN C12   IOSTANDARD LVCMOS33 } [get_ports { GPO[3] }]; 
 set_property -dict { PACKAGE_PIN B11   IOSTANDARD LVCMOS33 } [get_ports { GPO[4] }]; 
@@ -241,3 +254,32 @@ set_property PACKAGE_PIN W6 [get_ports {ddr3_dqs_p[1]}]
 
 
 set_max_delay -datapath_only -from [get_pins xlnx_ddr3_c0/u_xlnx_ddr3_mig/u_memc_ui_top_axi/mem_intfc0/ddr_phy_top0/u_ddr_calib_top/init_calib_complete_reg/C] -to [get_pins xlnx_proc_sys_reset_0/U0/EXT_LPF/lpf_int_reg/D] 20.000
+
+
+######################################
+
+# RMII 50 MHz reference clock from PMOD
+set_property PACKAGE_PIN A19 [get_ports eth_ref_clk]
+set_property IOSTANDARD LVCMOS33 [get_ports eth_ref_clk]
+create_clock -name eth_ref_clk -period 20.000 [get_ports eth_ref_clk]
+
+# A19 is not clock-capable: relax dedicated clock routing
+set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets -of_objects [get_ports eth_ref_clk]]
+
+# RMII data
+set_property PACKAGE_PIN B17 [get_ports {eth_rx_data[0]}]
+set_property PACKAGE_PIN A17 [get_ports {eth_rx_data[1]}]
+set_property PACKAGE_PIN A18 [get_ports eth_crs_dv]
+set_property IOSTANDARD LVCMOS33 [get_ports {eth_rx_data[*] eth_crs_dv}]
+
+set_property PACKAGE_PIN B16 [get_ports eth_tx_en]
+set_property PACKAGE_PIN C16 [get_ports {eth_tx_data[0]}]
+set_property PACKAGE_PIN U24 [get_ports {eth_tx_data[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {eth_tx_en eth_tx_data[*]}]
+
+# MDIO/MDC
+set_property PACKAGE_PIN A20 [get_ports eth_mdc]
+set_property PACKAGE_PIN B20 [get_ports eth_mdio]
+set_property IOSTANDARD LVCMOS33 [get_ports {eth_mdc eth_mdio}]
+set_property PULLUP true [get_ports eth_mdio]
+

@@ -33,3 +33,7 @@
   path = addins/riscv-arch-test-cvw
   url = https://github.com/riscv-non-isa/riscv-arch-test
   branch = act4
+[submodule "addins/fpga-rmii-smii"]
+	path = addins/fpga-rmii-smii
+	url = https://github.com/WangXuan95/FPGA-RMII-SMII.git
+	branch = main

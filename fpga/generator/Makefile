@@ -110,6 +110,8 @@ PreProcessFiles:
 	sed -i "s/bit \[DATA_WIDTH-1:0\].*ROM.*/(\* rom_style=\"block\" \*) &/g" ../src/CopiedFiles_do_not_add_to_repo/generic/mem/rom1p1r.sv
 	sed -i 's/$$WALLY/\.\.\/\.\.\//g' ../src/CopiedFiles_do_not_add_to_repo/generic/mem/rom1p1r.sv
 	sed -i 's/$$WALLY/\.\.\/\.\.\//g' ../src/CopiedFiles_do_not_add_to_repo/generic/mem/ram1p1rwbe.sv
+	# Ethernet stuff
+	cp -r ../../addins/fpga-rmii-smii/RTL/rmii*.v ../src/CopiedFiles_do_not_add_to_repo/ethernet
 
 # build the Zero stage boot loader (ZSBL)
 .PHONY: zsbl
