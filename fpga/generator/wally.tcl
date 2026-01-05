@@ -48,8 +48,25 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="qmtechk7"} {
     import_ip IP/ddr4.srcs/sources_1/ip/ddr4/ddr4.xci
 }
 
-# read in all other rtl
-add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/*/*/*.sv]
+
+# remove rvvi stuff (duplicate)
+if {$board=="qmtechk7"} {
+    # read in all other rtl (include .v as well; verilog-ethernet is mostly .v)
+    set extra_rtl [glob -type f \
+        ../src/CopiedFiles_do_not_add_to_repo/*/*.sv \
+        ../src/CopiedFiles_do_not_add_to_repo/*/*/*.sv \
+        ../src/CopiedFiles_do_not_add_to_repo/*/*.v \
+        ../src/CopiedFiles_do_not_add_to_repo/*/*/*.v \
+    ]
+
+    # A2: we are using the verilog-ethernet copy under ethernet/, so exclude rvvi to avoid duplicate module defs
+    set extra_rtl [lsearch -all -inline -not -glob $extra_rtl "*../src/CopiedFiles_do_not_add_to_repo/rvvi/*"]
+
+    add_files $extra_rtl
+} else {
+    # read in all other rtl
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/*/*/*.sv]
+}
 
 set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared} [current_fileset]
 

@@ -112,6 +112,10 @@ PreProcessFiles:
 	sed -i 's/$$WALLY/\.\.\/\.\.\//g' ../src/CopiedFiles_do_not_add_to_repo/generic/mem/ram1p1rwbe.sv
 	# Ethernet stuff
 	cp -r ../../addins/fpga-rmii-smii/RTL/rmii*.v ../src/CopiedFiles_do_not_add_to_repo/ethernet
+	cp -r ../../addins/verilog-ethernet/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/ethernet
+	cp -r ../../addins/verilog-ethernet/*/*/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/ethernet
+	cp -r ../../addins/verilog-ethernet/*/*.v ../src/CopiedFiles_do_not_add_to_repo/ethernet
+	cp -r ../../addins/verilog-ethernet/*/*/*/*.v ../src/CopiedFiles_do_not_add_to_repo/ethernet
 
 # build the Zero stage boot loader (ZSBL)
 .PHONY: zsbl

@@ -49,6 +49,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
    output logic	       SDCCS,
    input logic	       SDCCD,
    input logic	       SDCWP,
+`ifdef RVVI_SYNTH_SUPPORTED
    /*
      * Ethernet: 100BASE-T MII
      */
@@ -61,6 +62,21 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
    output logic [3:0]  phy_txd,
    output logic	       phy_tx_en,
    //output logic	       phy_reset_n,
+`endif
+
+   // RMII PHY (PMOD) pins
+   input  wire        eth_ref_clk,    // 50 MHz from PMOD crystal (A19)
+   input  wire [1:0]  eth_rx_data,    // B17 A17
+   input  wire        eth_crs_dv,     // A18
+   output wire        eth_tx_en,      // B16
+   output wire [1:0]  eth_tx_data,    // C16 U24
+   output wire        eth_mdc,        // A20 (kept low in A1)
+   inout  wire        eth_mdio        // B20 (Hi-Z in A1)
+
+   // dummy GPO for LED reuse for testing
+   //output logic soc_gpo2_j12,   
+   , output logic wally_gpioout2_j12,
+
 
    inout logic [15:0]  ddr3_dq,
    inout logic [1:0]   ddr3_dqs_n,
@@ -77,6 +93,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
    output logic [0:0]    ddr3_cs_n,
    output logic [1:0]    ddr3_dm,
    output logic [0:0]    ddr3_odt
+
    );
 
   // MMCM Signals
@@ -208,9 +225,45 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   wire clk_50m_ibufg;
   wire clk_50m_bufg;
 
+  /*
+  // dummy GPO
+    logic [2:0] eth_a1_gpo;
+    logic       eth_a1_led;
+  */
+
+
 (* mark_debug = "true" *)  logic              RVVIStall;
 
   assign GPIOIN = {25'b0, SDCCD, SDCWP, 1'b0, GPI};
+  //assign GPO = GPIOOUT[4:0];
+
+  ////////////////////////////
+  /*
+    // Keep Wally control on LED2/LED3 (and any other GPO bits you use)
+    assign GPO[0] = GPIOOUT[0];  // LED2
+    assign GPO[1] = GPIOOUT[1];  // LED3
+
+    // LED4 is reserved for Ethernet A1 test (see below)
+    assign GPO[2] = eth_a1_led;
+    //assign GPO[2] = GPIOOUT[2] & eth_a1_led;
+
+    // If you have GPO[3], GPO[4] physically or in design, keep them as before:
+    assign GPO[3] = GPIOOUT[3];
+    assign GPO[4] = GPIOOUT[4];
+
+    ////
+    assign wally_gpioout2_j12 = GPIOOUT[2];    
+
+    // If there is activity, force LED ON; otherwise show the 1 Hz blink
+    //assign eth_a1_led = eth_a1_gpo[1] ? 1'b1 : eth_a1_gpo[0];
+    assign eth_a1_led = eth_a1_gpo[1] ? 1'b1 : eth_a1_gpo[0];
+  */
+  ////////////////////////////
+    // A2 standalone test: drive the 3 board LEDs from the UDP echo core
+    assign GPO[2:0] = eth_led;
+    assign GPO[4:3] = 2'b00;
+  ////////////////////////////
+  
   assign ahblite_resetn = peripheral_aresetn;
   assign cpu_reset = bus_struct_reset;
   assign calib = c0_init_calib_complete;
@@ -272,6 +325,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
                     .HADDR, .HWDATA, .HWSTRB, .HWRITE, .HSIZE, .HBURST, .HPROT,
                     .HTRANS, .HMASTLOCK, .HREADY, .TIMECLK(1'b0),
                     .GPIOIN, .GPIOOUT, .GPIOEN,
+                    //.GPIOIN, .gpo_soc, .GPIOEN,
                     .UARTSin, .UARTSout, .SDCIn, .SDCCmd, .SDCCS(SDCCSin), .SDCCLK, .ExternalStall(RVVIStall));
 
 
@@ -632,5 +686,40 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   //assign phy_reset_n = ~bus_struct_reset;
   //assign phy_reset_n = ~1'b0;
+
+  //////////////////////////////////////////
+  /*
+  wally_eth_a1_rmii_shim u_eth_a1 (
+    .eth_ref_clk (eth_ref_clk),
+    .eth_rx_data (eth_rx_data),
+    .eth_crs_dv  (eth_crs_dv),
+    .eth_tx_en   (eth_tx_en),
+    .eth_tx_data (eth_tx_data),
+    .eth_mdc     (eth_mdc),
+    .eth_mdio    (eth_mdio),
+    //.GPO         (GPO[2:0])
+    .GPO         (eth_a1_gpo)
+  );
+   */
+   /////////////////////////////////////////
+
+    logic [2:0] eth_led;
+    //assign eth_mdc  = 1'b0;
+    //assign eth_mdio = 1'bz;  // external pull-up already in your XDC
+
+
+    wally_eth_a2_rmii_udp_echo u_eth_a2 (
+        .eth_ref_clk (eth_ref_clk),
+        .eth_rx_data (eth_rx_data),
+        .eth_crs_dv  (eth_crs_dv),
+        .eth_tx_data (eth_tx_data),
+        .eth_tx_en   (eth_tx_en),
+        .eth_led     (eth_led),
+        .eth_mdc    (eth_mdc),
+        .eth_mdio   (eth_mdio)
+    );
+
+    ////////////////////////////////////////////
+
 
 endmodule
