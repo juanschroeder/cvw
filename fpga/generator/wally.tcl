@@ -119,6 +119,38 @@ if {$board=="ArtyA7"} {
 #set_property "steps.place_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
 #set_property "steps.route_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
 
+if {$board=="qmtechk7"} {
+
+    # Disable mmcm IP XDC during top-level implementation (avoid TIMING-2/TIMING-4)
+    set mmcm_xdc [lsort -unique [get_files -quiet -all "*sources_1/ip/mmcm/mmcm.xdc"]]
+    puts "MMCM_XDC_FILES=[llength $mmcm_xdc] $mmcm_xdc"
+    foreach f $mmcm_xdc {
+        catch { set_property USED_IN_IMPLEMENTATION false $f }
+        catch { set_property IS_ENABLED false $f }
+    }
+
+    set r [get_runs impl_1]
+
+    # Reproduce the best manual flow
+    set_property STRATEGY "Vivado Implementation Defaults" $r
+    set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE ExtraNetDelay_high $r
+    set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore $r
+    set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE AggressiveExplore $r
+    set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true $r
+    set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore $r
+
+
+    # LAST TESTS
+    # Try retiming in synthesis (can actually change reg boundaries)
+    set sr [get_runs synth_1]
+    set_property STEPS.SYNTH_DESIGN.ARGS.RETIMING true $sr
+    set_property STEPS.SYNTH_DESIGN.ARGS.DIRECTIVE PerformanceOptimized $sr
+
+    # # Force rebuild so it takes effect
+    # reset_run synth_1
+    # reset_run impl_1
+}
+
 launch_runs impl_1 -jobs 16
 wait_on_run impl_1
 launch_runs impl_1 -to_step write_bitstream
