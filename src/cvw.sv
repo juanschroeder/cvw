@@ -145,6 +145,12 @@ typedef struct packed {
   logic         SPI_SUPPORTED;
   logic [63:0]  SPI_BASE;
   logic [63:0]  SPI_RANGE;
+  logic         WISHBONE_SUPPORTED;
+  logic [63:0]  WISHBONE_BASE;
+  logic [63:0]  WISHBONE_RANGE;
+  logic         AXI_DMA_SUPPORTED;
+  logic [63:0]  AXI_DMA_BASE;
+  logic [63:0]  AXI_DMA_RANGE;
 
 // Test modes
 
@@ -162,6 +168,9 @@ typedef struct packed {
   int           PLIC_UART_ID;
   int           PLIC_SPI_ID;
   int           PLIC_SDC_ID;
+  int           PLIC_WB_UART_ID;
+  int           PLIC_WB_ETH_ID;
+  int           PLIC_AXI_DMA_ID;
 
   logic                BPRED_SUPPORTED;
   logic [31:0]         BPRED_TYPE;

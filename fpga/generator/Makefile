@@ -79,7 +79,9 @@ IP_NEXYSA7: $(dst)/sysrst.log \
 	MEM_NEXYSA7 \
 	$(dst)/mmcm-nexysa7.log \
 	$(dst)/clkconverter.log \
-	$(dst)/ahbaxibridge.log
+	$(dst)/ahbaxibridge.log \
+	$(dst)/axicrossbar.log \
+	$(dst)/axicdma.log
 
 # Generate Memory IP Blocks
 .PHONY: MEM_VCU MEM_Arty
@@ -102,8 +104,11 @@ PreProcessFiles:
 	cp -r ../../src/ ../src/CopiedFiles_do_not_add_to_repo/
 	cp -r ../../addins/verilog-ethernet/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/rvvi
 	cp -r ../../addins/verilog-ethernet/*/*/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/rvvi
+	cp -r ../../addins/ahb3lite_wb_bridge/*.v ../src/CopiedFiles_do_not_add_to_repo/uncore
 	mkdir ../src/CopiedFiles_do_not_add_to_repo/config/
 	cp ../../config/deriv/fpga$(board)/config.vh ../src/CopiedFiles_do_not_add_to_repo/config/
+	# LITTLE_ENDIAN for UART core
+	grep -q 'define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/uncore/uart_16550/uart_defines.v || sed -i '1i`define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/uncore/uart_16550/uart_defines.v
 	./insert_debug_comment.sh
 	# This line allows the Bootloader to be loaded in a Block RAM on the FPGA
 	sed -i "s/bit \[DATA_WIDTH-1:0\].*ROM.*/(\* rom_style=\"block\" \*) &/g" ../src/CopiedFiles_do_not_add_to_repo/generic/mem/rom1p1r.sv

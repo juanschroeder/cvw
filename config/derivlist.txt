@@ -70,6 +70,13 @@ EXT_MEM_RANGE       64'h7FFFFFFF
 
 deriv fpganexysa7 fpga
 EXT_MEM_RANGE       64'h07FFFFFF
+WISHBONE_SUPPORTED  1
+WISHBONE_BASE       64'h11000000
+WISHBONE_RANGE      64'h00FFFFFF
+AXI_DMA_SUPPORTED   1
+AXI_DMA_BASE        64'h100A0000
+AXI_DMA_RANGE       64'h0000FFFF
+
 
 # temporary spitest configuration
 deriv spitest rv64gc

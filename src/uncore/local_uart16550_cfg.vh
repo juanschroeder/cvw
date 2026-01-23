@@ -1,0 +1,1 @@
+`define LITLE_ENDIAN

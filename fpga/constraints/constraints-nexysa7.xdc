@@ -48,7 +48,7 @@ set_property -dict { PACKAGE_PIN H1 IOSTANDARD LVCMOS33 } [get_ports SDCCmd]  ;#
 set_property -dict { PACKAGE_PIN G1 IOSTANDARD LVCMOS33 } [get_ports SDCIn]   ;# SD_DAT0 (MISO)
 set_property -dict { PACKAGE_PIN H4 IOSTANDARD LVCMOS33 } [get_ports SDCCS]   ;# SD_DAT3 (CS)
 set_property -dict { PACKAGE_PIN G2 IOSTANDARD LVCMOS33 } [get_ports SDCCD]   ;# SD
-pull up/down
+# pull up/down
 set_property PULLTYPE PULLUP [get_ports SDCCS]
 set_property PULLTYPE PULLUP [get_ports SDCIn]
 set_property PULLTYPE PULLUP [get_ports SDCCmd]
@@ -389,3 +389,38 @@ set_max_delay -to [get_pins -hier -include_replicated_objects -filter {NAME =~ *
 set_max_delay -from [get_cells -hier *rstdiv0_sync_r1_reg*] -to [get_pins -filter {NAME =~ */RESET} -of [get_cells -hier -filter {REF_NAME == PHY_CONTROL}]] -datapath_only 5
 #set_false_path -through [get_pins -hier -filter {NAME =~ */u_iodelay_ctrl/sys_rst}]
 set_false_path -through [get_nets -hier -filter {NAME =~ */u_iodelay_ctrl/sys_rst_i}]
+
+
+
+#####################################33
+# WISHBONE peripherals
+#####################################
+
+# UART: PMOD C, RX=JC1=K1 TX=JC2=F6
+set_property PACKAGE_PIN K1 [get_ports WB_UART_RX]
+set_property PACKAGE_PIN F6 [get_ports WB_UART_TX]
+set_property IOSTANDARD LVCMOS33 [get_ports WB_UART_RX]
+set_property IOSTANDARD LVCMOS33 [get_ports WB_UART_TX]
+# fixme: check this
+set_property DRIVE 4 [get_ports WB_UART_TX]
+
+
+# Ethernet
+##SMSC Ethernet PHY ()
+set_property -dict { PACKAGE_PIN C9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_MDC }]; #IO_L11P_T1_SRCC_16 Sch=eth_mdc
+set_property -dict { PACKAGE_PIN A9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_MDIO }]; #IO_L14N_T2_SRCC_16 Sch=eth_mdio
+set_property -dict { PACKAGE_PIN B3    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_RST_N }]; #IO_L10P_T1_AD15P_35 Sch=eth_rstn
+set_property -dict { PACKAGE_PIN D9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_CRS_DV }]; #IO_L6N_T0_VREF_16 Sch=eth_crsdv
+# RXERR not used?
+set_property -dict { PACKAGE_PIN C10   IOSTANDARD LVCMOS33 } [get_ports { ETH_RXERR }]; #IO_L13N_T2_MRCC_16 Sch=eth_rxerr
+set_property -dict { PACKAGE_PIN C11   IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_RX_DATA[0] }]; #IO_L13P_T2_MRCC_16 Sch=eth_rxd[0]
+set_property -dict { PACKAGE_PIN D10   IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_RX_DATA[1] }]; #IO_L19N_T3_VREF_16 Sch=eth_rxd[1]
+set_property -dict { PACKAGE_PIN B9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_TX_EN }]; #IO_L11N_T1_SRCC_16 Sch=eth_txen
+set_property -dict { PACKAGE_PIN A10   IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_TX_DATA[0] }]; #IO_L14P_T2_SRCC_16 Sch=eth_txd[0]
+set_property -dict { PACKAGE_PIN A8    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_TX_DATA[1] }]; #IO_L12N_T1_MRCC_16 Sch=eth_txd[1]
+#set_property -dict { PACKAGE_PIN D5    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_REF_CLK }]; #IO_L11P_T1_SRCC_35 Sch=eth_refclk
+set_property PACKAGE_PIN D5 [get_ports {WB_RMII_REF_CLK}]
+set_property IOSTANDARD LVCMOS33 [get_ports {WB_RMII_REF_CLK}]
+#set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets rmii_ref_clk]
+# PHY interrupt
+set_property -dict { PACKAGE_PIN B8    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_PHY_IRQ }]; #IO_L12P_T1_MRCC_16 Sch=eth_intn

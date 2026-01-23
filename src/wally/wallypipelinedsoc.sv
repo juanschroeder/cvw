@@ -64,6 +64,20 @@ module wallypipelinedsoc import cvw::*; #(parameter cvw_t P)  (
   output logic                SDCCmd,           // SDC CMD         from   SPI DO
   output logic [3:0]          SDCCS,            // SDC Card Detect from   SPI CS
   output logic                SDCCLK            // SDC Clock       from   SPI Clock
+  // WB UART
+  , input logic WB_UART_RX
+  , output logic WB_UART_TX
+  // WB Ethernet
+  , input logic WB_RMII_REF_CLK,
+  input logic WB_RMII_CRS_DV,
+  input  logic [1:0]  WB_RMII_RX_DATA,
+  output logic [1:0]  WB_RMII_TX_DATA,
+  output logic        WB_RMII_TX_EN,
+  output logic        WB_RMII_MDC,
+  inout  wire         WB_RMII_MDIO,
+  output logic        WB_RMII_RST_N,
+  input logic        WB_RMII_PHY_IRQ,
+  input logic AXI_DMAIntr
 );
 
   // Uncore signals
@@ -89,7 +103,19 @@ module wallypipelinedsoc import cvw::*; #(parameter cvw_t P)  (
       .HADDR, .HWDATA, .HWSTRB, .HWRITE, .HSIZE, .HBURST, .HPROT, .HTRANS, .HMASTLOCK, .HRDATAEXT,
       .HREADYEXT, .HRESPEXT, .HRDATA, .HREADY, .HRESP, .HSELEXT,
       .MTimerInt, .MSwInt, .MExtInt, .SExtInt, .GPIOIN, .GPIOOUT, .GPIOEN, .UARTSin,
-      .UARTSout, .MTIME_CLINT, .SPIIn, .SPIOut, .SPICS, .SPICLK, .SDCIn, .SDCCmd, .SDCCS, .SDCCLK);
+      .UARTSout, .MTIME_CLINT, .SPIIn, .SPIOut, .SPICS, .SPICLK, .SDCIn, .SDCCmd, .SDCCS, .SDCCLK
+      , .WB_UART_RX, .WB_UART_TX
+        , .WB_RMII_REF_CLK,
+        .WB_RMII_CRS_DV,
+        .WB_RMII_RX_DATA,
+        .WB_RMII_TX_DATA,
+        .WB_RMII_TX_EN,
+        .WB_RMII_MDC,
+        .WB_RMII_MDIO,
+        .WB_RMII_RST_N,
+        .WB_RMII_PHY_IRQ,
+        .AXI_DMAIntr(AXI_DMAIntr)
+      );
   end else begin
     assign {HRDATA, HREADY, HRESP, HSELEXT, MTimerInt, MSwInt, MExtInt, SExtInt,
             MTIME_CLINT, GPIOOUT, GPIOEN, UARTSout, SPIOut, SPICS, SPICLK, SDCCmd, SDCCS, SDCCLK} = '0;

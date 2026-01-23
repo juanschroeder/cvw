@@ -62,19 +62,50 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   output logic                 SDCCmd,
   output logic [3:0]           SDCCS,
   output logic                 SDCCLK
+  , input logic WB_UART_RX
+  , output logic WB_UART_TX
+  //, output logic WB_UART_IRQ
+  , input logic WB_RMII_REF_CLK,
+  input logic WB_RMII_CRS_DV,
+  input  logic [1:0]  WB_RMII_RX_DATA,
+  output logic [1:0]  WB_RMII_TX_DATA,
+  output logic        WB_RMII_TX_EN,
+  output logic        WB_RMII_MDC,
+  inout  wire         WB_RMII_MDIO,
+  output logic        WB_RMII_RST_N,
+  input logic        WB_RMII_PHY_IRQ //coming from the PHY! (unused)
+  , input logic AXI_DMAIntr
 );
 
   logic [P.XLEN-1:0]           HREADRam, HREADSDC;
+  // Wishbone stuff
+  logic [P.XLEN-1:0]  HREADWbIsland;
+  logic               HRESPWbIsland, HREADYWbIsland;
+  // AXI stuff
+  logic [29:0]         wb_adr;
+  logic [31:0]         wb_wdat, wb_rdat;
+  logic [3:0]          wb_sel;
+  logic                wb_we, wb_cyc, wb_stb, wb_ack, wb_err;
 
-  logic [11:0]                 HSELRegions;
+  logic [13:0]                 HSELRegions;
   logic                        HSELDTIM, HSELIROM, HSELRam, HSELCLINT, HSELPLIC, HSELGPIO, HSELUART,HSELSDC, HSELSPI;
-  logic                        HSELDTIMD, HSELIROMD, HSELEXTD, HSELRamD, HSELCLINTD, HSELPLICD, HSELGPIOD, HSELUARTD, HSELSDCD, HSELSPID;
+  //logic                        HSELDTIMD, HSELIROMD, HSELEXTD, HSELRamD, HSELCLINTD, HSELPLICD, HSELGPIOD, HSELUARTD, HSELSDCD, HSELSPID;
+  logic                        HSELDTIMD, HSELIROMD, HSELEXTD_DDR, HSELRamD, HSELCLINTD, HSELPLICD, HSELGPIOD, HSELUARTD, HSELSDCD, HSELSPID;
+  // Wishbone extension
+  logic                        HSELWbIsland;
+  logic                        HSELWbIslandD;
+  // AXI DMA
+  (* mark_debug = "true" *) logic                        HSELAXIDMA;
+  logic                        HSELAXIDMAD;
+  logic                        HSELEXTD_ALL;
+  logic                        HSELEXT_DDR;
   logic                        HRESPRam,  HRESPSDC;
   logic                        HREADYRam, HRESPSDCD;
   logic [P.XLEN-1:0]           HREADBootRom;
   logic                        HSELBootRom, HSELBootRomD, HRESPBootRom, HREADYBootRom, HREADYSDC;
   logic                        HSELNoneD;
   logic                        UARTIntr,GPIOIntr, SPIIntr;
+  logic                        WBUartIntr, WBEthIntr;
   logic                        SDCIntM;
 
   logic                        PCLK, PRESETn, PWRITE, PENABLE;
@@ -90,6 +121,9 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   logic                        HRESPBRIDGE, HREADYBRIDGE, HSELBRIDGE, HSELBRIDGED;
   /* SDC Interrupt (SPI Controller) */
   logic                        SDCIntr;
+  /* DMA INTR */
+  logic                       DMAIntr;
+  assign DMAIntr = AXI_DMAIntr;
 
 
   // Determine which region of physical memory (if any) is being accessed
@@ -98,7 +132,8 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   adrdecs #(P) adrdecs(HADDR, 1'b1, 1'b1, 1'b1, HSIZE[1:0], HSELRegions);
 
   // unswizzle HSEL signals
-  assign {HSELSPI, HSELSDC, HSELPLIC, HSELUART, HSELGPIO, HSELCLINT, HSELRam, HSELBootRom, HSELEXT, HSELIROM, HSELDTIM} = HSELRegions[11:1];
+  //assign {HSELAXIDMA, HSELWbIsland, HSELSPI, HSELSDC, HSELPLIC, HSELUART, HSELGPIO, HSELCLINT, HSELRam, HSELBootRom, HSELEXT, HSELIROM, HSELDTIM} = HSELRegions[13:1];
+  assign {HSELAXIDMA, HSELWbIsland, HSELSPI, HSELSDC, HSELPLIC, HSELUART, HSELGPIO, HSELCLINT, HSELRam, HSELBootRom, HSELEXT_DDR, HSELIROM, HSELDTIM} = HSELRegions[13:1];
 
   // AHB -> APB bridge
   ahbapbbridge #(P, 6) ahbapbbridge (
@@ -131,7 +166,7 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
 
   if (P.PLIC_SUPPORTED == 1) begin : plic
     plic_apb #(P) plic(.PCLK, .PRESETn, .PSEL(PSEL[2]), .PADDR(PADDR[27:0]), .PWDATA, .PSTRB, .PWRITE, .PENABLE,
-      .PRDATA(PRDATA[2]), .PREADY(PREADY[2]), .UARTIntr, .GPIOIntr, .SDCIntr, .SPIIntr, .MExtInt, .SExtInt);
+      .PRDATA(PRDATA[2]), .PREADY(PREADY[2]), .UARTIntr, .GPIOIntr, .SDCIntr, .SPIIntr, .WBUartIntr, .WBEthIntr, .DMAIntr, .MExtInt, .SExtInt);
   end else begin : plic
     assign MExtInt = 1'b0;
     assign SExtInt = 1'b0;
@@ -175,20 +210,61 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
     assign SDCCmd = '0; assign SDCCS = 4'b0; assign SDCIntr = 1'b0; assign SDCCLK = 1'b0;
   end
 
+  if (P.WISHBONE_SUPPORTED == 1) begin : wb
+    wb_ahb #(.P(P)) u_wb_ahb (
+    .HCLK, .HRESETn,
+    .HSELWb(HSELWbIsland), .HADDR, .HWDATA, .HWSTRB, .HWRITE, .HTRANS, .HREADY,
+    .HREADWb(HREADWbIsland), .HRESPWb(HRESPWbIsland), .HREADYWb(HREADYWbIsland),
+    .wb_adr_o(wb_adr), .wb_dat_o(wb_wdat), .wb_dat_i(wb_rdat),
+    .wb_sel_o(wb_sel), .wb_we_o(wb_we), .wb_cyc_o(wb_cyc), .wb_stb_o(wb_stb),
+    .wb_ack_i(wb_ack), .wb_err_i(wb_err)
+    );
+
+    wb_island #(.AW(30)) u_wb_island (
+    .clk(HCLK), .rst(~HRESETn),
+    .m_adr_i(wb_adr), .m_dat_i(wb_wdat), .m_dat_o(wb_rdat),
+    .m_sel_i(wb_sel), .m_we_i(wb_we), .m_cyc_i(wb_cyc), .m_stb_i(wb_stb),
+    .m_ack_o(wb_ack), .m_err_o(wb_err)
+    , .uart_rx_i(WB_UART_RX)
+    , .uart_tx_o(WB_UART_TX)
+    , .uart_irq_o(WBUartIntr)
+
+    ,.rmii_ref_clk(WB_RMII_REF_CLK),
+    .rmii_crs_dv(WB_RMII_CRS_DV),
+    .rmii_rx_data(WB_RMII_RX_DATA),
+    .rmii_tx_data(WB_RMII_TX_DATA),
+    .rmii_tx_en(WB_RMII_TX_EN),
+    .rmii_mdc(WB_RMII_MDC),
+    .rmii_mdio(WB_RMII_MDIO),
+    .rmii_rst_n(WB_RMII_RST_N),
+    .eth_irq(WBEthIntr)
+    );
+
+    //assign WBEthIntr = 1'b0; //ETH Int low for now
+
+  end else assign {HREADWbIsland, HRESPWbIsland, HREADYWbIsland} = '0;
+
+  // AXI Select signals
+  //assign HSELEXTD_ALL = HSELEXTD || HSELAXIDMAD;
+  assign HSELEXTD_ALL = HSELEXTD_DDR | HSELAXIDMAD;
+  assign HSELEXT = HSELEXT_DDR | HSELAXIDMA; // OUTPUT
 
   // AHB Read Multiplexer
   assign HRDATA = ({P.XLEN{HSELRamD}} & HREADRam) |
-                  ({P.XLEN{HSELEXTD}} & HRDATAEXT) |
+                  ({P.XLEN{HSELWbIslandD}} & HREADWbIsland) |
+                  ({P.XLEN{HSELEXTD_ALL}} & HRDATAEXT) |
                   ({P.XLEN{HSELBRIDGED}} & HREADBRIDGE) |
                   ({P.XLEN{HSELBootRomD}} & HREADBootRom);
 
   assign HRESP = HSELRamD & HRESPRam |
-                 HSELEXTD & HRESPEXT |
-                 HSELBRIDGE & HRESPBRIDGE |
+                 HSELWbIslandD & HRESPWbIsland |
+                 HSELEXTD_ALL & HRESPEXT |
+                 HSELBRIDGED & HRESPBRIDGE |
                  HSELBootRomD & HRESPBootRom;
 
   assign HREADY = HSELRamD & HREADYRam |
-                  HSELEXTD & HREADYEXT |
+                  HSELWbIslandD & HREADYWbIsland |
+                  HSELEXTD_ALL & HREADYEXT |
                   HSELBRIDGED & HREADYBRIDGE |
                   HSELBootRomD & HREADYBootRom |
                   HSELNoneD; // don't lock up the bus if no region is being accessed
@@ -198,8 +274,8 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   // takes more than 1 cycle to respond it needs to hold on to the old select until the
   // device is ready.  Hence this register must be selectively enabled by HREADY.
   // However on reset None must be selected.
-  flopenl #(12) hseldelayreg(HCLK, ~HRESETn, HREADY, HSELRegions, 12'b1,
-    {HSELSPID, HSELSDCD, HSELPLICD, HSELUARTD, HSELGPIOD, HSELCLINTD,
-      HSELRamD, HSELBootRomD, HSELEXTD, HSELIROMD, HSELDTIMD, HSELNoneD});
+  flopenl #(14) hseldelayreg(HCLK, ~HRESETn, HREADY, HSELRegions, 14'b1,
+    {HSELAXIDMAD, HSELWbIslandD, HSELSPID, HSELSDCD, HSELPLICD, HSELUARTD, HSELGPIOD, HSELCLINTD,
+      HSELRamD, HSELBootRomD, HSELEXTD_DDR, HSELIROMD, HSELDTIMD, HSELNoneD});
   flopenr #(1) hselbridgedelayreg(HCLK, ~HRESETn, HREADY, HSELBRIDGE, HSELBRIDGED);
 endmodule

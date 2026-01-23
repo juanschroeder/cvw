@@ -31,7 +31,12 @@ if {$board=="ArtyA7"} {
 } elseif {$board=="genesys2"} {
     add_files  {../src/fpgaTopGenesys2.sv}
 } elseif {$board=="nexysa7"} {
-    add_files  {../src/fpgaTopNexysA7.sv}
+    #add_files  {../src/fpgaTopNexysA7.sv}
+    #add_files  {../src/fpgaTopNexysA7_dma.sv}
+    #add_files  {../src/fpgaTopNexysA7_dma_fixed.sv}
+    #add_files  {../src/fpgaTopNexysA7_dma_fixed2.sv}
+    #add_files  {../src/fpgaTopNexysA7_dma_fixed3.sv}
+    add_files  {../src/fpgaTopNexysA7_dma_mmiofix.sv}
 } else {
     add_files  {../src/fpgaTop.sv}
 }
@@ -47,6 +52,8 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
 } elseif {$board=="nexysa7" } {
     import_ip IP/ddr2.srcs/sources_1/ip/ddr2/ddr2.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
+    import_ip IP/axicrossbar.srcs/sources_1/ip/axicrossbar/axicrossbar.xci
+    import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
 } else {
     import_ip IP/ddr4.srcs/sources_1/ip/ddr4/ddr4.xci
 }
@@ -80,6 +87,13 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" } {
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$boardSubName.xdc]
 }
 
+if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" } {
+
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/uncore/*/*.v]
+    # # needed in uart_top
+    # set_property verilog_define {LITLE_ENDIAN} [get_files {*/uart_defines.v}]
+}
+
 
 # Temp
 set_param messaging.defaultLimit 100000
@@ -109,7 +123,9 @@ if {$board=="ArtyA7"} {
 } elseif {$board=="genesys2"} {
     source ../constraints/small-debug.xdc
 } elseif {$board=="nexysa7"} {
-    source ../constraints/small-debug.xdc
+    #source ../constraints/small-debug.xdc
+    #source ../constraints/debug-nexysa7.xdc
+    source ../constraints/debug-wishbone.xdc
 } else {
     #source ../constraints/vcu-small-debug.xdc
     #source ../constraints/small-debug.xdc
@@ -141,3 +157,6 @@ check_timing                                                              -file 
 report_timing -max_paths 10 -nworst 10 -delay_type max -sort_by slack     -file reports/imp_timing_WORST_10.rpt
 report_timing -nworst 1 -delay_type max -sort_by group                    -file reports/imp_timing.rpt
 report_utilization -hierarchical                                          -file reports/imp_utilization.rpt
+
+# TEST
+write_project_tcl -force $ipName.tcl

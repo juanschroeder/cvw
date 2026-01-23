@@ -53,7 +53,7 @@ build: $(BUILDROOT_OUTPUTS) devicetrees
 # Build buildroot itself
 # LD_LIBRARY_PATH must be unset to avoid conflicts between the host and cross compiler
 $(BUILDROOT_OUTPUTS) $(IMAGE_DIR): check_environment $(BUILDROOT)
-	bash -c "unset LD_LIBRARY_PATH; $(MAKE) -C $(BUILDROOT)"
+	bash -c "unset LD_LIBRARY_PATH; $(MAKE) -C $(BUILDROOT) -j12"
 
 # Install buildroot to $RISCV
 install: check_write_permissions

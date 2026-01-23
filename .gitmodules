@@ -33,3 +33,7 @@
   path = addins/riscv-arch-test-cvw
   url = https://github.com/riscv-non-isa/riscv-arch-test
   branch = act4
+[submodule "ahb3lit_wb_bridge"]
+	path = addins/ahb3lite_wb_bridge
+	url = https://github.com/vfinotti/ahb3lite_wb_bridge
+	branch = master
