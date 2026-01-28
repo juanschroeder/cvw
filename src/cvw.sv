@@ -151,6 +151,9 @@ typedef struct packed {
   logic         AXI_DMA_SUPPORTED;
   logic [63:0]  AXI_DMA_BASE;
   logic [63:0]  AXI_DMA_RANGE;
+  logic         AXI_VGA_SUPPORTED;
+  logic [63:0]  AXI_VGA_BASE;
+  logic [63:0]  AXI_VGA_RANGE;
 
 // Test modes
 

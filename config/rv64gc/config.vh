@@ -195,6 +195,9 @@ localparam logic [63:0] WISHBONE_RANGE   = 64'h000FFFFF;
 localparam logic AXI_DMA_SUPPORTED = 0;
 localparam logic [63:0] AXI_DMA_BASE    = 64'h100A0000;
 localparam logic [63:0] AXI_DMA_RANGE   = 64'h0000FFFF;
+localparam logic AXI_VGA_SUPPORTED = 0;
+localparam logic [63:0] AXI_VGA_BASE    = 64'h100B0000;
+localparam logic [63:0] AXI_VGA_RANGE   = 64'h00000FFF;
 
 // Bus Interface width
 localparam AHBW = (XLEN);

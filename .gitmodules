@@ -37,3 +37,19 @@
 	path = addins/ahb3lite_wb_bridge
 	url = https://github.com/vfinotti/ahb3lite_wb_bridge
 	branch = master
+[submodule "axi-vga"]
+	path = addins/pulp/axi-vga
+	url = https://github.com/pulp-platform/axi_vga.git
+	branch = main
+[submodule "common_cells"]
+	path = addins/pulp/common_cells
+	url = https://github.com/pulp-platform/common_cells.git
+	branch = master
+[submodule "register_interface"]
+	path = addins/pulp/register_interface
+	url = https://github.com/pulp-platform/register_interface.git
+	branch = master
+[submodule "axi"]
+	path = addins/pulp/axi
+	url = https://github.com/pulp-platform/axi.git
+	branch = main

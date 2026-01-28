@@ -36,7 +36,8 @@ if {$board=="ArtyA7"} {
     #add_files  {../src/fpgaTopNexysA7_dma_fixed.sv}
     #add_files  {../src/fpgaTopNexysA7_dma_fixed2.sv}
     #add_files  {../src/fpgaTopNexysA7_dma_fixed3.sv}
-    add_files  {../src/fpgaTopNexysA7_dma_mmiofix.sv}
+    #add_files  {../src/fpgaTopNexysA7_dma_mmiofix.sv}
+    add_files  {../src/fpgaTopNexysA7_dma_mmiofix_with_vga.sv}
 } else {
     add_files  {../src/fpgaTop.sv}
 }
@@ -92,6 +93,22 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" } {
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/uncore/*/*.v]
     # # needed in uart_top
     # set_property verilog_define {LITLE_ENDIAN} [get_files {*/uart_defines.v}]
+    #set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/include } [current_fileset]
+    set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/include ../src/CopiedFiles_do_not_add_to_repo/pulp/axi/include ../src/CopiedFiles_do_not_add_to_repo/pulp/common_cells/include} [current_fileset]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/*/src/*.sv]
+    # CHECK!! WHAT TO DO WITH PATCHES IN THIS 'VENDOR' REPO??
+    # CHECK!! WHAT TO DO WITH PATCHES IN THIS 'VENDOR' REPO??
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/vendor/*/src/*.sv]
+
+    # FIX FOR DUPLICATED 'lzc' module in Pulp
+    # Disable the PULP lzc so Wally's lzc is the only 'lzc' in the design
+    # set pulp_lzc [get_files -quiet *pulp/common_cells/src/lzc.sv]
+    # if {[llength $pulp_lzc]} {
+    #     set_property used_in_synthesis false $pulp_lzc
+    #     set_property used_in_simulation false $pulp_lzc
+    # }
+
+    report_compile_order -constraints > reports/compile_order.rpt
 }
 
 
@@ -125,7 +142,8 @@ if {$board=="ArtyA7"} {
 } elseif {$board=="nexysa7"} {
     #source ../constraints/small-debug.xdc
     #source ../constraints/debug-nexysa7.xdc
-    source ../constraints/debug-wishbone.xdc
+    #source ../constraints/debug-wishbone.xdc
+    # TEST: NO ILA
 } else {
     #source ../constraints/vcu-small-debug.xdc
     #source ../constraints/small-debug.xdc

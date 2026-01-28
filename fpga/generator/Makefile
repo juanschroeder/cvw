@@ -96,6 +96,9 @@ MEM_GENESYS2:
 MEM_NEXYSA7:
 	$(MAKE) $(dst)/ddr2-$(board).log
 
+
+PULP_DIR := ../src/CopiedFiles_do_not_add_to_repo/pulp
+PULP_LZC := $(PULP_DIR)/common_cells/src/lzc.sv
 # Copy files and make necessary modifications
 .PHONY: PreProcessFiles
 PreProcessFiles:
@@ -104,7 +107,20 @@ PreProcessFiles:
 	cp -r ../../src/ ../src/CopiedFiles_do_not_add_to_repo/
 	cp -r ../../addins/verilog-ethernet/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/rvvi
 	cp -r ../../addins/verilog-ethernet/*/*/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/rvvi
+	# Copy Wishbone stuff
 	cp -r ../../addins/ahb3lite_wb_bridge/*.v ../src/CopiedFiles_do_not_add_to_repo/uncore
+	# missing Opencores UART stuff here
+	# Copy Pulp project stuff
+	cp -r ../../addins/pulp/ ../src/CopiedFiles_do_not_add_to_repo/
+	# modify PULP files to prevent name collision for 'lzc'
+	# 1) rename the module itself (only in the defining file)
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)lzc([[:space:]]*#)/\1lzc_pulp\2/' $(PULP_LZC)
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)lzc([[:space:]]*\()/\1lzc_pulp\2/' $(PULP_LZC)
+	sed -i -E 's/(endmodule[[:space:]]*:[[:space:]]*)lzc\b/\1lzc_pulp/' $(PULP_LZC)
+	# 2) rename instantiations that look like: lzc #( ... )
+	find $(PULP_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
+	  xargs -0 sed -i -E 's/\<lzc\>([[:space:]]*#[[:space:]]*\()/lzc_pulp\1/g'
+
 	mkdir ../src/CopiedFiles_do_not_add_to_repo/config/
 	cp ../../config/deriv/fpga$(board)/config.vh ../src/CopiedFiles_do_not_add_to_repo/config/
 	# LITTLE_ENDIAN for UART core

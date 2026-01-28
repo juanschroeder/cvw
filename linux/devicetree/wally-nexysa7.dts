@@ -212,12 +212,46 @@
         #size-cells = <2>;
         ranges;
 
+        framebuffer@87E00000 {
+            reg = <0x0 0x87E00000 0x0 0x00096000>; // 640 KiB reserved
+            no-map;
+        };
         dmabuffer@87F00000 {
             compatible = "shared-dma-pool"; // for later DMA use
             reg = <0x0 0x87F00000 0x0 0x00100000>; // 1 MiB reserved
             no-map;
         };
     };
+    
 
+
+
+};
+
+
+//---------------------------------------------
+// VGA stuff
+
+/ {
+    /*
+    //640x480
+    framebuffer0: framebuffer@87e00000 {
+        compatible = "simple-framebuffer";
+        reg = <0x0 0x87E00000 0x0 0x00096000>;
+        width = <640>;
+        height = <480>;
+        stride = <1280>;  // 640 * 2
+        format = "r5g6b5";
+    };
+     */
+    //320 x 240
+    framebuffer0: framebuffer@87e00000 {
+        compatible = "simple-framebuffer";
+        reg = <0x0 0x87E00000 0x0 0x00025800>;
+        width = <320>;
+        height = <240>;
+        stride = <640>;  // 320 * 2
+        format = "r5g6b5";
+    };
 
 };
