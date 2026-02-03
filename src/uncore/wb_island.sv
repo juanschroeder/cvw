@@ -116,6 +116,32 @@ module wb_island #(
   wire [3:0]  eth_sel_w = eth_is_buf ? {m_sel_i[0], m_sel_i[1], m_sel_i[2], m_sel_i[3]} : m_sel_i;
 
 
+  //-------------------------------------------------------
+  wire unused_rmii_rst_n;
+
+    //(* ASYNC_REG="TRUE" *) logic [1:0] rst_rmii_ff;
+    // rst is active-high reset coming from SoC domain (your ~HRESETn)
+    //
+    // Keep reset asserted at power-up using init value (Vivado maps this to FF INIT).
+    (* ASYNC_REG="TRUE" *) logic [1:0] rst_rmii_ff = 2'b11;    
+
+    // always_ff @(posedge rmii_ref_clk or posedge rst) begin
+    // if (rst)
+    //     rst_rmii_ff <= 2'b11;                 // async assert
+    // else
+    //     rst_rmii_ff <= {rst_rmii_ff[0], 1'b0}; // sync deassert
+    // end
+    always_ff @(posedge rmii_ref_clk) begin
+        rst_rmii_ff <= {rst_rmii_ff[0], rst};
+    end    
+
+    logic rst_rmii;                 // active-high reset in RMII domain
+    assign rst_rmii = rst_rmii_ff[1];
+
+    //assign WB_RMII_RST_N = ~rst_rmii; // active-low reset to PHY
+    assign rmii_rst_n = ~rst_rmii; // active-low reset to PHY
+  //-------------------------------------------------------
+
   liteEthTop u_liteeth (
     .interrupt(eth_irq),
 
@@ -123,7 +149,8 @@ module wb_island #(
     .rmii_crs_dv        (rmii_crs_dv),
     .rmii_mdc           (rmii_mdc),
     .rmii_mdio          (rmii_mdio),
-    .rmii_rst_n         (rmii_rst_n),
+    //.rmii_rst_n         (rmii_rst_n),
+    .rmii_rst_n         (unused_rmii_rst_n),
     .rmii_rx_data       (rmii_rx_data),
     .rmii_tx_data       (rmii_tx_data),
     .rmii_tx_en         (rmii_tx_en),

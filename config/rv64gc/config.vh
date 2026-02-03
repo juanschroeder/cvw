@@ -198,6 +198,9 @@ localparam logic [63:0] AXI_DMA_RANGE   = 64'h0000FFFF;
 localparam logic AXI_VGA_SUPPORTED = 0;
 localparam logic [63:0] AXI_VGA_BASE    = 64'h100B0000;
 localparam logic [63:0] AXI_VGA_RANGE   = 64'h00000FFF;
+localparam logic AXI_USB_SUPPORTED = 0;
+localparam logic [63:0] AXI_USB_BASE    = 64'h100C0000;
+localparam logic [63:0] AXI_USB_RANGE   = 64'h00000FFF;
 
 // Bus Interface width
 localparam AHBW = (XLEN);
@@ -226,6 +229,7 @@ localparam PLIC_SDC_ID = 32'd9;
 localparam PLIC_WB_UART_ID = 32'd11;
 localparam PLIC_WB_ETH_ID = 32'd12;
 localparam PLIC_AXI_DMA_ID = 32'd13;
+localparam PLIC_AXI_USB_ID = 32'd14;
 
 // Branch prediction
 localparam logic BPRED_SUPPORTED = 1;

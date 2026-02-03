@@ -154,6 +154,9 @@ typedef struct packed {
   logic         AXI_VGA_SUPPORTED;
   logic [63:0]  AXI_VGA_BASE;
   logic [63:0]  AXI_VGA_RANGE;
+  logic         AXI_USB_SUPPORTED;
+  logic [63:0]  AXI_USB_BASE;
+  logic [63:0]  AXI_USB_RANGE;
 
 // Test modes
 
@@ -174,6 +177,7 @@ typedef struct packed {
   int           PLIC_WB_UART_ID;
   int           PLIC_WB_ETH_ID;
   int           PLIC_AXI_DMA_ID;
+  int           PLIC_AXI_USB_ID;
 
   logic                BPRED_SUPPORTED;
   logic [31:0]         BPRED_TYPE;

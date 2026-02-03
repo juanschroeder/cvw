@@ -77,7 +77,8 @@ module wallypipelinedsoc import cvw::*; #(parameter cvw_t P)  (
   inout  wire         WB_RMII_MDIO,
   output logic        WB_RMII_RST_N,
   input logic        WB_RMII_PHY_IRQ,
-  input logic AXI_DMAIntr
+  input logic AXI_DMAIntr,
+  input logic AXI_USBIntr
 );
 
   // Uncore signals
@@ -114,7 +115,8 @@ module wallypipelinedsoc import cvw::*; #(parameter cvw_t P)  (
         .WB_RMII_MDIO,
         .WB_RMII_RST_N,
         .WB_RMII_PHY_IRQ,
-        .AXI_DMAIntr(AXI_DMAIntr)
+        .AXI_DMAIntr(AXI_DMAIntr),
+        .AXI_USBIntr(AXI_USBIntr)
       );
   end else begin
     assign {HRDATA, HREADY, HRESP, HSELEXT, MTimerInt, MSwInt, MExtInt, SExtInt,

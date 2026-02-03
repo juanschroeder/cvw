@@ -37,7 +37,8 @@ if {$board=="ArtyA7"} {
     #add_files  {../src/fpgaTopNexysA7_dma_fixed2.sv}
     #add_files  {../src/fpgaTopNexysA7_dma_fixed3.sv}
     #add_files  {../src/fpgaTopNexysA7_dma_mmiofix.sv}
-    add_files  {../src/fpgaTopNexysA7_dma_mmiofix_with_vga.sv}
+    #add_files  {../src/fpgaTopNexysA7_dma_mmiofix_with_vga.sv}
+    add_files  {../src/fpgaTopNexysA7_dma_mmiofix_with_vga_usb.sv}
 } else {
     add_files  {../src/fpgaTop.sv}
 }
@@ -88,6 +89,14 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" } {
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$boardSubName.xdc]
 }
 
+# # Timing related constraints
+# if {$board=="nexysa7" } {
+#     add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-timing.xdc
+#     set_property PROCESSING_ORDER LATE [get_files ../constraints/constraints-$board-timing.xdc]
+#     set_property USED_IN {implementation} [get_files ../constraints/constraints-$board-timing.xdc]
+# }
+
+
 if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" } {
 
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/uncore/*/*.v]
@@ -111,11 +120,17 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" } {
     report_compile_order -constraints > reports/compile_order.rpt
 }
 
+# Add timing fixes (exceptions) as an 'implementation hook' inside impl_1
+# “After the INIT_DESIGN step of run impl_1 finishes, execute this Tcl script.”
+if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" } {
+    set_property STEPS.INIT_DESIGN.TCL.POST [file normalize ../constraints/constraints-$board-timing.tcl] [get_runs impl_1]
+}
 
 # Temp
 set_param messaging.defaultLimit 100000
 
-# this does synthesis?
+set_param general.maxThreads 16
+
 
 launch_runs synth_1 -jobs 16
 
@@ -144,6 +159,9 @@ if {$board=="ArtyA7"} {
     #source ../constraints/debug-nexysa7.xdc
     #source ../constraints/debug-wishbone.xdc
     # TEST: NO ILA
+    #source ../constraints/debug-usb.xdc
+    #source ../constraints/big-debug-spi.xdc
+    source ../constraints/debug-spi.xdc
 } else {
     #source ../constraints/vcu-small-debug.xdc
     #source ../constraints/small-debug.xdc
@@ -153,12 +171,51 @@ if {$board=="ArtyA7"} {
 
 
 # set for RuntimeOptimized implementation
-#set_property "steps.place_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
-#set_property "steps.route_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
+# set_property "steps.place_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
+# set_property "steps.route_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
+# set_property "steps.place_design.args.directive" "Quick" [get_runs impl_1]
+# set_property "steps.route_design.args.directive" "Quick" [get_runs impl_1]
+
+# set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE   RuntimeOptimized [get_runs impl_1]  ;# faster opt :contentReference[oaicite:4]{index=4}
+# set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE Quick            [get_runs impl_1]  ;# fastest place :contentReference[oaicite:5]{index=5}
+# set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE Quick            [get_runs impl_1]  ;# fastest route :contentReference[oaicite:6]{index=6}
+
+# set_property STEPS.PHYS_OPT_DESIGN.IS_ENABLED false [get_runs impl_1]
+# set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED false [get_runs impl_1]
+
+#set_property STEPS.ROUTE_DESIGN.ARGS.ULTRATHREADS true [get_runs impl_1] #doesn't exist
+#set_property "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" "-ultrathreads -no_psir" [get_runs impl_1]
+set_property -name "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" \
+             -value "-ultrathreads -no_psir" \
+             -objects [get_runs impl_1]
+#set_property STEPS.ROUTE_DESIGN.ARGS.NO_PSIR      true [get_runs impl_1]
+set_property -name  "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" \
+             -value "-no_psir -ultrathreads" \
+             -objects [get_runs impl_1]
+# Quick already implies non-timing-driven, but if not using Quick:
+# set_property STEPS.ROUTE_DESIGN.ARGS.NO_TIMING_DRIVEN true [get_runs impl_1]
+
+set_param general.maxThreads 16
+
+# ---- FAST/INCR knobs (put before launch_runs impl_1) ----
+set prev_routed_dcp [file normalize "./WallyFPGA.runs/impl_1/fpgaTop_routed.dcp"]
+if {[file exists $prev_routed_dcp]} {
+    set_property INCREMENTAL_CHECKPOINT $prev_routed_dcp [get_runs impl_1]
+    set_property AUTO_INCREMENTAL_CHECKPOINT 0 [get_runs impl_1] ;# keep explicit reference
+}
+# Or use auto mode instead:
+# set_property AUTO_INCREMENTAL_CHECKPOINT 1 [get_runs impl_1]
+
+# CHECK!! MIGHT NOT BE NEEDED LATER (supposedly takes long!!)
+# TEST: another one to see if it fixes some critical path
+# phys_opt_design is an optional QoR pass
+set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
+
 
 launch_runs impl_1 -jobs 16
 wait_on_run impl_1
-launch_runs impl_1 -to_step write_bitstream
+#launch_runs impl_1 -to_step write_bitstream
+launch_runs impl_1 -to_step write_bitstream -jobs 16
 wait_on_run impl_1
 open_run impl_1
 

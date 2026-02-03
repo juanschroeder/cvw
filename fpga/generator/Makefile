@@ -54,8 +54,28 @@ FPGA_VCU: PreProcessFiles IP_VCU zsbl
 FPGA_GENESYS2: PreProcessFiles IP_GENESYS2 zsbl
 	vivado -mode tcl -source wally.tcl 2>&1 | tee wally.log
 
+# FPGA_NEXYSA7: PreProcessFiles IP_NEXYSA7 zsbl
+# 	vivado -mode tcl -source wally.tcl 2>&1 | tee wally.log
+
+# adding colouring to Vivado output
+# ANSI colors
+CLR_RED    := \033[31;1m
+CLR_RED2   := \033[31m
+CLR_YELLOW := \033[33m
+CLR_GREEN  := \033[32m
+CLR_RESET  := \033[0m
+
+# Vivado log colorizer (terminal only; keep logs clean by tee'ing before this)
+VIVADO_COLOR_AWK := awk ' \
+  /^ERROR:/            {print "$(CLR_RED)"$$0"$(CLR_RESET)"; next} \
+  /^CRITICAL WARNING:/ {print "$(CLR_RED2)"$$0"$(CLR_RESET)"; next} \
+  /^WARNING:/          {print "$(CLR_YELLOW)"$$0"$(CLR_RESET)"; next} \
+  /^INFO:/             {print "$(CLR_GREEN)"$$0"$(CLR_RESET)"; next} \
+  {print $$0} \
+'
+
 FPGA_NEXYSA7: PreProcessFiles IP_NEXYSA7 zsbl
-	vivado -mode tcl -source wally.tcl 2>&1 | tee wally.log
+	@vivado -mode tcl -source wally.tcl 2>&1 | tee wally.log | $(VIVADO_COLOR_AWK)
 
 # Generate IP Blocks
 .PHONY: IP_Arty IP_VCU

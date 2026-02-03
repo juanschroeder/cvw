@@ -396,9 +396,10 @@ set_false_path -through [get_nets -hier -filter {NAME =~ */u_iodelay_ctrl/sys_rs
 # WISHBONE peripherals
 #####################################
 
-# UART: PMOD C, RX=JC1=K1 TX=JC2=F6
-set_property PACKAGE_PIN K1 [get_ports WB_UART_RX]
-set_property PACKAGE_PIN F6 [get_ports WB_UART_TX]
+### # CHANGED!! SEE BELOW, UART: PMOD C, RX=JC1=K1 TX=JC2=F6
+# UART: PMOD B, RX=JB1=D14 TX=JB2=F16
+set_property PACKAGE_PIN D14 [get_ports WB_UART_RX]
+set_property PACKAGE_PIN F16 [get_ports WB_UART_TX]
 set_property IOSTANDARD LVCMOS33 [get_ports WB_UART_RX]
 set_property IOSTANDARD LVCMOS33 [get_ports WB_UART_TX]
 # fixme: check this
@@ -442,3 +443,12 @@ set_property -dict { PACKAGE_PIN D7    IOSTANDARD LVCMOS33 } [get_ports { vga_b_
 set_property -dict { PACKAGE_PIN D8    IOSTANDARD LVCMOS33 } [get_ports { vga_b_4[3] }]; #IO_L4P_T0_35 Sch=vga_b[3]
 set_property -dict { PACKAGE_PIN B11   IOSTANDARD LVCMOS33 } [get_ports { vga_hsync }]; #IO_L4P_T0_15 Sch=vga_hs
 set_property -dict { PACKAGE_PIN B12   IOSTANDARD LVCMOS33 } [get_ports { vga_vsync }]; #IO_L3N_T0_DQS_AD1N_15 Sch=vga_vs
+
+# AXI USB: JC: JC1=K1=V2P JC2=F6=V1P JC7=E7=V2N JC8=J3=V1N
+set_property -dict { PACKAGE_PIN F6    IOSTANDARD LVCMOS33 } [get_ports { usb0_dp }];
+set_property -dict { PACKAGE_PIN J3    IOSTANDARD LVCMOS33 } [get_ports { usb0_dm }];
+set_property -dict { PACKAGE_PIN K1    IOSTANDARD LVCMOS33 } [get_ports { usb1_dp }];
+set_property -dict { PACKAGE_PIN E7    IOSTANDARD LVCMOS33 } [get_ports { usb1_dm }];
+# Not enough but helps
+set_property PULLDOWN true [get_ports {usb0_dp usb0_dm usb1_dp usb1_dm}]
+

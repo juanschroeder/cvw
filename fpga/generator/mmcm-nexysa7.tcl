@@ -17,7 +17,7 @@ set_property -dict [list CONFIG.PRIM_IN_FREQ {100.000} \
                         CONFIG.CLKOUT3_USED {true} \
                         CONFIG.CLKOUT4_USED {true} \
                         CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {200} \
-                        CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {200} \
+                        CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {48} \
                         CONFIG.CLKOUT3_REQUESTED_OUT_FREQ $SYSTEMCLOCK_MHz \
                         CONFIG.CLKOUT4_REQUESTED_OUT_FREQ {50} \
                         CONFIG.CLKIN1_JITTER_PS {10.0} \

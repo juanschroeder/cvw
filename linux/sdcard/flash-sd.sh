@@ -54,6 +54,7 @@ WARNINGTEXT="$BOLDYELLOW"Warning:"$NC"
 BUILDROOT=$RISCV/buildroot
 DEVICE_TREE=wally-vcu108.dtb
 MNT_DIR=wallyimg
+RFS_FILE=rootfs.ext3
 
 # Process options and arguments. The following code grabs the single
 # sdcard device argument no matter where it is in the positional
@@ -82,6 +83,7 @@ IMAGES=$BUILDROOT/output/images
 FW_JUMP=$IMAGES/fw_jump.bin
 LINUX_KERNEL=$IMAGES/Image
 #DEVICE_TREE=$IMAGES/$DEVICE_TREE
+RFS=$IMAGES/$RFS_FILE
 
 SDCARD=${ARGS[0]}
 
@@ -195,15 +197,18 @@ if [[ $REPLY =~ ^[Yy]$ ]] ; then
     echo -e "$NAME Copying Kernel"
     sudo dd if=$LINUX_KERNEL of="$SDCARD""$PART_PREFIX"3 $DD_FLAGS && sync
 
-    sudo mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 "$SDCARD""$PART_PREFIX"4
-    sudo fsck -fv "$SDCARD""$PART_PREFIX"4
-    sudo mkdir /mnt/$MNT_DIR
+    # sudo mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 "$SDCARD""$PART_PREFIX"4
+    # sudo fsck -fv "$SDCARD""$PART_PREFIX"4
+    # sudo mkdir /mnt/$MNT_DIR
 
-    sudo mount -o init_itable=0 -v "$SDCARD""$PART_PREFIX"4 /mnt/$MNT_DIR
+    # sudo mount -o init_itable=0 -v "$SDCARD""$PART_PREFIX"4 /mnt/$MNT_DIR
 
-    sudo umount -v /mnt/$MNT_DIR
+    # sudo umount -v /mnt/$MNT_DIR
 
-    sudo rmdir /mnt/$MNT_DIR
+    #sudo rmdir /mnt/$MNT_DIR
+
+    sudo dd if=$RFS of="$SDCARD""$PART_PREFIX"4 $DD_FLAGS && sync
+
     #sudo losetup -d $LOOPDEVICE
 fi
 

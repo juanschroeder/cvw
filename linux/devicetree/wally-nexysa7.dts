@@ -7,9 +7,12 @@
   model = "wally-virt,qemu";
 
   chosen {
-    linux,initrd-end = <0x85c43a00>;
-    linux,initrd-start = <0x84200000>;
-    bootargs = "root=/dev/vda ro  console=ttyS0,115200 loglevel=7";
+    // initramfs boot
+    //linux,initrd-end = <0x85c43a00>;
+    //linux,initrd-start = <0x84200000>;
+    //bootargs = "root=/dev/vda ro  console=ttyS0,115200 loglevel=7";
+    // rootfs in p4
+    bootargs = "root=/dev/mmcblk0p4 rw console=ttyS0,115200 loglevel=7 init=/sbin/init rootwait";
     stdout-path = "/soc/uart@10000000";
   };
 
@@ -97,12 +100,14 @@
       reg-names = "control";
       clocks = <&refclk>;
 
+      sifive,fifo-depth = <64>;
+
       #address-cells = <1>;
       #size-cells = <0>;
       mmc@0 {
         compatible = "mmc-spi-slot";
         reg = <0>;
-        spi-max-frequency = <1000000>;
+        spi-max-frequency = <25000000>;
         voltage-ranges = <3300 3300>;
         disable-wp;
         // gpios = <&gpio0 6 1>;
@@ -175,13 +180,12 @@
         reg = <0x0 0x100A0000 0x0 0x1000>;
 
         #dma-cells = <1>;
-        xlnx,addrwidth = <0x20>;              /* 32-bit addresses */
+        xlnx,addrwidth = <0x20>; // 32-bit addresses
         status = "okay";
 
-        /*
-        * DMA visible memory window.
-        * For your 128MB DDR at 0x8000_0000..0x87FF_FFFF:
-        */
+        
+        // DMA visible memory window.
+        // For your 128MB DDR at 0x8000_0000..0x87FF_FFFF:
         //dma-ranges = <0x80000000 0x80000000 0x08000000>;
         //dma-ranges = <0x0 0x80000000  0x0 0x80000000  0x08000000>;
 
@@ -191,13 +195,13 @@
         // Mark non-coherent
         dma-noncoherent;
 
-        interrupt-parent = <&plic>;           /* replace with your real interrupt controller phandle */
-        interrupts = <13>;              /* replace with the PLIC source number you wired */
+        interrupt-parent = <&plic>;
+        interrupts = <13>;
 
         dma-channel@100A0000 {
             compatible = "xlnx,axi-cdma-channel";
             interrupts = <13>;
-            xlnx,datawidth = <0x40>;          /* 64-bit datapath (common to keep consistent) */
+            xlnx,datawidth = <0x40>; // 64-bit datapath
             xlnx,device-id = <0>;
             xlnx,max-burst-len = <0x10>;
         };
@@ -255,3 +259,17 @@
     };
 
 };
+
+// USB OHCI
+/ {
+    soc {
+        usb@100C0000 {
+            compatible = "generic-ohci";
+            reg = <0x0 0x100C0000 0x0 0x1000>;
+            interrupt-parent = <&plic>;
+            interrupts = <14>;
+            dma-noncoherent;
+        };
+    };
+};
+

@@ -72,9 +72,10 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
   logic [1:0]  ChipSelectMode;
   logic [15:0] Delay0, Delay1;
   logic [4:0]  Format;
+  logic       FormatDir; // FMT.DIR: 1 => tx-only (do not push RX FIFO)
   logic [7:0]  ReceiveData;
   logic [8:0]  TransmitData;
-  logic [2:0]  TransmitWatermark, ReceiveWatermark;
+  logic [5:0]  TransmitWatermark, ReceiveWatermark;
   logic [1:0]  InterruptEnable, InterruptPending;
 
   // Bus interface signals
@@ -113,7 +114,7 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
   logic        ReceiveFIFOFull, ReceiveFIFOEmpty;
 
   /* verilator lint_off UNDRIVEN */
-  logic [2:0]  TransmitWriteWatermarkLevel, ReceiveReadWatermarkLevel; // unused generic FIFO outputs
+  logic [5:0]  TransmitWriteWatermarkLevel, ReceiveReadWatermarkLevel; // unused generic FIFO outputs
   /* verilator lint_on UNDRIVEN */
   logic [7:0]  ReceiveShiftRegEndian;              // Reverses ReceiveShiftReg if Format[2] set (little endian transmission)
 
@@ -158,9 +159,10 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
       Delay0 <= {8'b1,8'b1};
       Delay1 <= {8'b0,8'b1};
       Format <= {5'b10000};
+      FormatDir <= 1'b0;
       TransmitData <= 9'b0;
-      TransmitWatermark <= 3'b0;
-      ReceiveWatermark <= 3'b0;
+      TransmitWatermark <= 6'b0;
+      ReceiveWatermark <= 6'b0;
       InterruptEnable <= 2'b0;
       InterruptPending <= 2'b0;
     end else begin // writes
@@ -174,10 +176,13 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
           SPI_CSMODE:  ChipSelectMode <= Din[1:0];
           SPI_DELAY0:  Delay0 <= {Din[23:16], Din[7:0]};
           SPI_DELAY1:  Delay1 <= {Din[23:16], Din[7:0]};
-          SPI_FMT:     Format <= {Din[19:16], Din[2]};
+          SPI_FMT:     begin
+            Format    <= {Din[19:16], Din[2]};
+            FormatDir <= Din[3];
+          end
           SPI_TXDATA:  if (~TransmitFIFOFull) TransmitData[7:0] <= Din[7:0];
-          SPI_TXMARK:  TransmitWatermark <= Din[2:0];
-          SPI_RXMARK:  ReceiveWatermark <= Din[2:0];
+          SPI_TXMARK:  TransmitWatermark <= Din[5:0];
+          SPI_RXMARK:  ReceiveWatermark <= Din[5:0];
           SPI_IE:      InterruptEnable <= Din[1:0];
         endcase
       /* verilator lint_on CASEINCOMPLETE */
@@ -195,11 +200,11 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
         SPI_CSMODE:  Dout <= {30'b0, ChipSelectMode};
         SPI_DELAY0:  Dout <= {8'b0, Delay0[15:8], 8'b0, Delay0[7:0]};
         SPI_DELAY1:  Dout <= {8'b0, Delay1[15:8], 8'b0, Delay1[7:0]};
-        SPI_FMT:     Dout <= {12'b0, Format[4:1], 13'b0, Format[0], 2'b0};
+        SPI_FMT:     Dout <= {12'b0, Format[4:1], 12'b0, FormatDir, Format[0], 2'b0};
         SPI_TXDATA:  Dout <= {TransmitFIFOFull, 23'b0, 8'b0};
         SPI_RXDATA:  Dout <= {ReceiveFIFOEmpty, 23'b0, ReceiveData[7:0]};
-        SPI_TXMARK:  Dout <= {29'b0, TransmitWatermark};
-        SPI_RXMARK:  Dout <= {29'b0, ReceiveWatermark};
+        SPI_TXMARK:  Dout <= {26'b0, TransmitWatermark};
+        SPI_RXMARK:  Dout <= {26'b0, ReceiveWatermark};
         SPI_IE:      Dout <= {30'b0, InterruptEnable};
         SPI_IP:      Dout <= {30'b0, InterruptPending};
         default:     Dout <= 32'b0;
@@ -273,11 +278,12 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
     else if (TransmitStart) TransmitStartD <= 1'b1;
     else if (SCLKenable) TransmitStartD <= 1'b0;
 
+  assign TransmitWriteWatermarkLevel = 6'b0; //fix
   // Transmit FIFO
-  spi_fifo #(3,8) txFIFO(PCLK, 1'b1, SCLKenable, PRESETn,
+  spi_fifo #(6,8) txFIFO(PCLK, 1'b1, SCLKenable, PRESETn,
                          TransmitFIFOWriteInc, TransmitFIFOReadInc,
                          TransmitData[7:0],
-                         TransmitWriteWatermarkLevel, TransmitWatermark[2:0],
+                         TransmitWriteWatermarkLevel, TransmitWatermark[5:0],
                          TransmitReadData[7:0],
                          TransmitFIFOFull,
                          TransmitFIFOEmpty,
@@ -292,12 +298,13 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
 
   // Receive FIFO Write Increment register
   flopenr #(1) rxfifowincreg(PCLK, ~PRESETn, SCLKenable,
-                             EndOfFrame, ReceiveFIFOWriteInc);
+                             (EndOfFrame & ~FormatDir), ReceiveFIFOWriteInc);
 
+  assign ReceiveReadWatermarkLevel = 6'b0; //fix
   // Receive FIFO
-  spi_fifo #(3,8) rxFIFO(PCLK, SCLKenable, 1'b1, PRESETn,
+  spi_fifo #(6,8) rxFIFO(PCLK, SCLKenable, 1'b1, PRESETn,
                          ReceiveFIFOWriteInc, ReceiveFIFOReadInc,
-                         ReceiveShiftRegEndian, ReceiveWatermark[2:0],
+                         ReceiveShiftRegEndian, ReceiveWatermark[5:0],
                          ReceiveReadWatermarkLevel,
                          ReceiveData[7:0],
                          ReceiveFIFOFull,

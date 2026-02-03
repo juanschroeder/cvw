@@ -1,0 +1,42 @@
+diff --git a/drivers/spi/spi-sifive.c b/drivers/spi/spi-sifive.c
+index cfd17bb..c7b002c 100644
+--- a/drivers/spi/spi-sifive.c
++++ b/drivers/spi/spi-sifive.c
+@@ -94,6 +94,7 @@ struct sifive_spi {
+ 	unsigned int      fifo_depth;   /* fifo depth in words */
+ 	u32               cs_inactive;  /* level of the CS pins when inactive */
+ 	struct completion done;         /* wake-up from interrupt */
++	u32               force_poll_mmc; /* force poll for the MMC case (longer data transfers) */
+ };
+ 
+ static void sifive_spi_write(struct sifive_spi *spi, int offset, u32 value)
+@@ -257,6 +258,9 @@ sifive_spi_transfer_one(struct spi_controller *host, struct spi_device *device,
+ {
+ 	struct sifive_spi *spi = spi_controller_get_devdata(host);
+ 	int poll = sifive_spi_prep_transfer(spi, device, t);
++	if (spi->force_poll_mmc)
++		poll = 1;
++
+ 	const u8 *tx_ptr = t->tx_buf;
+ 	u8 *rx_ptr = t->rx_buf;
+ 	unsigned int remaining_words = t->len;
+@@ -295,6 +299,7 @@ static int sifive_spi_probe(struct platform_device *pdev)
+ 	int ret, irq, num_cs;
+ 	u32 cs_bits, max_bits_per_word;
+ 	struct spi_controller *host;
++	struct device_node *nc;
+ 
+ 	host = spi_alloc_host(&pdev->dev, sizeof(struct sifive_spi));
+ 	if (!host) {
+@@ -360,6 +365,11 @@ static int sifive_spi_probe(struct platform_device *pdev)
+ 		goto disable_clk;
+ 	}
+ 
++	spi->force_poll_mmc = false;
++	for_each_available_child_of_node(pdev->dev.of_node, nc)
++		if (of_device_is_compatible(nc, "mmc-spi-slot"))
++			spi->force_poll_mmc = true;
++
+ 	num_cs = ilog2(cs_bits) + 1;
+ 	if (num_cs > SIFIVE_SPI_MAX_CS) {
+ 		dev_err(&pdev->dev, "Invalid number of spi targets\n");
