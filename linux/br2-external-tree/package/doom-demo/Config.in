@@ -1,0 +1,13 @@
+config BR2_PACKAGE_DOOM_DEMO
+	bool "doom-demo"
+	help
+	  Installs the Doom timedemo file bounce1.lmp to:
+	    /usr/share/games/doom/bounce1.lmp
+
+	  And installs helper scripts:
+	    /usr/bin/doom-short-demo.sh
+	    /usr/bin/doom-demo.sh
+
+	  Runtime requires:
+	    - fbdoom in PATH
+	    - /usr/share/games/doom/doom1.wad present (from your doom-wad package)

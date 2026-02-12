@@ -57,25 +57,19 @@ FPGA_GENESYS2: PreProcessFiles IP_GENESYS2 zsbl
 # FPGA_NEXYSA7: PreProcessFiles IP_NEXYSA7 zsbl
 # 	vivado -mode tcl -source wally.tcl 2>&1 | tee wally.log
 
-# adding colouring to Vivado output
-# ANSI colors
-CLR_RED    := \033[31;1m
-CLR_RED2   := \033[31m
-CLR_YELLOW := \033[33m
-CLR_GREEN  := \033[32m
-CLR_RESET  := \033[0m
-
-# Vivado log colorizer (terminal only; keep logs clean by tee'ing before this)
-VIVADO_COLOR_AWK := awk ' \
-  /^ERROR:/            {print "$(CLR_RED)"$$0"$(CLR_RESET)"; next} \
-  /^CRITICAL WARNING:/ {print "$(CLR_RED2)"$$0"$(CLR_RESET)"; next} \
-  /^WARNING:/          {print "$(CLR_YELLOW)"$$0"$(CLR_RESET)"; next} \
-  /^INFO:/             {print "$(CLR_GREEN)"$$0"$(CLR_RESET)"; next} \
+VIVADO_COLOR := awk '\
+  /^ERROR:/            {print "\033[31;1m" $$0 "\033[0m"; next} \
+  /^CRITICAL WARNING:/ {print "\033[31m"   $$0 "\033[0m"; next} \
+  /^WARNING:/          {print "\033[33m"   $$0 "\033[0m"; next} \
+  /^INFO:/             {print "\033[32m"   $$0 "\033[0m"; next} \
   {print $$0} \
 '
+define VIVADO_TCL
+script -q -c "vivado -mode tcl -source $(1)" /dev/null 2>&1 | tee $(2) | $(VIVADO_COLOR)
+endef
 
 FPGA_NEXYSA7: PreProcessFiles IP_NEXYSA7 zsbl
-	@vivado -mode tcl -source wally.tcl 2>&1 | tee wally.log | $(VIVADO_COLOR_AWK)
+	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
 # Generate IP Blocks
 .PHONY: IP_Arty IP_VCU
@@ -140,6 +134,14 @@ PreProcessFiles:
 	# 2) rename instantiations that look like: lzc #( ... )
 	find $(PULP_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
 	  xargs -0 sed -i -E 's/\<lzc\>([[:space:]]*#[[:space:]]*\()/lzc_pulp\1/g'
+	# 3) patch AXI VGA
+	patchdir="$(PULP_DIR)/axi-vga"; \
+	find "$(PULP_DIR)" -type f -name "*vga*.patch" -print0 | sort -z | \
+	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
+	# 4) patch USB OHCI
+	patchdir="../src/CopiedFiles_do_not_add_to_repo"; \
+	find ../../src/uncore/usb -type f -name "*.patch" -print0 | sort -z | \
+	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
 
 	mkdir ../src/CopiedFiles_do_not_add_to_repo/config/
 	cp ../../config/deriv/fpga$(board)/config.vh ../src/CopiedFiles_do_not_add_to_repo/config/

@@ -82,3 +82,47 @@ if {[llength $c_pll] && [llength $c_out2]} {
   puts "WARNING: clocks not found for async grouping: clk_pll_i=$c_pll clk_out2_mmcm=$c_out2"
 }
 
+
+
+# ------------------------------------------------------------
+# USB OHCI: IRQ synchronizer (clk_pll_i -> clk_out3_mmcm)
+# Cut timing into the FIRST sync FF in the destination domain.
+set dst [get_pins -hier -quiet -regexp {.*usb_irq_ff1_reg.*/D}]
+if {[llength $dst]} { set_false_path -to $dst }
+
+# ------------------------------------------------------------
+# USB OHCI: BufferCC inputs (clk_pll_i <-> clk_out2_mmcm)
+# Cut timing into the FIRST stage ("buffers_0_reg/D") of ANY input_*_buffercc.
+# (Covers your input_lowSpeed_buffercc example.)
+set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/input_.*_buffercc.*/buffers_0_reg/D}]
+if {[llength $dst]} { set_false_path -to $dst }
+
+# ------------------------------------------------------------
+# USB OHCI: ccToggle crossings (clk_out2_mmcm <-> clk_pll_i)
+# These are toggle-based CDC blocks; Vivado still reports reg->reg across domains.
+# Cut timing into the destination "outputArea" regs.
+set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/output_.*_ccToggle/outputArea_.*_reg/D}]
+if {[llength $dst]} { set_false_path -to $dst }
+
+# ------------------------------------------------------------
+# LiteEth: async reset pins (PRE) recovery/removal checks across RMII/system clocks
+# Your old rule only matched FDPE or FDPE_1; this covers FDPE, FDPE_1, FDPE_2, ...
+set dst [get_pins -hier -quiet -regexp {.*u_liteeth/FDPE(_[0-9]+)?/PRE}]
+if {[llength $dst]} { set_false_path -to $dst }
+
+# ------------------------------------------------------------
+# LiteEth: CDC synchronizers (graycounter/pulse sync -> XilinxMultiReg)
+# ASYNC_REG / MultiReg does NOT automatically “false-path” timing.
+# Cut timing from CDC source regs into the destination multireg D pins.
+set dst_mr [get_pins -hier -quiet -regexp {.*u_liteeth/.*xilinxmultiregimpl[0-9]+_regs0_reg\[[0-9]+\]/D}]
+
+set src [get_cells -hier -quiet -regexp {.*u_liteeth/.*cdc_.*graycounter[01]_q_reg.*}]
+if {[llength $src] && [llength $dst_mr]} { set_false_path -from $src -to $dst_mr }
+
+set src [get_cells -hier -quiet -regexp {.*u_liteeth/.*core_pulsesynchronizer[0-9]+_toggle_i_reg.*}]
+if {[llength $src] && [llength $dst_mr]} { set_false_path -from $src -to $dst_mr }
+
+
+set f [open "HOOK_RAN.txt" w]
+puts $f "HOOK RAN at [clock format [clock seconds]]"
+close $f

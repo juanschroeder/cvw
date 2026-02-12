@@ -240,39 +240,8 @@ module axi_vga_wrap (
 
     m_axi_bready  = vga_axi_req.b_ready;
 
-    m_axi_arvalid = vga_axi_req.ar_valid;
-    m_axi_arid    = vga_axi_req.ar.id;
-    m_axi_araddr  = vga_axi_req.ar.addr;
-    m_axi_arlen   = vga_axi_req.ar.len;
-    m_axi_arsize  = vga_axi_req.ar.size;
-    m_axi_arburst = vga_axi_req.ar.burst;
-    m_axi_arlock  = vga_axi_req.ar.lock;
-    m_axi_arcache = vga_axi_req.ar.cache;
-    m_axi_arprot  = vga_axi_req.ar.prot;
 
     m_axi_rready  = vga_axi_req.r_ready;
-  end
-
-  // AXI MASTER (scanout) discrete -> struct
-  always_comb begin
-    vga_axi_resp = '0;
-
-    vga_axi_resp.aw_ready = m_axi_awready;
-    vga_axi_resp.w_ready  = m_axi_wready;
-
-    vga_axi_resp.b_valid  = m_axi_bvalid;
-    vga_axi_resp.b.id     = m_axi_bid;
-    vga_axi_resp.b.resp   = m_axi_bresp;
-    vga_axi_resp.b.user   = '0;
-
-    vga_axi_resp.ar_ready = m_axi_arready;
-
-    vga_axi_resp.r_valid  = m_axi_rvalid;
-    vga_axi_resp.r.id     = m_axi_rid;
-    vga_axi_resp.r.data   = m_axi_rdata;
-    vga_axi_resp.r.resp   = m_axi_rresp;
-    vga_axi_resp.r.last   = m_axi_rlast;
-    vga_axi_resp.r.user   = '0;
   end
 
   // ----------------------------
@@ -280,15 +249,15 @@ module axi_vga_wrap (
   // ----------------------------
   reg_req_t  reg_req;
   reg_resp_t reg_rsp;
-    (* keep = "true", mark_debug = "true" *) logic        dbg_reg_req_valid;
-    (* keep = "true", mark_debug = "true" *) logic        dbg_reg_req_write;
-    (* keep = "true", mark_debug = "true" *) logic [11:0] dbg_reg_req_addr;
-    (* keep = "true", mark_debug = "true" *) logic [31:0] dbg_reg_req_wdata;
-    (* keep = "true", mark_debug = "true" *) logic [3:0]  dbg_reg_req_wstrb;
+    logic        dbg_reg_req_valid;
+    logic        dbg_reg_req_write;
+    logic [11:0] dbg_reg_req_addr;
+    logic [31:0] dbg_reg_req_wdata;
+    logic [3:0]  dbg_reg_req_wstrb;
 
-    (* keep = "true", mark_debug = "true" *) logic        dbg_reg_rsp_ready;
-    (* keep = "true", mark_debug = "true" *) logic        dbg_reg_rsp_error;
-    (* keep = "true", mark_debug = "true" *) logic [31:0] dbg_reg_rsp_rdata;
+    logic        dbg_reg_rsp_ready;
+    logic        dbg_reg_rsp_error;
+    logic [31:0] dbg_reg_rsp_rdata;
 
     always_comb begin
         dbg_reg_req_valid = reg_req.valid;
@@ -345,10 +314,9 @@ module axi_vga_wrap (
     .reg_req_t    ( reg_req_t  ),
     .reg_resp_t   ( reg_resp_t ),
     // Default: 16 and 24
-    .BufferDepth  ( 4 ), // Testing values to see if it fixes timing 
-    //.MaxReadTxns  ( 4 ) // This value brings AXI VGA out of the critical path
-    //.BufferDepth  ( 2 ), // This  
-    .MaxReadTxns  ( 2 ) // This brings
+    // Using BufferDepth=4 and MaxReadTxns=4 was tested at least once be good for timing requirements and not have black stripes
+    .BufferDepth  ( 4 ),
+    .MaxReadTxns  ( 4 ) 
   ) i_axi_vga (
     .clk_i         ( aclk     ),
     .rst_ni        ( aresetn  ),
@@ -366,5 +334,65 @@ module axi_vga_wrap (
     .green_o       ( vga_g_o     ),
     .blue_o        ( vga_b_o     )
   );
+
+
+    // split out AR handshake
+    ar_chan_t ar_i, ar_o;
+    logic         ar_valid_i, ar_ready_i;
+    logic         ar_valid_o, ar_ready_o;
+
+    assign ar_i       = vga_axi_req.ar;
+    assign ar_valid_i = vga_axi_req.ar_valid;
+
+    // 1-deep cut (registered)
+    spill_register #(
+    //.T ( axi_ar_chan_t )
+    .T ( ar_chan_t )
+    ) i_vga_ar_cut (
+    .clk_i( aclk     ),
+    .rst_ni( aresetn  ),
+    .data_i  ( ar_i       ),
+    .valid_i ( ar_valid_i ),
+    .ready_o ( ar_ready_i ),
+    .data_o  ( ar_o       ),
+    .valid_o ( ar_valid_o ),
+    .ready_i ( ar_ready_o )
+    );
+
+    //assign cross_axi_req.ar_valid = ar_valid_o;
+    assign m_axi_arvalid = ar_valid_o;
+    assign m_axi_araddr  = ar_o.addr;
+    assign m_axi_arid    = ar_o.id;
+    assign m_axi_arlen   = ar_o.len;
+    assign m_axi_arsize  = ar_o.size;
+    assign m_axi_arburst = ar_o.burst;
+    assign m_axi_arlock  = ar_o.lock;
+    assign m_axi_arcache = ar_o.cache;
+    assign m_axi_arprot  = ar_o.prot;
+
+    // AXI MASTER (scanout) discrete -> struct
+    always_comb begin
+        vga_axi_resp = '0;
+
+        vga_axi_resp.aw_ready = m_axi_awready;
+        vga_axi_resp.w_ready  = m_axi_wready;
+
+        vga_axi_resp.b_valid  = m_axi_bvalid;
+        vga_axi_resp.b.id     = m_axi_bid;
+        vga_axi_resp.b.resp   = m_axi_bresp;
+        vga_axi_resp.b.user   = '0;
+
+        vga_axi_resp.ar_ready = ar_ready_i;
+
+        vga_axi_resp.r_valid  = m_axi_rvalid;
+        vga_axi_resp.r.id     = m_axi_rid;
+        vga_axi_resp.r.data   = m_axi_rdata;
+        vga_axi_resp.r.resp   = m_axi_rresp;
+        vga_axi_resp.r.last   = m_axi_rlast;
+        vga_axi_resp.r.user   = '0;
+    end
+
+    assign ar_ready_o             = m_axi_arready;
+
 
 endmodule

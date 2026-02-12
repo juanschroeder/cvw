@@ -7,18 +7,14 @@
   model = "wally-virt,qemu";
 
   chosen {
-    // initramfs boot
-    //linux,initrd-end = <0x85c43a00>;
-    //linux,initrd-start = <0x84200000>;
-    //bootargs = "root=/dev/vda ro  console=ttyS0,115200 loglevel=7";
-    // rootfs in p4
-    bootargs = "root=/dev/mmcblk0p4 rw console=ttyS0,115200 loglevel=7 init=/sbin/init rootwait";
+    bootargs = "root=/dev/mmcblk0p5 rw console=ttyS0,115200 loglevel=7 init=/sbin/init rootwait mem=118M";
     stdout-path = "/soc/uart@10000000";
   };
 
   memory@80000000 {
     device_type = "memory";
-    reg = <0x00 0x80000000 0x00 0x8000000>;
+    // 128MB RAM but test hardware was buggy beyond 0x87600000
+    reg = <0x00 0x80000000 0x00 0x7600000>;
   };
 
   cpus {
@@ -110,7 +106,6 @@
         spi-max-frequency = <25000000>;
         voltage-ranges = <3300 3300>;
         disable-wp;
-        // gpios = <&gpio0 6 1>;
       };
     };
 
@@ -120,7 +115,6 @@
       compatible = "sifive,clint0\0riscv,clint0";
     };
 
-    // Wishbone stuff ---------------
     uart1: uart@11004000 {
         compatible = "ns16550a";
         reg = <0x0 0x11004000 0x0 0x1000>;
@@ -138,7 +132,7 @@
     eth0: ethernet@11003000 {
         compatible = "litex,liteeth";
 
-        reg = <0x0 0x11003000 0x0 0x100>,   // mac  (csr+0x1000) 
+        reg = <0x0 0x11003000 0x0 0x100>,     // mac  (csr+0x1000) 
                 <0x0 0x11002800 0x0 0x100>,   // mdio (csr+0x0800)
                 <0x0 0x11000000 0x0 0x2000>;  // buffer 
         reg-names = "mac", "mdio", "buffer";
@@ -158,7 +152,7 @@
             #size-cells = <0>;
 
             ethphy0: ethernet-phy@0 {
-                reg = <0>; // <-- set to your PHY strap addr if not 0
+                reg = <0>;
             };
         };
 
@@ -168,15 +162,12 @@
     busclk: busclk {
       #clock-cells = <0>;
       compatible = "fixed-clock";
-      // Clock      Period(ns)  Waveform(ns)   Attributes  Sources
-      // clk_pll_i  12.308      {0.000 6.154}  P,G,A       {ddr2/u_ddr2_mig/u_ddr2_infrastructure/gen_mmcm.mmcm_i/CLKFBOUT}
-      clock-frequency = <81250000>; //This is the speed of signal 'ddr2/ui_clk' (DDR2 block OUTPUT, 12.308 ns)
+      clock-frequency = <81250000>;
       clock-output-names = "busclk";
     };
 
     cdma0: dma@100A0000 {
         compatible = "xlnx,axi-cdma-1.00.a";
-        //reg = <0x100A0000 0x1000>;
         reg = <0x0 0x100A0000 0x0 0x1000>;
 
         #dma-cells = <1>;
@@ -201,75 +192,56 @@
         dma-channel@100A0000 {
             compatible = "xlnx,axi-cdma-channel";
             interrupts = <13>;
-            xlnx,datawidth = <0x40>; // 64-bit datapath
+            xlnx,datawidth = <0x40>;
             xlnx,device-id = <0>;
             xlnx,max-burst-len = <0x10>;
         };
     };
 
+    usb@100C0000 {
+        compatible = "generic-ohci";
+        reg = <0x0 0x100C0000 0x0 0x1000>;
+        interrupt-parent = <&plic>;
+        interrupts = <14>;
+        dma-noncoherent;
+    };
 
-    //---------------------------------------------    
+
   };
 
-    reserved-memory {
-        #address-cells = <2>;
-        #size-cells = <2>;
-        ranges;
-
-        framebuffer@87E00000 {
-            reg = <0x0 0x87E00000 0x0 0x00096000>; // 640 KiB reserved
-            no-map;
-        };
-        dmabuffer@87F00000 {
-            compatible = "shared-dma-pool"; // for later DMA use
-            reg = <0x0 0x87F00000 0x0 0x00100000>; // 1 MiB reserved
-            no-map;
-        };
+  reserved-memory {
+    #address-cells = <2>;
+    #size-cells = <2>;
+    ranges;
+    framebuffer@87500000 {
+        reg = <0x0 0x87500000 0x0 0x00096000>; // 640 KiB reserved
+        no-map;
     };
+
+    dmabuffer@87400000 {
+        compatible = "shared-dma-pool";
+        reg = <0x0 0x87400000 0x0 0x00100000>; // 1 MiB reserved
+        no-map;
+    };
+
+    // Prevent Linux from using this region
+    opensbi@80000000 {
+        reg = <0x0 0x80000000  0x0 0x0080000>; // 512 Kib
+        no-map;
+    };
+  };
     
 
-
-
-};
-
-
-//---------------------------------------------
-// VGA stuff
-
-/ {
-    /*
-    //640x480
-    framebuffer0: framebuffer@87e00000 {
-        compatible = "simple-framebuffer";
-        reg = <0x0 0x87E00000 0x0 0x00096000>;
-        width = <640>;
-        height = <480>;
-        stride = <1280>;  // 640 * 2
-        format = "r5g6b5";
-    };
-     */
-    //320 x 240
-    framebuffer0: framebuffer@87e00000 {
-        compatible = "simple-framebuffer";
-        reg = <0x0 0x87E00000 0x0 0x00025800>;
-        width = <320>;
-        height = <240>;
-        stride = <640>;  // 320 * 2
-        format = "r5g6b5";
-    };
+  //320 x 240
+  framebuffer0: framebuffer@87500000 {
+    compatible = "simple-framebuffer";
+    reg = <0x0 0x87500000 0x0 0x00025800>;
+    width = <320>;
+    height = <240>;
+    stride = <640>;  // 320 * 2
+    format = "r5g6b5";
+  };
 
 };
 
-// USB OHCI
-/ {
-    soc {
-        usb@100C0000 {
-            compatible = "generic-ohci";
-            reg = <0x0 0x100C0000 0x0 0x1000>;
-            interrupt-parent = <&plic>;
-            interrupts = <14>;
-            dma-noncoherent;
-        };
-    };
-};
 

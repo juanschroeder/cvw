@@ -1,0 +1,65 @@
+diff --git a/src/axi_vga.sv b/src/axi_vga.sv
+index 82a1894..df8351b 100644
+--- a/src/axi_vga.sv
++++ b/src/axi_vga.sv
+@@ -151,6 +151,45 @@ module axi_vga #(
+     .ready_i        ( ready               )
+   );
+
++  //Critical path optimization #2: AR channel between fetcher and burst splitter
++  //-----------------------------------------------------------------------------
++  axi_req_t  axi_req_bs;
++  axi_resp_t axi_resp_bs;
++
++  logic [$bits(axi_req.ar)-1:0] ar_data_i, ar_data_o;
++  logic                         ar_valid_o, ar_ready_o;
++
++  assign ar_data_i = axi_req.ar;
++
++  // This instance must NOT be in bypass mode,
++  // otherwise it won't cut the combinational path.
++  spill_register #(
++    .T      (logic [$bits(axi_req.ar)-1:0]),
++    .Bypass(1'b0)  // default value, but explicitly set for clarity
++  ) i_ar_cut (
++    .clk_i,
++    .rst_ni,
++
++    .data_i  (ar_data_i),
++    .valid_i (axi_req.ar_valid),
++    .ready_o (ar_ready_o),
++
++    .data_o  (ar_data_o),
++    .valid_o (ar_valid_o),
++    .ready_i (axi_resp_bs.ar_ready)
++  );
++
++  always_comb begin
++    // To burst splitter
++    axi_req_bs         = axi_req;
++    axi_req_bs.ar      = ar_data_o;
++    axi_req_bs.ar_valid= ar_valid_o;
++
++    // Back to fetcher
++    axi_resp           = axi_resp_bs;
++    axi_resp.ar_ready  = ar_ready_o;
++  end
++
+   axi_burst_splitter #(
+       .MaxReadTxns  ( MaxReadTxns   ),
+       .MaxWriteTxns ( 32'd1         ), // technically 0, but not supported
+@@ -164,11 +203,12 @@ module axi_vga #(
+   ) i_axi_burst_splitter (
+       .clk_i,
+       .rst_ni,
+-      .slv_req_i  ( axi_req        ),
+-      .slv_resp_o ( axi_resp       ),
++      .slv_req_i  ( axi_req_bs  ), //.slv_req_i  ( axi_req        ),
++      .slv_resp_o ( axi_resp_bs ), //.slv_resp_o ( axi_resp       ),
+       .mst_req_o  ( axi_req_split  ),
+       .mst_resp_i ( axi_resp_split )
+   );
++  //-----------------------------------------------------------------------------
+
+   // Add stream FIFO in the response path to buffer requested data
+   // rest of the response is just passed through

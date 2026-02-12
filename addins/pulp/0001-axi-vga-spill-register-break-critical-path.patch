@@ -1,0 +1,35 @@
+diff --git a/src/axi_vga.sv b/src/axi_vga.sv
+index 1cc1617..82a1894 100644
+--- a/src/axi_vga.sv
++++ b/src/axi_vga.sv
+@@ -186,6 +186,9 @@ module axi_vga #(
+   assign axi_resp_split.b_valid  = axi_resp_i.b_valid;
+   assign axi_resp_split.b        = axi_resp_i.b;
+ 
++  axi_r_chan_t r_fifo;
++  logic        r_fifo_valid, r_fifo_ready;
++
+   stream_fifo #(
+     .FALL_THROUGH ( 32'd0               ),
+     .DEPTH        ( BufferDepth + 32'd1 ), // +1 as the FIFO cannot be pushed and popped in-cycle
+@@ -199,6 +202,20 @@ module axi_vga #(
+     .data_i     ( axi_resp_i.r           ),
+     .valid_i    ( axi_resp_i.r_valid     ),
+     .ready_o    ( axi_req_o.r_ready      ),
++    .data_o     ( r_fifo       ), //.data_o     ( axi_resp_split.r       ),
++    .valid_o    ( r_fifo_valid ), //.valid_o    ( axi_resp_split.r_valid ),
++    .ready_i    ( r_fifo_ready )  //.ready_i    ( axi_req_split.r_ready  )
++  );
++
++  spill_register #(
++    .T ( axi_r_chan_t )
++  ) i_r_spill (
++    .clk_i,
++    .rst_ni,
++    .data_i  ( r_fifo       ),
++    .valid_i ( r_fifo_valid ),
++    .ready_o ( r_fifo_ready ),
++
+     .data_o     ( axi_resp_split.r       ),
+     .valid_o    ( axi_resp_split.r_valid ),
+     .ready_i    ( axi_req_split.r_ready  )

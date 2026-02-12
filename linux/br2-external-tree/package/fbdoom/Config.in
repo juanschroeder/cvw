@@ -1,0 +1,4 @@
+config BR2_PACKAGE_FBDOOM
+	bool "fbdoom"
+	help
+	    This will install FB Doom by Maxim Evince, John Carmack

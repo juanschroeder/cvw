@@ -1,0 +1,56 @@
+diff --git a/uncore/usb/UsbOhciAxi4_p2_dma64.v b/uncore/usb/UsbOhciAxi4_p2_dma64.v
+index 11a684b1d..d0c9c7be7 100644
+--- a/uncore/usb/UsbOhciAxi4_p2_dma64.v
++++ b/uncore/usb/UsbOhciAxi4_p2_dma64.v
+@@ -14588,7 +14588,7 @@ module UsbOhciAxi4_p2_dma64_Crc (
+   reg        [4:0]    acc_3;
+   reg        [4:0]    acc_2;
+   reg        [4:0]    acc_1;
+-  reg        [4:0]    state;
++  wire       [4:0]    state;
+   wire       [4:0]    acc;
+   wire       [4:0]    stateXor;
+   wire       [4:0]    accXor;
+@@ -14664,18 +14664,31 @@ module UsbOhciAxi4_p2_dma64_Crc (
+   assign accXor = (acc_11 ^ 5'h1f);
+   assign io_result = {stateXor[0],{stateXor[1],{stateXor[2],{stateXor[3],stateXor[4]}}}};
+   assign io_resultNext = {accXor[0],{accXor[1],{accXor[2],{accXor[3],accXor[4]}}}};
+-  always @(posedge ctrl_clk or posedge ctrl_reset) begin
+-    if(ctrl_reset) begin
+-      state <= 5'h1f;
+-    end else begin
+-      if(io_input_valid) begin
+-        state <= acc_11;
+-      end
+-      if(io_flush) begin
+-        state <= 5'h1f;
+-      end
++  // --- CRC5 state flops (explicit) ---
++  // Keep CE purely a function of io_flush/io_input_valid so Vivado does not
++  // rewrite it into a data-dependent clock-enable (which can drag large cones
++  // of logic into the CE path).
++  wire        state_ce;
++  wire [4:0]  state_d;
++
++  assign state_ce = io_flush | io_input_valid;
++  // flush has priority over input_valid, matching the original sequential code
++  assign state_d  = io_flush ? 5'h1f : acc_11;
++
++  genvar i;
++  generate
++    for (i = 0; i < 5; i = i + 1) begin : gen_state_ff
++      (* DONT_TOUCH = "TRUE" *)
++      FDPE #(.INIT(1'b1)) state_ff (
++        .C   (ctrl_clk),
++        .CE  (state_ce),
++        .PRE (ctrl_reset),
++        .D   (state_d[i]),
++        .Q   (state[i])
++      );
+     end
+-  end
++  endgenerate
++
+ 
+ 
+ endmodule

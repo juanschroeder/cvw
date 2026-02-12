@@ -55,6 +55,7 @@ BUILDROOT=$RISCV/buildroot
 DEVICE_TREE=wally-vcu108.dtb
 MNT_DIR=wallyimg
 RFS_FILE=rootfs.ext3
+UBOOT_FILE=u-boot.bin
 
 # Process options and arguments. The following code grabs the single
 # sdcard device argument no matter where it is in the positional
@@ -81,7 +82,11 @@ done
 # File location variables
 IMAGES=$BUILDROOT/output/images
 FW_JUMP=$IMAGES/fw_jump.bin
-LINUX_KERNEL=$IMAGES/Image
+#LINUX_KERNEL=$IMAGES/Image
+LINUX_KERNEL=$IMAGES/Image.gz
+#LINUX_KERNEL=$IMAGES/zImage
+UBOOT=$IMAGES/$UBOOT_FILE
+echo "UBOOT FILE: $UBOOT"
 #DEVICE_TREE=$IMAGES/$DEVICE_TREE
 RFS=$IMAGES/$RFS_FILE
 
@@ -134,17 +139,19 @@ fi
 DST_SIZE=$(ls -la --block-size=512 $DEVICE_TREE | cut -d' ' -f 5 )
 FW_JUMP_SIZE=$(ls -la --block-size=512 $FW_JUMP | cut -d' ' -f 5 )
 KERNEL_SIZE=$(ls -la --block-size=512 $LINUX_KERNEL | cut -d' ' -f 5 )
+UBOOT_SIZE=$(ls -la --block-size=512 $UBOOT | cut -d' ' -f 5 )
 
 # Start sectors of OpenSBI and Kernel Partitions
 FW_JUMP_START=$(( 34 + $DST_SIZE ))
-KERNEL_START=$(( $FW_JUMP_START + $FW_JUMP_SIZE ))
+UBOOT_START=$(( $FW_JUMP_START + $FW_JUMP_SIZE ))
+KERNEL_START=$(( $UBOOT_START + $UBOOT_SIZE ))
 FS_START=$(( $KERNEL_START + $KERNEL_SIZE ))
 
 # Print out the sizes of the binaries in 512B blocks
 echo -e "$NAME Device tree block size:     $DST_SIZE"
 echo -e "$NAME OpenSBI FW_JUMP block size: $FW_JUMP_SIZE"
 echo -e "$NAME Kernel block size:          $KERNEL_SIZE"
-
+echo -e "$NAME U-Boot block size:          $UBOOT_SIZE"
 read -p $'\e[1;33mWarning:\e[0m Doing this will replace all data on this card. Continue? y/n: ' -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]] ; then
@@ -177,8 +184,9 @@ if [[ $REPLY =~ ^[Yy]$ ]] ; then
     sudo sgdisk -g --clear --set-alignment=1 \
          --new=1:34:+$DST_SIZE: --change-name=1:'fdt' \
          --new=2:$FW_JUMP_START:+$FW_JUMP_SIZE --change-name=2:'opensbi' --typecode=1:2E54B353-1271-4842-806F-E436D6AF6985 \
-         --new=3:$KERNEL_START:+$KERNEL_SIZE --change-name=3:'kernel' \
-         --new=4:$FS_START:-0 --change-name=4:'filesystem' \
+         --new=3:$UBOOT_START:+$UBOOT_SIZE --change-name=3:'u-boot' \
+         --new=4:$KERNEL_START:+$KERNEL_SIZE --change-name=4:'kernel' \
+         --new=5:$FS_START:-0 --change-name=5:'filesystem' \
          $SDCARD
 
     sudo partprobe $SDCARD
@@ -187,6 +195,7 @@ if [[ $REPLY =~ ^[Yy]$ ]] ; then
 
     echo -e "$NAME Copying binaries into their partitions."
     DD_FLAGS="bs=4k iflag=direct,fullblock oflag=dsync conv=fsync status=progress"
+    DD_FLAGS_RFS="bs=1M iflag=direct,fullblock oflag=dsync conv=fsync status=progress"
 
     echo -e "$NAME Copying device tree"
     sudo dd if=$DEVICE_TREE of="$SDCARD""$PART_PREFIX"1 $DD_FLAGS && sync
@@ -194,8 +203,11 @@ if [[ $REPLY =~ ^[Yy]$ ]] ; then
     echo -e "$NAME Copying OpenSBI"
     sudo dd if=$FW_JUMP of="$SDCARD""$PART_PREFIX"2 $DD_FLAGS && sync
 
+    echo -e "$NAME Copying U-Boot"
+    sudo dd if=$UBOOT of="$SDCARD""$PART_PREFIX"3 $DD_FLAGS && sync
+
     echo -e "$NAME Copying Kernel"
-    sudo dd if=$LINUX_KERNEL of="$SDCARD""$PART_PREFIX"3 $DD_FLAGS && sync
+    sudo dd if=$LINUX_KERNEL of="$SDCARD""$PART_PREFIX"4 $DD_FLAGS && sync
 
     # sudo mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 "$SDCARD""$PART_PREFIX"4
     # sudo fsck -fv "$SDCARD""$PART_PREFIX"4
@@ -206,8 +218,8 @@ if [[ $REPLY =~ ^[Yy]$ ]] ; then
     # sudo umount -v /mnt/$MNT_DIR
 
     #sudo rmdir /mnt/$MNT_DIR
-
-    sudo dd if=$RFS of="$SDCARD""$PART_PREFIX"4 $DD_FLAGS && sync
+    echo -e "$NAME Copying Filesystem contents"
+    sudo dd if=$RFS of="$SDCARD""$PART_PREFIX"5 $DD_FLAGS && sync
 
     #sudo losetup -d $LOOPDEVICE
 fi

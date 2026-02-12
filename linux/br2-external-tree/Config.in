@@ -1,2 +1,2 @@
-# required for buildroot external tree
-# delibarately empty
+source "$BR2_EXTERNAL_WALLY_PATH/package/fbdoom/Config.in"
+source "$BR2_EXTERNAL_WALLY_PATH/package/doom-demo/Config.in"
