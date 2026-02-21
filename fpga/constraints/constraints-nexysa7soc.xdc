@@ -389,3 +389,66 @@ set_max_delay -to [get_pins -hier -include_replicated_objects -filter {NAME =~ *
 set_max_delay -from [get_cells -hier *rstdiv0_sync_r1_reg*] -to [get_pins -filter {NAME =~ */RESET} -of [get_cells -hier -filter {REF_NAME == PHY_CONTROL}]] -datapath_only 5
 #set_false_path -through [get_pins -hier -filter {NAME =~ */u_iodelay_ctrl/sys_rst}]
 set_false_path -through [get_nets -hier -filter {NAME =~ */u_iodelay_ctrl/sys_rst_i}]
+
+
+
+#####################################33
+# WISHBONE peripherals
+#####################################
+
+### # CHANGED!! SEE BELOW, UART: PMOD C, RX=JC1=K1 TX=JC2=F6
+# UART: PMOD B, RX=JB1=D14 TX=JB2=F16
+set_property PACKAGE_PIN D14 [get_ports WB_UART_RX]
+set_property PACKAGE_PIN F16 [get_ports WB_UART_TX]
+set_property IOSTANDARD LVCMOS33 [get_ports WB_UART_RX]
+set_property IOSTANDARD LVCMOS33 [get_ports WB_UART_TX]
+# fixme: check this
+set_property DRIVE 4 [get_ports WB_UART_TX]
+
+
+# Ethernet
+##SMSC Ethernet PHY ()
+set_property -dict { PACKAGE_PIN C9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_MDC }]; #IO_L11P_T1_SRCC_16 Sch=eth_mdc
+set_property -dict { PACKAGE_PIN A9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_MDIO }]; #IO_L14N_T2_SRCC_16 Sch=eth_mdio
+set_property -dict { PACKAGE_PIN B3    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_RST_N }]; #IO_L10P_T1_AD15P_35 Sch=eth_rstn
+set_property -dict { PACKAGE_PIN D9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_CRS_DV }]; #IO_L6N_T0_VREF_16 Sch=eth_crsdv
+# RXERR not used?
+set_property -dict { PACKAGE_PIN C10   IOSTANDARD LVCMOS33 } [get_ports { ETH_RXERR }]; #IO_L13N_T2_MRCC_16 Sch=eth_rxerr
+set_property -dict { PACKAGE_PIN C11   IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_RX_DATA[0] }]; #IO_L13P_T2_MRCC_16 Sch=eth_rxd[0]
+set_property -dict { PACKAGE_PIN D10   IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_RX_DATA[1] }]; #IO_L19N_T3_VREF_16 Sch=eth_rxd[1]
+set_property -dict { PACKAGE_PIN B9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_TX_EN }]; #IO_L11N_T1_SRCC_16 Sch=eth_txen
+set_property -dict { PACKAGE_PIN A10   IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_TX_DATA[0] }]; #IO_L14P_T2_SRCC_16 Sch=eth_txd[0]
+set_property -dict { PACKAGE_PIN A8    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_TX_DATA[1] }]; #IO_L12N_T1_MRCC_16 Sch=eth_txd[1]
+#set_property -dict { PACKAGE_PIN D5    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_REF_CLK }]; #IO_L11P_T1_SRCC_35 Sch=eth_refclk
+set_property PACKAGE_PIN D5 [get_ports {WB_RMII_REF_CLK}]
+set_property IOSTANDARD LVCMOS33 [get_ports {WB_RMII_REF_CLK}]
+#set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets rmii_ref_clk]
+# PHY interrupt
+set_property -dict { PACKAGE_PIN B8    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_PHY_IRQ }]; #IO_L12P_T1_MRCC_16 Sch=eth_intn
+
+
+# AXI VGA
+##VGA Connector
+set_property -dict { PACKAGE_PIN A3    IOSTANDARD LVCMOS33 } [get_ports { vga_r_4[0] }]; #IO_L8N_T1_AD14N_35 Sch=vga_r[0]
+set_property -dict { PACKAGE_PIN B4    IOSTANDARD LVCMOS33 } [get_ports { vga_r_4[1] }]; #IO_L7N_T1_AD6N_35 Sch=vga_r[1]
+set_property -dict { PACKAGE_PIN C5    IOSTANDARD LVCMOS33 } [get_ports { vga_r_4[2] }]; #IO_L1N_T0_AD4N_35 Sch=vga_r[2]
+set_property -dict { PACKAGE_PIN A4    IOSTANDARD LVCMOS33 } [get_ports { vga_r_4[3] }]; #IO_L8P_T1_AD14P_35 Sch=vga_r[3]
+set_property -dict { PACKAGE_PIN C6    IOSTANDARD LVCMOS33 } [get_ports { vga_g_4[0] }]; #IO_L1P_T0_AD4P_35 Sch=vga_g[0]
+set_property -dict { PACKAGE_PIN A5    IOSTANDARD LVCMOS33 } [get_ports { vga_g_4[1] }]; #IO_L3N_T0_DQS_AD5N_35 Sch=vga_g[1]
+set_property -dict { PACKAGE_PIN B6    IOSTANDARD LVCMOS33 } [get_ports { vga_g_4[2] }]; #IO_L2N_T0_AD12N_35 Sch=vga_g[2]
+set_property -dict { PACKAGE_PIN A6    IOSTANDARD LVCMOS33 } [get_ports { vga_g_4[3] }]; #IO_L3P_T0_DQS_AD5P_35 Sch=vga_g[3]
+set_property -dict { PACKAGE_PIN B7    IOSTANDARD LVCMOS33 } [get_ports { vga_b_4[0] }]; #IO_L2P_T0_AD12P_35 Sch=vga_b[0]
+set_property -dict { PACKAGE_PIN C7    IOSTANDARD LVCMOS33 } [get_ports { vga_b_4[1] }]; #IO_L4N_T0_35 Sch=vga_b[1]
+set_property -dict { PACKAGE_PIN D7    IOSTANDARD LVCMOS33 } [get_ports { vga_b_4[2] }]; #IO_L6N_T0_VREF_35 Sch=vga_b[2]
+set_property -dict { PACKAGE_PIN D8    IOSTANDARD LVCMOS33 } [get_ports { vga_b_4[3] }]; #IO_L4P_T0_35 Sch=vga_b[3]
+set_property -dict { PACKAGE_PIN B11   IOSTANDARD LVCMOS33 } [get_ports { vga_hsync }]; #IO_L4P_T0_15 Sch=vga_hs
+set_property -dict { PACKAGE_PIN B12   IOSTANDARD LVCMOS33 } [get_ports { vga_vsync }]; #IO_L3N_T0_DQS_AD1N_15 Sch=vga_vs
+
+# AXI USB: JC: JC1=K1=V2P JC2=F6=V1P JC7=E7=V2N JC8=J3=V1N
+set_property -dict { PACKAGE_PIN F6    IOSTANDARD LVCMOS33 } [get_ports { usb0_dp }];
+set_property -dict { PACKAGE_PIN J3    IOSTANDARD LVCMOS33 } [get_ports { usb0_dm }];
+set_property -dict { PACKAGE_PIN K1    IOSTANDARD LVCMOS33 } [get_ports { usb1_dp }];
+set_property -dict { PACKAGE_PIN E7    IOSTANDARD LVCMOS33 } [get_ports { usb1_dm }];
+# Not enough but helps
+set_property PULLDOWN true [get_ports {usb0_dp usb0_dm usb1_dp usb1_dm}]
+

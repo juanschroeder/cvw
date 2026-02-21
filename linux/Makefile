@@ -22,7 +22,7 @@ RAM_FILE         := ${LINUX_TESTVECTORS}/ram.bin
 RAW_BOOTMEM_FILE := ${LINUX_TESTVECTORS}/bootmemGDB.bin
 BOOTMEM_FILE     := ${LINUX_TESTVECTORS}/bootmem.bin
 
-.PHONY: all check_environment check_write_permissions config build disassemble devicetrees install dumptvs clean cleanDTB
+.PHONY: all check_environment check_write_permissions config build disassemble devicetrees install dumptvs clean cleanDTB configsoc
 
 # Default target
 all: check_write_permissions clean config build disassemble install dumptvs
@@ -50,10 +50,11 @@ endif
 # Build buildroot and device tree binaries
 build: $(BUILDROOT_OUTPUTS) devicetrees
 
+EXTRA_BUILDROOT_FLAGS := -j12
 # Build buildroot itself
 # LD_LIBRARY_PATH must be unset to avoid conflicts between the host and cross compiler
 $(BUILDROOT_OUTPUTS) $(IMAGE_DIR): check_environment $(BUILDROOT)
-	bash -c "unset LD_LIBRARY_PATH; $(MAKE) -C $(BUILDROOT) -j12"
+	bash -c "unset LD_LIBRARY_PATH; $(MAKE) -C $(BUILDROOT) $(EXTRA_BUILDROOT_FLAGS)
 
 # Install buildroot to $RISCV
 install: check_write_permissions
@@ -109,6 +110,10 @@ $(DISASSEMBLY_DIR)/%.objdump: $(IMAGE_DIR)/%.elf | $(DISASSEMBLY_DIR)
 # Load wally buildroot configuration
 config: $(BUILDROOT) $(BR2_EXTERNAL_TREE)/configs/wally_defconfig
 	$(MAKE) -C $(BUILDROOT) wally_defconfig BR2_EXTERNAL=$(BR2_EXTERNAL_TREE)
+
+# Load wally SoC buildroot configuration
+configsoc: $(BUILDROOT) $(BR2_EXTERNAL_TREE)/configs/wallysoc_defconfig
+	$(MAKE) -C $(BUILDROOT) wallysoc_defconfig BR2_EXTERNAL=$(BR2_EXTERNAL_TREE)
 
 # Clone buildroot and checkout the correct version
 $(BUILDROOT):

@@ -1,41 +1,41 @@
-module spi_fifo #(
-    parameter int M = 3,   // log2(depth)
-    parameter int N = 8
-)(
+module spi_fifo #(parameter M=3, N=8)(                 // 2^M entries of N bits each
     input  logic         PCLK, wen, ren, PRESETn,
     input  logic         winc, rinc,
     input  logic [N-1:0] wdata,
     input  logic [M-1:0] wwatermarklevel, rwatermarklevel,
     output logic [N-1:0] rdata,
     output logic         wfull, rempty,
-    output logic         wwatermark, rwatermark
-);
+    output logic         wwatermark, rwatermark);
 
-    localparam int DEPTH = (1 << M);
+    /* Pointer FIFO using design elements from "Simulation and Synthesis Techniques
+       for Asynchronous FIFO Design" by Clifford E. Cummings. Namely, M bit read and write pointers
+       are an extra bit larger than address size to determine full/empty conditions.
+       Watermark comparisons use 2's complement subtraction between the M-1 bit pointers,
+       which are also used to address memory
+    */
 
-    logic [N-1:0] mem [DEPTH];
-
-    logic [M:0] wptr, rptr;
-    logic [M:0] wptr_next, rptr_next;
+    logic [N-1:0] mem[2**M];
+    logic [M:0] rptr, wptr;
+    logic [M:0] rptrnext, wptrnext;
     logic       wdo, rdo;
 
-    logic [M:0] level_next;
-    logic       wfull_next, rempty_next;
+    logic [M:0] levelnext;
+    logic       wfullnext, remptynext;
 
     // qualified increments
     assign wdo = wen & winc & ~wfull;
     assign rdo = ren & rinc & ~rempty;
 
     // next pointers
-    assign wptr_next = wptr + {{M{1'b0}}, wdo};
-    assign rptr_next = rptr + {{M{1'b0}}, rdo};
+    assign wptrnext = wptr + {{M{1'b0}}, wdo};
+    assign rptrnext = rptr + {{M{1'b0}}, rdo};
 
-    // true occupancy after updates (0..DEPTH)
-    assign level_next = wptr_next - rptr_next;
+    // true occupancy after updates
+    assign levelnext = wptrnext - rptrnext;
 
     // full/empty after updates (binary ring)
-    assign wfull_next  = ({~wptr_next[M], wptr_next[M-1:0]} == rptr_next);
-    assign rempty_next = (wptr_next == rptr_next);
+    assign wfullnext  = ({~wptrnext[M], wptrnext[M-1:0]} == rptrnext);
+    assign remptynext = (wptrnext == rptrnext);
 
     // memory
     assign rdata = mem[rptr[M-1:0]];
@@ -46,14 +46,14 @@ module spi_fifo #(
     // registers
     always_ff @(posedge PCLK) begin
         if (!PRESETn) begin
-            wptr   <= '0;
             rptr   <= '0;
+            wptr   <= '0;
             wfull  <= 1'b0;
             rempty <= 1'b1;
         end else begin
-            wptr   <= wptr_next;
-            rptr   <= rptr_next;
-            wfull  <= wfull_next;
+            wptr   <= wptrnext;
+            rptr   <= rptrnext;
+            wfull  <= wfullnext;
             rempty <= rempty_next;
         end
     end
@@ -61,8 +61,7 @@ module spi_fifo #(
     // watermark conditions (SiFive style)
     // txwm: entries strictly less than txmark
     // rxwm: entries strictly greater than rxmark
-    assign rwatermark = (level_next < {1'b0, rwatermarklevel}) & ~wfull_next;
-    assign wwatermark = (level_next > {1'b0, wwatermarklevel}) |  wfull_next;
+    assign rwatermark = (levelnext < {1'b0, rwatermarklevel}) & ~wfullnext;
+    assign wwatermark = (levelnext > {1'b0, wwatermarklevel}) | wfullnext;
 
 endmodule
-

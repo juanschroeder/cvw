@@ -1,4 +1,5 @@
 module wb_island #(
+  parameter cvw_t P,
   parameter int AW = 30
 ) (
   input  logic          clk,
@@ -34,14 +35,20 @@ module wb_island #(
 );
 
   // Address map (BYTE)
-  localparam logic [31:0] UART_BASE_B = 32'h1100_4000;
-  localparam logic [31:0] UART_SIZE_B = 32'h0000_1000;
+//   localparam logic [31:0] UART_BASE_B = 32'h1100_4000;
+//   localparam logic [31:0] UART_SIZE_B = 32'h0000_1000;
+  localparam logic [31:0] UART_BASE_B = P.WISHBONE_UART_BASE;
+  localparam logic [31:0] UART_SIZE_B = P.WISHBONE_UART_RANGE;
 
-  localparam logic [31:0] STUB_BASE_B = 32'h1100_5000;
-  localparam logic [31:0] STUB_SIZE_B = 32'h0000_1000;
+//   localparam logic [31:0] STUB_BASE_B = 32'h1100_5000;
+//   localparam logic [31:0] STUB_SIZE_B = 32'h0000_1000;
+  localparam logic [31:0] STUB_BASE_B = P.WISHBONE_STUB_BASE;
+  localparam logic [31:0] STUB_SIZE_B = P.WISHBONE_STUB_RANGE;
 
-  localparam logic [31:0] ETH_BASE_B     = 32'h1100_0000;
-  localparam logic [31:0] ETH_SIZE_B     = 32'h0000_4000;
+//   localparam logic [31:0] ETH_BASE_B     = 32'h1100_0000;
+//   localparam logic [31:0] ETH_SIZE_B     = 32'h0000_4000;
+  localparam logic [31:0] ETH_BASE_B     = P.WISHBONE_ETH_BASE;
+  localparam logic [31:0] ETH_SIZE_B     = P.WISHBONE_ETH_RANGE;
   localparam logic [31:0] ETH_CSR_OFF_B  = 32'h0000_2000;
 
   // Convert to WORD space
@@ -83,13 +90,22 @@ module wb_island #(
   logic [31:0] uart_rdata;
   logic        uart_ack, uart_err;
 
-  wb_uart16550 #(.AW(AW), .UART_BASE_B(UART_BASE_B)) u_uart (
-    .clk(clk), .rst(rst),
-    .adr_i(m_adr_i), .dat_i(m_dat_i), .dat_o(uart_rdata),
-    .sel_i(m_sel_i), .we_i(m_we_i), .cyc_i(uart_cyc), .stb_i(uart_stb),
-    .ack_o(uart_ack), .err_o(uart_err),
-    .irq_o(uart_irq_o), .rx_i(uart_rx_i), .tx_o(uart_tx_o)
+  if (P.WISHBONE_UART_SUPPORTED == 1) begin : wbuart
+    wb_uart16550 #(.AW(AW), .UART_BASE_B(UART_BASE_B)) u_uart (
+        .clk(clk), .rst(rst),
+        .adr_i(m_adr_i), .dat_i(m_dat_i), .dat_o(uart_rdata),
+        .sel_i(m_sel_i), .we_i(m_we_i), .cyc_i(uart_cyc), .stb_i(uart_stb),
+        .ack_o(uart_ack), .err_o(uart_err),
+        .irq_o(uart_irq_o), .rx_i(uart_rx_i), .tx_o(uart_tx_o)
   );
+  end else begin
+    assign uart_rdata = 32'h0;
+    assign uart_ack = 1'b0;
+    assign uart_err = 1'b0;
+    assign uart_irq_o = 1'b0;
+    assign uart_tx_o = 1'b1; // idle high
+  end
+
 
   logic [31:0] eth_dat_r;
   logic        eth_ack, eth_err;
@@ -115,9 +131,14 @@ module wb_island #(
   wire [31:0] eth_dat_w = eth_is_buf ? bswap32(m_dat_i) : m_dat_i;
   wire [3:0]  eth_sel_w = eth_is_buf ? {m_sel_i[0], m_sel_i[1], m_sel_i[2], m_sel_i[3]} : m_sel_i;
 
+  // return path swap for buffer reads
+  wire [31:0] eth_dat_r_cpu = eth_is_buf ? bswap32(eth_dat_r) : eth_dat_r;
 
   //-------------------------------------------------------
-  wire unused_rmii_rst_n;
+
+  if (P.WISHBONE_UART_SUPPORTED == 1) begin : wbuart  
+
+    wire unused_rmii_rst_n;
 
     //(* ASYNC_REG="TRUE" *) logic [1:0] rst_rmii_ff;
     // rst is active-high reset coming from SoC domain (your ~HRESETn)
@@ -140,53 +161,67 @@ module wb_island #(
 
     //assign WB_RMII_RST_N = ~rst_rmii; // active-low reset to PHY
     assign rmii_rst_n = ~rst_rmii; // active-low reset to PHY
-  //-------------------------------------------------------
+  
+    liteEthTop u_liteeth (
+        .interrupt(eth_irq),
 
-  liteEthTop u_liteeth (
-    .interrupt(eth_irq),
+        .rmii_clocks_ref_clk(rmii_ref_clk),
+        .rmii_crs_dv        (rmii_crs_dv),
+        .rmii_mdc           (rmii_mdc),
+        .rmii_mdio          (rmii_mdio),
+        //.rmii_rst_n         (rmii_rst_n),
+        .rmii_rst_n         (unused_rmii_rst_n),
+        .rmii_rx_data       (rmii_rx_data),
+        .rmii_tx_data       (rmii_tx_data),
+        .rmii_tx_en         (rmii_tx_en),
 
-    .rmii_clocks_ref_clk(rmii_ref_clk),
-    .rmii_crs_dv        (rmii_crs_dv),
-    .rmii_mdc           (rmii_mdc),
-    .rmii_mdio          (rmii_mdio),
-    //.rmii_rst_n         (rmii_rst_n),
-    .rmii_rst_n         (unused_rmii_rst_n),
-    .rmii_rx_data       (rmii_rx_data),
-    .rmii_tx_data       (rmii_tx_data),
-    .rmii_tx_en         (rmii_tx_en),
+        .sys_clock          (clk),
+        .sys_reset          (rst),
 
-    .sys_clock          (clk),
-    .sys_reset          (rst),
+        .wishbone_ack       (eth_ack),
+        //.wishbone_adr       (m_adr_i[29:0]),   // AW should be 30; slice is fine
+        .wishbone_adr (eth_adr_w[29:0]),
+        .wishbone_bte       (2'b00),           // no bursts
+        .wishbone_cti       (3'b000),          // classic
+        .wishbone_cyc       (eth_cyc),
+        .wishbone_dat_r     (eth_dat_r),
+        .wishbone_err       (eth_err),
+        // .wishbone_dat_w     (m_dat_i),
+        // .wishbone_sel       (m_sel_i),
+        .wishbone_dat_w     (eth_dat_w),
+        .wishbone_sel       (eth_sel_w),
+        .wishbone_stb       (eth_stb),
+        .wishbone_we        (m_we_i)
+    );
+  end else begin
+    assign eth_dat_r = 32'h0;
+    assign eth_ack = 1'b0;
+    assign eth_err = 1'b0;
+    assign eth_irq = 1'b0;
+    assign rmii_tx_data = 2'b00;
+    assign rmii_tx_en = 1'b0;
+    assign rmii_mdc = 1'b0;
+    assign rmii_rst_n = 1'b1; // not in reset
+  end
 
-    .wishbone_ack       (eth_ack),
-    //.wishbone_adr       (m_adr_i[29:0]),   // AW should be 30; slice is fine
-    .wishbone_adr (eth_adr_w[29:0]),
-    .wishbone_bte       (2'b00),           // no bursts
-    .wishbone_cti       (3'b000),          // classic
-    .wishbone_cyc       (eth_cyc),
-    .wishbone_dat_r     (eth_dat_r),
-    .wishbone_err       (eth_err),
-    // .wishbone_dat_w     (m_dat_i),
-    // .wishbone_sel       (m_sel_i),
-    .wishbone_dat_w     (eth_dat_w),
-    .wishbone_sel       (eth_sel_w),
-    .wishbone_stb       (eth_stb),
-    .wishbone_we        (m_we_i)
-  );
-
-  // return path swap for buffer reads
-  wire [31:0] eth_dat_r_cpu = eth_is_buf ? bswap32(eth_dat_r) : eth_dat_r;
 
     // Stub (unchanged module of yours)
   logic [31:0] stub_rdata;
   logic        stub_ack, stub_err;
 
-  wb_stub #(.AW(AW)) u_stub (
-    .clk(clk), .rst(rst),
-    .adr_i(m_adr_i), .dat_i(m_dat_i), .dat_o(stub_rdata),
-    .sel_i(m_sel_i), .we_i(m_we_i), .cyc_i(stub_cyc), .stb_i(stub_stb),
-    .ack_o(stub_ack), .err_o(stub_err)
-  );
+  if (P.WISHBONE_UART_SUPPORTED == 1) begin : wbuart
+
+    wb_stub #(.AW(AW)) u_stub (
+      .clk(clk), .rst(rst),
+      .adr_i(m_adr_i), .dat_i(m_dat_i), .dat_o(stub_rdata),
+      .sel_i(m_sel_i), .we_i(m_we_i), .cyc_i(stub_cyc), .stb_i(stub_stb),
+      .ack_o(stub_ack), .err_o(stub_err)
+    );
+  end else begin
+    assign stub_rdata = 32'h0;
+    assign stub_ack = 1'b0;
+    assign stub_err = 1'b0;
+  end
 
   // Return mux + unmapped -> immediate error (no hang)
   always_comb begin
@@ -200,9 +235,13 @@ module wb_island #(
       m_ack_o = eth_ack;
       m_err_o = eth_err;
     end else if (hit_uart) begin
-      m_dat_o = uart_rdata; m_ack_o = uart_ack; m_err_o = uart_err;
+      m_dat_o = uart_rdata; 
+      m_ack_o = uart_ack; 
+      m_err_o = uart_err;
     end else if (hit_stub) begin
-      m_dat_o = stub_rdata; m_ack_o = stub_ack; m_err_o = stub_err;
+      m_dat_o = stub_rdata; 
+      m_ack_o = stub_ack; 
+      m_err_o = stub_err;
     end else if (m_cyc_i & m_stb_i) begin
       m_dat_o = 32'hBAD0_BAD0;
       m_ack_o = 1'b1;

@@ -148,6 +148,15 @@ typedef struct packed {
   logic         WISHBONE_SUPPORTED;
   logic [63:0]  WISHBONE_BASE;
   logic [63:0]  WISHBONE_RANGE;
+  logic         WISHBONE_UART_SUPPORTED;
+  logic [63:0]  WISHBONE_UART_BASE;
+  logic [63:0]  WISHBONE_UART_RANGE;
+  logic         WISHBONE_ETH_SUPPORTED;
+  logic [63:0]  WISHBONE_ETH_BASE;
+  logic [63:0]  WISHBONE_ETH_RANGE;
+  logic         WISHBONE_STUB_SUPPORTED;
+  logic [63:0]  WISHBONE_STUB_BASE;
+  logic [63:0]  WISHBONE_STUB_RANGE;
   logic         AXI_DMA_SUPPORTED;
   logic [63:0]  AXI_DMA_BASE;
   logic [63:0]  AXI_DMA_RANGE;

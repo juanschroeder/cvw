@@ -64,11 +64,10 @@ module wallypipelinedsoc import cvw::*; #(parameter cvw_t P)  (
   output logic                SDCCmd,           // SDC CMD         from   SPI DO
   output logic [3:0]          SDCCS,            // SDC Card Detect from   SPI CS
   output logic                SDCCLK            // SDC Clock       from   SPI Clock
-  // WB UART
-  , input logic WB_UART_RX
-  , output logic WB_UART_TX
-  // WB Ethernet
-  , input logic WB_RMII_REF_CLK,
+  ,
+  input logic WB_UART_RX,
+  output logic WB_UART_TX,
+  input logic WB_RMII_REF_CLK,
   input logic WB_RMII_CRS_DV,
   input  logic [1:0]  WB_RMII_RX_DATA,
   output logic [1:0]  WB_RMII_TX_DATA,

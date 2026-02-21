@@ -31,7 +31,9 @@ if {$board=="ArtyA7"} {
 } elseif {$board=="genesys2"} {
     add_files  {../src/fpgaTopGenesys2.sv}
 } elseif {$board=="nexysa7"} {
-    add_files  {../src/fpgaTopNexysA7_dma_mmiofix_with_vga_usb.sv}
+    add_files  {../src/fpgaTopNexysA7.sv}
+} elseif {$board=="nexysa7soc"} {
+    add_files  {../src/fpgaTopNexysA7SoC.sv}
 } else {
     add_files  {../src/fpgaTop.sv}
 }
@@ -45,6 +47,9 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
     import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
 } elseif {$board=="nexysa7" } {
+    import_ip IP/ddr2.srcs/sources_1/ip/ddr2/ddr2.xci
+    import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
+} elseif {$board=="nexysa7soc" } {
     import_ip IP/ddr2.srcs/sources_1/ip/ddr2/ddr2.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
     import_ip IP/axicrossbar.srcs/sources_1/ip/axicrossbar/axicrossbar.xci
@@ -74,7 +79,7 @@ report_compile_order -constraints > reports/compile_order.rpt
 #synth_design -rtl -name rtl_1  -flatten_hierarchy none
 
 # apply timing constraint after elaboration
-if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" } {
+if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexysa7soc" } {
     add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board.xdc
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board.xdc]
 } else {
@@ -82,10 +87,14 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" } {
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$boardSubName.xdc]
 }
 
-if {$board=="nexysa7" } {
+if {$board=="nexysa7soc" } {
 
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/uncore/*/*.v]
-    set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/include ../src/CopiedFiles_do_not_add_to_repo/pulp/axi/include ../src/CopiedFiles_do_not_add_to_repo/pulp/common_cells/include} [current_fileset]
+    set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared \
+        ../src/CopiedFiles_do_not_add_to_repo/uncore \
+        ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/include \
+        ../src/CopiedFiles_do_not_add_to_repo/pulp/axi/include \
+        ../src/CopiedFiles_do_not_add_to_repo/pulp/common_cells/include} [current_fileset]
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/*/src/*.sv]
     # FIXME: what to do with patches in this 'vendor' subfolder?
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/vendor/*/src/*.sv]
@@ -94,11 +103,13 @@ if {$board=="nexysa7" } {
 }
 
 set_param messaging.defaultLimit 100000
-set_param general.maxThreads 16
+if {$board=="nexysa7soc" } {
+    set_param general.maxThreads 16
 
-puts "###########################################################################"
-report_property -all [get_runs synth_1]
-puts "###########################################################################"
+    puts "###########################################################################"
+    report_property -all [get_runs synth_1]
+    puts "###########################################################################"
+}
 
 
 launch_runs synth_1 -jobs 16
@@ -124,6 +135,8 @@ if {$board=="ArtyA7"} {
 } elseif {$board=="genesys2"} {
     source ../constraints/small-debug.xdc
 } elseif {$board=="nexysa7"} {
+    source ../constraints/small-debug.xdc
+} elseif {$board=="nexysa7soc"} {
     #source ../constraints/small-debug.xdc
     #source ../constraints/debug-nexysa7.xdc
     #source ../constraints/debug-wishbone.xdc
@@ -139,15 +152,14 @@ if {$board=="ArtyA7"} {
 }
 
 
-###########################################
-# options for faster builds (beware of later 'set_property strategy')
-###########################################
-
 # set for RuntimeOptimized implementation
 # set_property "steps.place_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
 # set_property "steps.route_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
 
-if {$board=="nexysa7"} {
+###########################################
+# options for faster builds (beware of later 'set_property strategy')
+###########################################
+if {$board=="nexysa7soc"} {
     # set_property "steps.place_design.args.directive" "Quick" [get_runs impl_1]
     # set_property "steps.route_design.args.directive" "Quick" [get_runs impl_1]
     # set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE Quick            [get_runs impl_1]  ;
@@ -159,7 +171,7 @@ if {$board=="nexysa7"} {
 }
 
 
-if {$board=="nexysa7"} {
+if {$board=="nexysa7soc"} {
     #set_property STEPS.ROUTE_DESIGN.ARGS.ULTRATHREADS true [get_runs impl_1] #doesn't exist
     #set_property "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" "-ultrathreads -no_psir" [get_runs impl_1]
     # set_property -name "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" \
@@ -181,11 +193,8 @@ if {$board=="nexysa7"} {
     # set_property AUTO_INCREMENTAL_CHECKPOINT 1 [get_runs impl_1]
 }
 
-
-#############################################
-#############################################
-
-if {$board=="nexysa7"} {
+# Further optimization tuning
+if {$board=="nexysa7soc"} {
 
     # WARNING: set_property strategy resets some properties' values (CHECKME!!)
 
@@ -213,12 +222,11 @@ if {$board=="nexysa7"} {
 }
 
 launch_runs impl_1 -jobs 16
-
-puts "###########################################################################"
-report_property -all [get_runs impl_1]
-puts "###########################################################################"
-
-
+if {$board=="nexysa7soc"} {
+	puts "###########################################################################"
+	report_property -all [get_runs impl_1]
+	puts "###########################################################################"
+}
 wait_on_run impl_1
 launch_runs impl_1 -to_step write_bitstream -jobs 16
 wait_on_run impl_1
@@ -238,5 +246,6 @@ report_timing -max_paths 10 -nworst 10 -delay_type max -sort_by slack     -file 
 report_timing -nworst 1 -delay_type max -sort_by group                    -file reports/imp_timing.rpt
 report_utilization -hierarchical                                          -file reports/imp_utilization.rpt
 
-# TEST
-write_project_tcl -force $ipName.tcl
+if {$board=="nexysa7soc"} {
+    write_project_tcl -force $ipName.tcl
+}

@@ -39,6 +39,13 @@ nexysa7: export SYSTEMCLOCK := 20000000
 nexysa7: export MAXSDCCLOCK  :=  10000000
 nexysa7: FPGA_NEXYSA7
 
+nexysa7soc: export XILINX_PART := xc7a100tcsg324-1
+nexysa7soc: export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
+nexysa7soc: export board := nexysa7soc
+nexysa7soc: export SYSTEMCLOCK := 20000000
+nexysa7soc: export MAXSDCCLOCK  :=  10000000
+nexysa7soc: FPGA_NEXYSA7SOC
+
 # variables computed from config
 EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 
@@ -54,8 +61,8 @@ FPGA_VCU: PreProcessFiles IP_VCU zsbl
 FPGA_GENESYS2: PreProcessFiles IP_GENESYS2 zsbl
 	vivado -mode tcl -source wally.tcl 2>&1 | tee wally.log
 
-# FPGA_NEXYSA7: PreProcessFiles IP_NEXYSA7 zsbl
-# 	vivado -mode tcl -source wally.tcl 2>&1 | tee wally.log
+FPGA_NEXYSA7: PreProcessFiles IP_NEXYSA7 zsbl
+	vivado -mode tcl -source wally.tcl 2>&1 | tee wally.log
 
 VIVADO_COLOR := awk '\
   /^ERROR:/            {print "\033[31;1m" $$0 "\033[0m"; next} \
@@ -68,7 +75,7 @@ define VIVADO_TCL
 script -q -c "vivado -mode tcl -source $(1)" /dev/null 2>&1 | tee $(2) | $(VIVADO_COLOR)
 endef
 
-FPGA_NEXYSA7: PreProcessFiles IP_NEXYSA7 zsbl
+FPGA_NEXYSA7SOC: PreProcessFilesSoC IP_NEXYSA7SOC zsbl
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
 # Generate IP Blocks
@@ -93,6 +100,12 @@ IP_NEXYSA7: $(dst)/sysrst.log \
 	MEM_NEXYSA7 \
 	$(dst)/mmcm-nexysa7.log \
 	$(dst)/clkconverter.log \
+	$(dst)/ahbaxibridge.log
+
+IP_NEXYSA7SOC: $(dst)/sysrst.log \
+	MEM_NEXYSA7 \
+	$(dst)/mmcm-nexysa7.log \
+	$(dst)/clkconverter.log \
 	$(dst)/ahbaxibridge.log \
 	$(dst)/axicrossbar.log \
 	$(dst)/axicdma.log
@@ -110,9 +123,9 @@ MEM_GENESYS2:
 MEM_NEXYSA7:
 	$(MAKE) $(dst)/ddr2-$(board).log
 
+# MEM_NEXYSA7SOC:
+# 	$(MAKE) $(dst)/ddr2-$(board).log
 
-PULP_DIR := ../src/CopiedFiles_do_not_add_to_repo/pulp
-PULP_LZC := $(PULP_DIR)/common_cells/src/lzc.sv
 # Copy files and make necessary modifications
 .PHONY: PreProcessFiles
 PreProcessFiles:
@@ -121,9 +134,24 @@ PreProcessFiles:
 	cp -r ../../src/ ../src/CopiedFiles_do_not_add_to_repo/
 	cp -r ../../addins/verilog-ethernet/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/rvvi
 	cp -r ../../addins/verilog-ethernet/*/*/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/rvvi
+	mkdir ../src/CopiedFiles_do_not_add_to_repo/config/
+	cp ../../config/deriv/fpga$(board)/config.vh ../src/CopiedFiles_do_not_add_to_repo/config/
+	./insert_debug_comment.sh
+	# This line allows the Bootloader to be loaded in a Block RAM on the FPGA
+	sed -i "s/bit \[DATA_WIDTH-1:0\].*ROM.*/(\* rom_style=\"block\" \*) &/g" ../src/CopiedFiles_do_not_add_to_repo/generic/mem/rom1p1r.sv
+	sed -i 's/$$WALLY/\.\.\/\.\.\//g' ../src/CopiedFiles_do_not_add_to_repo/generic/mem/rom1p1r.sv
+	sed -i 's/$$WALLY/\.\.\/\.\.\//g' ../src/CopiedFiles_do_not_add_to_repo/generic/mem/ram1p1rwbe.sv
+
+
+PULP_DIR := ../src/CopiedFiles_do_not_add_to_repo/pulp
+PULP_LZC := $(PULP_DIR)/common_cells/src/lzc.sv
+.PHONY: PreProcessFilesSoC
+PreProcessFilesSoC: PreProcessFiles
 	# Copy Wishbone stuff
 	cp -r ../../addins/ahb3lite_wb_bridge/*.v ../src/CopiedFiles_do_not_add_to_repo/uncore
 	# missing Opencores UART stuff here
+	mkdir -p ../src/CopiedFiles_do_not_add_to_repo/uncore/uart_16550/
+	cp -r ../../addins/oc_uart_16550/rtl/verilog/*.v ../src/CopiedFiles_do_not_add_to_repo/uncore/uart_16550/
 	# Copy Pulp project stuff
 	cp -r ../../addins/pulp/ ../src/CopiedFiles_do_not_add_to_repo/
 	# modify PULP files to prevent name collision for 'lzc'
@@ -142,16 +170,8 @@ PreProcessFiles:
 	patchdir="../src/CopiedFiles_do_not_add_to_repo"; \
 	find ../../src/uncore/usb -type f -name "*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
-
-	mkdir ../src/CopiedFiles_do_not_add_to_repo/config/
-	cp ../../config/deriv/fpga$(board)/config.vh ../src/CopiedFiles_do_not_add_to_repo/config/
 	# LITTLE_ENDIAN for UART core
 	grep -q 'define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/uncore/uart_16550/uart_defines.v || sed -i '1i`define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/uncore/uart_16550/uart_defines.v
-	./insert_debug_comment.sh
-	# This line allows the Bootloader to be loaded in a Block RAM on the FPGA
-	sed -i "s/bit \[DATA_WIDTH-1:0\].*ROM.*/(\* rom_style=\"block\" \*) &/g" ../src/CopiedFiles_do_not_add_to_repo/generic/mem/rom1p1r.sv
-	sed -i 's/$$WALLY/\.\.\/\.\.\//g' ../src/CopiedFiles_do_not_add_to_repo/generic/mem/rom1p1r.sv
-	sed -i 's/$$WALLY/\.\.\/\.\.\//g' ../src/CopiedFiles_do_not_add_to_repo/generic/mem/ram1p1rwbe.sv
 
 # build the Zero stage boot loader (ZSBL)
 .PHONY: zsbl

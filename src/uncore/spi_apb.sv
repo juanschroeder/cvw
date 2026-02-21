@@ -72,7 +72,7 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
   logic [1:0]  ChipSelectMode;
   logic [15:0] Delay0, Delay1;
   logic [4:0]  Format;
-  logic       FormatDir; // FMT.DIR: 1 => tx-only (do not push RX FIFO)
+  logic        FormatDir; // FMT.DIR: 1 => tx-only (do not push RX FIFO)
   logic [7:0]  ReceiveData;
   logic [8:0]  TransmitData;
   logic [5:0]  TransmitWatermark, ReceiveWatermark;
@@ -278,7 +278,7 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
     else if (TransmitStart) TransmitStartD <= 1'b1;
     else if (SCLKenable) TransmitStartD <= 1'b0;
 
-  assign TransmitWriteWatermarkLevel = 6'b0; //fix
+  assign TransmitWriteWatermarkLevel = 6'b0;
   // Transmit FIFO
   spi_fifo #(6,8) txFIFO(PCLK, 1'b1, SCLKenable, PRESETn,
                          TransmitFIFOWriteInc, TransmitFIFOReadInc,
@@ -300,7 +300,7 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
   flopenr #(1) rxfifowincreg(PCLK, ~PRESETn, SCLKenable,
                              (EndOfFrame & ~FormatDir), ReceiveFIFOWriteInc);
 
-  assign ReceiveReadWatermarkLevel = 6'b0; //fix
+  assign ReceiveReadWatermarkLevel = 6'b0;
   // Receive FIFO
   spi_fifo #(6,8) rxFIFO(PCLK, SCLKenable, 1'b1, PRESETn,
                          ReceiveFIFOWriteInc, ReceiveFIFOReadInc,

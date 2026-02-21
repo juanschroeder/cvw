@@ -62,10 +62,11 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   output logic                 SDCCmd,
   output logic [3:0]           SDCCS,
   output logic                 SDCCLK
-  , input logic WB_UART_RX
-  , output logic WB_UART_TX
+  ,
+  input logic WB_UART_RX,
+  output logic WB_UART_TX, 
   //, output logic WB_UART_IRQ
-  , input logic WB_RMII_REF_CLK,
+  input logic WB_RMII_REF_CLK,
   input logic WB_RMII_CRS_DV,
   input  logic [1:0]  WB_RMII_RX_DATA,
   output logic [1:0]  WB_RMII_TX_DATA,
@@ -73,9 +74,9 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   output logic        WB_RMII_MDC,
   inout  wire         WB_RMII_MDIO,
   output logic        WB_RMII_RST_N,
-  input logic        WB_RMII_PHY_IRQ //coming from the PHY! (unused)
-  , input logic AXI_DMAIntr
-  , input logic AXI_USBIntr
+  input logic        WB_RMII_PHY_IRQ, //coming from the PHY! (unused)
+  input logic AXI_DMAIntr,
+  input logic AXI_USBIntr
 );
 
   logic [P.XLEN-1:0]           HREADRam, HREADSDC;
@@ -90,13 +91,12 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
 
   logic [15:0]                 HSELRegions;
   logic                        HSELDTIM, HSELIROM, HSELRam, HSELCLINT, HSELPLIC, HSELGPIO, HSELUART,HSELSDC, HSELSPI;
-  //logic                        HSELDTIMD, HSELIROMD, HSELEXTD, HSELRamD, HSELCLINTD, HSELPLICD, HSELGPIOD, HSELUARTD, HSELSDCD, HSELSPID;
   logic                        HSELDTIMD, HSELIROMD, HSELEXTD_DDR, HSELRamD, HSELCLINTD, HSELPLICD, HSELGPIOD, HSELUARTD, HSELSDCD, HSELSPID;
   // Wishbone extension
   logic                        HSELWbIsland;
   logic                        HSELWbIslandD;
   // AXI DMA
-  (* mark_debug = "true" *) logic                        HSELAXIDMA;
+  logic                        HSELAXIDMA;
   logic                        HSELAXIDMAD;
   logic                        HSELEXTD_ALL;
   logic                        HSELEXT_DDR;
@@ -109,10 +109,10 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   logic                        WBUartIntr, WBEthIntr;
   logic                        SDCIntM;
   //VGA (AXI bus)
-  (* mark_debug = "true" *) logic                        HSELAXIVGA;
+  logic                        HSELAXIVGA;
   logic                        HSELAXIVGAD;
   //USB (AXI bus)
-  (* mark_debug = "true" *) logic                        HSELAXIUSB;
+  logic                        HSELAXIUSB;
   logic                        HSELAXIUSBD;
 
 
@@ -143,7 +143,6 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   adrdecs #(P) adrdecs(HADDR, 1'b1, 1'b1, 1'b1, HSIZE[1:0], HSELRegions);
 
   // unswizzle HSEL signals
-  //assign {HSELAXIDMA, HSELWbIsland, HSELSPI, HSELSDC, HSELPLIC, HSELUART, HSELGPIO, HSELCLINT, HSELRam, HSELBootRom, HSELEXT, HSELIROM, HSELDTIM} = HSELRegions[13:1];
   assign {HSELAXIUSB, HSELAXIVGA, HSELAXIDMA, HSELWbIsland, HSELSPI, HSELSDC, HSELPLIC, HSELUART, HSELGPIO, HSELCLINT, HSELRam, HSELBootRom, HSELEXT_DDR, HSELIROM, HSELDTIM} = HSELRegions[15:1];
 
   // AHB -> APB bridge
@@ -251,12 +250,13 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
     .eth_irq(WBEthIntr)
     );
 
-    //assign WBEthIntr = 1'b0; //ETH Int low for now
-
-  end else assign {HREADWbIsland, HRESPWbIsland, HREADYWbIsland} = '0;
+  end else begin
+    assign {HREADWbIsland, HRESPWbIsland, HREADYWbIsland} = '0;
+    assign {WB_RMII_TX_DATA, WB_RMII_TX_EN, WB_RMII_MDC, WB_RMII_RST_N} = '0;
+    assign WBUartIntr = 1'b0; assign WBEthIntr = 1'b0;
+  end
 
   // AXI Select signals
-  //assign HSELEXTD_ALL = HSELEXTD || HSELAXIDMAD;
   assign HSELEXTD_ALL = HSELEXTD_DDR | HSELAXIDMAD | HSELAXIVGAD | HSELAXIUSBD;
   assign HSELEXT = HSELEXT_DDR | HSELAXIDMA | HSELAXIVGA | HSELAXIUSB; // OUTPUT
 
