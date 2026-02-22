@@ -54,7 +54,7 @@ module spi_fifo #(parameter M=3, N=8)(                 // 2^M entries of N bits 
             wptr   <= wptrnext;
             rptr   <= rptrnext;
             wfull  <= wfullnext;
-            rempty <= rempty_next;
+            rempty <= remptynext;
         end
     end
 
