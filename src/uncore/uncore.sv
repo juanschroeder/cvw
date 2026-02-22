@@ -64,7 +64,7 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   output logic                 SDCCLK
   ,
   input logic WB_UART_RX,
-  output logic WB_UART_TX, 
+  output logic WB_UART_TX,
   //, output logic WB_UART_IRQ
   input logic WB_RMII_REF_CLK,
   input logic WB_RMII_CRS_DV,
@@ -230,7 +230,7 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
     .wb_ack_i(wb_ack), .wb_err_i(wb_err)
     );
 
-    wb_island #(.AW(30)) u_wb_island (
+    wb_island #(.P(P),.AW(30)) u_wb_island (
     .clk(HCLK), .rst(~HRESETn),
     .m_adr_i(wb_adr), .m_dat_i(wb_wdat), .m_dat_o(wb_rdat),
     .m_sel_i(wb_sel), .m_we_i(wb_we), .m_cyc_i(wb_cyc), .m_stb_i(wb_stb),

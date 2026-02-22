@@ -1,4 +1,4 @@
-module wb_island #(
+module wb_island import cvw::*; #(
   parameter cvw_t P,
   parameter int AW = 30
 ) (
@@ -31,7 +31,7 @@ module wb_island #(
   output logic        rmii_mdc,
   inout  wire         rmii_mdio,
   output logic        rmii_rst_n,
-  output logic        eth_irq  
+  output logic        eth_irq
 );
 
   // Address map (BYTE)
@@ -62,7 +62,7 @@ module wb_island #(
   localparam logic [AW-1:0] ETH_SIZE_W     = (ETH_SIZE_B >> 2);
   // CPU address classification must be based on ORIGINAL address (m_adr_i),
   // not the translated CSR-relative address.
-  localparam logic [AW-1:0] ETH_CSR_BASE_W = ETH_BASE_W + (ETH_CSR_OFF_B >> 2);  
+  localparam logic [AW-1:0] ETH_CSR_BASE_W = ETH_BASE_W + (ETH_CSR_OFF_B >> 2);
 
   function automatic logic in_range(
     input logic [AW-1:0] a,
@@ -136,7 +136,7 @@ module wb_island #(
 
   //-------------------------------------------------------
 
-  if (P.WISHBONE_UART_SUPPORTED == 1) begin : wbuart  
+  if (P.WISHBONE_UART_SUPPORTED == 1) begin : wbuart
 
     wire unused_rmii_rst_n;
 
@@ -144,7 +144,7 @@ module wb_island #(
     // rst is active-high reset coming from SoC domain (your ~HRESETn)
     //
     // Keep reset asserted at power-up using init value (Vivado maps this to FF INIT).
-    (* ASYNC_REG="TRUE" *) logic [1:0] rst_rmii_ff = 2'b11;    
+    (* ASYNC_REG="TRUE" *) logic [1:0] rst_rmii_ff = 2'b11;
 
     // always_ff @(posedge rmii_ref_clk or posedge rst) begin
     // if (rst)
@@ -154,14 +154,14 @@ module wb_island #(
     // end
     always_ff @(posedge rmii_ref_clk) begin
         rst_rmii_ff <= {rst_rmii_ff[0], rst};
-    end    
+    end
 
     logic rst_rmii;                 // active-high reset in RMII domain
     assign rst_rmii = rst_rmii_ff[1];
 
     //assign WB_RMII_RST_N = ~rst_rmii; // active-low reset to PHY
     assign rmii_rst_n = ~rst_rmii; // active-low reset to PHY
-  
+
     liteEthTop u_liteeth (
         .interrupt(eth_irq),
 
@@ -235,12 +235,12 @@ module wb_island #(
       m_ack_o = eth_ack;
       m_err_o = eth_err;
     end else if (hit_uart) begin
-      m_dat_o = uart_rdata; 
-      m_ack_o = uart_ack; 
+      m_dat_o = uart_rdata;
+      m_ack_o = uart_ack;
       m_err_o = uart_err;
     end else if (hit_stub) begin
-      m_dat_o = stub_rdata; 
-      m_ack_o = stub_ack; 
+      m_dat_o = stub_rdata;
+      m_ack_o = stub_ack;
       m_err_o = stub_err;
     end else if (m_cyc_i & m_stb_i) begin
       m_dat_o = 32'hBAD0_BAD0;
