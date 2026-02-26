@@ -1,0 +1,47 @@
+--- a/src/axi_vga.sv
++++ b/src/axi_vga.sv
+@@ -247,8 +247,15 @@
+     .ready_i    ( r_fifo_ready )  //.ready_i    ( axi_req_split.r_ready  )
+   );
+ 
++  // Extra decoupling stage: keep burst-splitter bookkeeping away from the
++  // internal spill_register state (e.g. b_full_q_reg). This adds one more
++  // elastic stage but preserves 1 beat/cycle throughput.
++  axi_r_chan_t r_spill_mid;
++  logic        r_spill_mid_valid, r_spill_mid_ready;
++
+   spill_register #(
+-    .T ( axi_r_chan_t )
++    .T      ( axi_r_chan_t ),
++    .Bypass ( 1'b0 )
+   ) i_r_spill (
+     .clk_i,
+     .rst_ni,
+@@ -256,9 +263,24 @@
+     .valid_i ( r_fifo_valid ),
+     .ready_o ( r_fifo_ready ),
+ 
+-    .data_o     ( axi_resp_split.r       ),
+-    .valid_o    ( axi_resp_split.r_valid ),
+-    .ready_i    ( axi_req_split.r_ready  )
++    .data_o     ( r_spill_mid       ),
++    .valid_o    ( r_spill_mid_valid ),
++    .ready_i    ( r_spill_mid_ready )
++  );
++
++  spill_register #(
++    .T      ( axi_r_chan_t ),
++    .Bypass ( 1'b0 )
++  ) i_r_spill2 (
++    .clk_i,
++    .rst_ni,
++    .data_i  ( r_spill_mid       ),
++    .valid_i ( r_spill_mid_valid ),
++    .ready_o ( r_spill_mid_ready ),
++
++    .data_o  ( axi_resp_split.r       ),
++    .valid_o ( axi_resp_split.r_valid ),
++    .ready_i ( axi_req_split.r_ready  )
+   );
+ 
+   // combine the read handshaking and the credit counter

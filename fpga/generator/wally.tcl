@@ -34,6 +34,8 @@ if {$board=="ArtyA7"} {
     add_files  {../src/fpgaTopNexysA7.sv}
 } elseif {$board=="nexysa7soc"} {
     add_files  {../src/fpgaTopNexysA7SoC.sv}
+} elseif {$board=="genesys2soc"} {
+    add_files  {../src/fpgaTopGenesys2SoC.sv}
 } else {
     add_files  {../src/fpgaTop.sv}
 }
@@ -51,6 +53,11 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
 } elseif {$board=="nexysa7soc" } {
     import_ip IP/ddr2.srcs/sources_1/ip/ddr2/ddr2.xci
+    import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
+    import_ip IP/axicrossbar.srcs/sources_1/ip/axicrossbar/axicrossbar.xci
+    import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
+} elseif {$board=="genesys2soc" } {
+    import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
     import_ip IP/axicrossbar.srcs/sources_1/ip/axicrossbar/axicrossbar.xci
     import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
@@ -79,7 +86,7 @@ report_compile_order -constraints > reports/compile_order.rpt
 #synth_design -rtl -name rtl_1  -flatten_hierarchy none
 
 # apply timing constraint after elaboration
-if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexysa7soc" } {
+if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexysa7soc" || $board=="genesys2soc" } {
     add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board.xdc
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board.xdc]
 } else {
@@ -87,7 +94,7 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexy
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$boardSubName.xdc]
 }
 
-if {$board=="nexysa7soc" } {
+if {$board=="nexysa7soc" || $board=="genesys2soc"} {
 
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/uncore/*/*.v]
     set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared \
@@ -103,7 +110,7 @@ if {$board=="nexysa7soc" } {
 }
 
 set_param messaging.defaultLimit 100000
-if {$board=="nexysa7soc" } {
+if {$board=="nexysa7soc" || $board=="genesys2soc"} {
     set_param general.maxThreads 16
 
     puts "###########################################################################"
@@ -144,6 +151,8 @@ if {$board=="ArtyA7"} {
     #source ../constraints/big-debug-spi.xdc
     #source ../constraints/debug-spi.xdc
     # NO ILA
+} elseif {$board=="genesys2soc"} {
+    source ../constraints/debug-boot.xdc
 } else {
     #source ../constraints/vcu-small-debug.xdc
     #source ../constraints/small-debug.xdc
@@ -171,7 +180,7 @@ if {$board=="nexysa7soc"} {
 }
 
 
-if {$board=="nexysa7soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc"} {
     #set_property STEPS.ROUTE_DESIGN.ARGS.ULTRATHREADS true [get_runs impl_1] #doesn't exist
     #set_property "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" "-ultrathreads -no_psir" [get_runs impl_1]
     # set_property -name "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" \
@@ -194,7 +203,7 @@ if {$board=="nexysa7soc"} {
 }
 
 # Further optimization tuning
-if {$board=="nexysa7soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc"} {
 
     # WARNING: set_property strategy resets some properties' values (CHECKME!!)
 
@@ -222,7 +231,7 @@ if {$board=="nexysa7soc"} {
 }
 
 launch_runs impl_1 -jobs 16
-if {$board=="nexysa7soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc" } {
 	puts "###########################################################################"
 	report_property -all [get_runs impl_1]
 	puts "###########################################################################"
