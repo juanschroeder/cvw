@@ -1,6 +1,8 @@
 set partNumber $::env(XILINX_PART)
 set boardName  $::env(XILINX_BOARD)
 
+set ddrAddrWidth  $::env(MIG_ADDR_WIDTH)
+
 set ipName axicrossbar
 
 create_project $ipName . -force -part $partNumber
@@ -13,16 +15,10 @@ create_ip -name axi_crossbar -vendor xilinx.com -library ip -module_name $ipName
 # IMPORTANT (current reality for Wally DDR2/MIG on Nexys A7):
 # - Use PROTOCOL=AXI4.
 # - Keep ID_WIDTH and S00_THREAD_ID_WIDTH non-zero so the crossbar exposes the AXI ID ports.
-# - Vivado’s AXI Crossbar insists that each MI has at least one connected SI. Therefore, we keep NUM_MI=2
-#   and DO NOT try to set M01_S00_*_CONNECTIVITY=0 (that fails validation and Vivado reverts the IP to a
-#   previous “valid” configuration, causing port/width mismatches).
-# - The practical fix is to give M00 and M01 NON-OVERLAPPING address segments:
-#     * M00 maps DDR (128MB) at AXI 0x0000_0000 .. 0x07FF_FFFF  (BASE=0x0, ADDR_WIDTH=27)
-#     * M01 maps an unused “dummy” window at AXI 0x0800_0000 .. 0x0FFF_FFFF (BASE=0x0800_0000, ADDR_WIDTH=27)
-# - Crossbar ADDR_WIDTH must be wide enough to represent both segments (>= 28; we use 32).
 # - Do NOT truncate addresses into the crossbar (no [26:0] slicing on the S_AXI side). Feed full-width
 #   BUS_axi_awaddr/araddr into the crossbar so it can decode M00 vs M01 correctly.
-# - Only truncate to 27 bits at the MIG port (since the MIG’s AXI addr width is 27 for 128MB DDR2).
+# - Only truncate 2 bits at the AXI side to map the 
+#   addresses 0x80000000...XXXXXXXX to 0x00000000....(XXXXXXXX - 0x80000000)
 
 # Add USB: NUM_SI=4 (CPU, CDMA, VGA, USB), NUM_MI=4 (DDR, CDMA regs, VGA regs, USB regs)
 set_property -dict [list \
@@ -49,10 +45,8 @@ set_property -dict [list \
   CONFIG.S03_WRITE_ACCEPTANCE {16} \
   CONFIG.S03_READ_ACCEPTANCE  {16} \
   CONFIG.ADDR_RANGES {2} \
-  CONFIG.M00_A00_BASE_ADDR {0x0000000000000000} \
-  CONFIG.M00_A00_ADDR_WIDTH {27} \
   CONFIG.M00_A01_BASE_ADDR {0x0000000080000000} \
-  CONFIG.M00_A01_ADDR_WIDTH {27} \
+  CONFIG.M00_A01_ADDR_WIDTH $ddrAddrWidth \
   CONFIG.M01_A00_BASE_ADDR {0x00000000100A0000} \
   CONFIG.M01_A00_ADDR_WIDTH {12} \
   CONFIG.M02_A00_BASE_ADDR {0x00000000100B0000} \

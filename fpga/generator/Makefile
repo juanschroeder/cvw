@@ -44,7 +44,16 @@ nexysa7soc: export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
 nexysa7soc: export board := nexysa7soc
 nexysa7soc: export SYSTEMCLOCK := 20000000
 nexysa7soc: export MAXSDCCLOCK  :=  10000000
+nexysa7soc: export MIG_ADDR_WIDTH  :=  27
 nexysa7soc: FPGA_NEXYSA7SOC
+
+genesys2soc: export XILINX_PART := xc7k325tffg900-2
+genesys2soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
+genesys2soc: export board := genesys2soc
+genesys2soc: export SYSTEMCLOCK := 40000000
+genesys2soc: export MAXSDCCLOCK  := 10000000
+genesys2soc: export MIG_ADDR_WIDTH  :=  30
+genesys2soc: FPGA_GENESYS2SOC
 
 # variables computed from config
 EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
@@ -78,6 +87,9 @@ endef
 FPGA_NEXYSA7SOC: PreProcessFilesSoC IP_NEXYSA7SOC zsbl
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
+FPGA_GENESYS2SOC: PreProcessFilesSoC IP_GENESYS2SOC zsbl
+	@$(call VIVADO_TCL,wally.tcl,wally.log)
+
 # Generate IP Blocks
 .PHONY: IP_Arty IP_VCU
 IP_VCU: $(dst)/sysrst.log \
@@ -105,6 +117,14 @@ IP_NEXYSA7: $(dst)/sysrst.log \
 IP_NEXYSA7SOC: $(dst)/sysrst.log \
 	MEM_NEXYSA7 \
 	$(dst)/mmcm-nexysa7.log \
+	$(dst)/clkconverter.log \
+	$(dst)/ahbaxibridge.log \
+	$(dst)/axicrossbar.log \
+	$(dst)/axicdma.log
+
+IP_GENESYS2SOC: $(dst)/sysrst.log \
+	MEM_GENESYS2 \
+	$(dst)/mmcm-genesys2soc.log \
 	$(dst)/clkconverter.log \
 	$(dst)/ahbaxibridge.log \
 	$(dst)/axicrossbar.log \
