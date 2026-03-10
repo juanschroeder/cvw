@@ -166,6 +166,9 @@ typedef struct packed {
   logic         AXI_USB_SUPPORTED;
   logic [63:0]  AXI_USB_BASE;
   logic [63:0]  AXI_USB_RANGE;
+  logic         AXI_ETH_SUPPORTED;
+  logic [63:0]  AXI_ETH_BASE;
+  logic [63:0]  AXI_ETH_RANGE;
 
 // Test modes
 
@@ -187,6 +190,7 @@ typedef struct packed {
   int           PLIC_WB_ETH_ID;
   int           PLIC_AXI_DMA_ID;
   int           PLIC_AXI_USB_ID;
+  int           PLIC_AXI_ETH_ID;
 
   logic                BPRED_SUPPORTED;
   logic [31:0]         BPRED_TYPE;

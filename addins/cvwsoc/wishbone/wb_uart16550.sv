@@ -1,5 +1,4 @@
-//`include "local_uart16550_cfg.vh"
-`include "uart_16550/uart_defines.v"
+`include "uart_defines.v"
 
 module wb_uart16550 #(
   parameter int AW = 30,

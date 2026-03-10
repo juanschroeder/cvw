@@ -3,7 +3,7 @@ source ../constraints/debug-defs.xdc
 create_debug_core u_ila_spi ila
 
 # ILA settings
-set_property C_DATA_DEPTH 16384 [get_debug_cores u_ila_spi]
+set_property C_DATA_DEPTH 8192 [get_debug_cores u_ila_spi]
 set_property C_TRIGIN_EN false [get_debug_cores u_ila_spi]
 set_property C_TRIGOUT_EN false [get_debug_cores u_ila_spi]
 set_property C_ADV_TRIGGER false [get_debug_cores u_ila_spi]
@@ -55,11 +55,21 @@ ila_add_probe u_ila_spi -net HWRITE
 ila_add_probe u_ila_spi -bus HTRANS -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus HADDR -msb 31 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus HRDATAEXT -msb 63 -lsb 0 -order lsb2msb
-#######################################################3
+ila_add_probe u_ila_spi -net HSELEXT
+
+
+
+#######################################################
+#######################################################
+#######################################################
+#######################################################
+
+
+
 create_debug_core u_ila_axi ila
 
 # ILA settings
-set_property C_DATA_DEPTH 16384 [get_debug_cores u_ila_axi]
+set_property C_DATA_DEPTH 8192 [get_debug_cores u_ila_axi]
 set_property C_TRIGIN_EN false [get_debug_cores u_ila_axi]
 set_property C_TRIGOUT_EN false [get_debug_cores u_ila_axi]
 set_property C_ADV_TRIGGER false [get_debug_cores u_ila_axi]
@@ -87,7 +97,7 @@ connect_debug_port u_ila_axi/clk [get_nets BUSCLK]
 # wire [3:0]   cb_s_axi_arready;
 
 ila_add_probe u_ila_axi -bus BUS_cb_axi_araddr  -msb 29 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus BUS_cb_axi_arlen -msb 7 -lsb 0 -order lsb2msb  
+ila_add_probe u_ila_axi -bus BUS_cb_axi_arlen -msb 7 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -bus BUS_cb_axi_arsize -msb 2 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -bus BUS_cb_axi_arburst -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -net BUS_cb_axi_arvalid
