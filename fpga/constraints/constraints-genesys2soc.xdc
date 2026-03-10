@@ -15,26 +15,26 @@ set_property IOSTANDARD LVDS [get_ports default_200mhz_clk_p]
 set_property CLOCK_DEDICATED_ROUTE BACKBONE [get_nets default_200mhz_clk_p]
 set_property CLOCK_DEDICATED_ROUTE BACKBONE [get_nets default_200mhz_clk_n]
 
-##### RVVI Ethernet ####
-# taken from https://github.com/Digilent/digilent-xdc/blob/master/Genesys-2-Master.xdc
-set_property -dict { PACKAGE_PIN AH11  IOSTANDARD LVCMOS15 } [get_ports { phy_rxctl }]; #IO_L18P_T2_33 Sch=eth_rx_ctl
-set_property -dict { PACKAGE_PIN AG10  IOSTANDARD LVCMOS15 } [get_ports { phy_rx_clk }]; #IO_L13P_T2_MRCC_33 Sch=eth_rx_clk
-set_property -dict { PACKAGE_PIN AJ14  IOSTANDARD LVCMOS15 } [get_ports { phy_rxd[0] }]; #IO_L21N_T3_DQS_33 Sch=eth_rx_d[0]
-set_property -dict { PACKAGE_PIN AH14  IOSTANDARD LVCMOS15 } [get_ports { phy_rxd[1] }]; #IO_L21P_T3_DQS_33 Sch=eth_rx_d[1]
-set_property -dict { PACKAGE_PIN AK13  IOSTANDARD LVCMOS15 } [get_ports { phy_rxd[2] }]; #IO_L20N_T3_33 Sch=eth_rx_d[2]
-set_property -dict { PACKAGE_PIN AJ13  IOSTANDARD LVCMOS15 } [get_ports { phy_rxd[3] }]; #IO_L22P_T3_33 Sch=eth_rx_d[3]
-set_property -dict { PACKAGE_PIN AE10  IOSTANDARD LVCMOS15 } [get_ports { phy_tx_clk }]; #IO_L14P_T2_SRCC_33 Sch=eth_tx_clk
-set_property -dict { PACKAGE_PIN AK14  IOSTANDARD LVCMOS15 } [get_ports { phy_tx_en }]; #IO_L20P_T3_33 Sch=eth_tx_en
-set_property -dict { PACKAGE_PIN AJ12  IOSTANDARD LVCMOS15 } [get_ports { phy_txd[0] }]; #IO_L22N_T3_33 Sch=eth_tx_d[0]
-set_property -dict { PACKAGE_PIN AK11  IOSTANDARD LVCMOS15 } [get_ports { phy_txd[1] }]; #IO_L17P_T2_33 Sch=eth_tx_d[1]
-set_property -dict { PACKAGE_PIN AJ11  IOSTANDARD LVCMOS15 } [get_ports { phy_txd[2] }]; #IO_L18N_T2_33 Sch=eth_tx_d[2]
-set_property -dict { PACKAGE_PIN AK10  IOSTANDARD LVCMOS15 } [get_ports { phy_txd[3] }]; #IO_L17N_T2_33 Sch=eth_tx_d[3]
-# have to update these in the future. Follow the rvviopt branch from the vcu108 config.
-#set_property -dict { PACKAGE_PIN AK16  IOSTANDARD LVCMOS18 } [get_ports { eth_int_b }]; #IO_L1P_T0_32 Sch=eth_intb
-#set_property -dict { PACKAGE_PIN AF12  IOSTANDARD LVCMOS15 } [get_ports { eth_mdc }]; #IO_L23P_T3_33 Sch=eth_mdc
-#set_property -dict { PACKAGE_PIN AG12  IOSTANDARD LVCMOS15 } [get_ports { eth_mdio }]; #IO_L23N_T3_33 Sch=eth_mdio
-#set_property -dict { PACKAGE_PIN AH24  IOSTANDARD LVCMOS33 } [get_ports { ETH_PHYRST_N }]; #IO_L14N_T2_SRCC_12 Sch=eth_phyrst_n
-#set_property -dict { PACKAGE_PIN AK15  IOSTANDARD LVCMOS18 } [get_ports { eth_pme_b }]; #IO_L1N_T0_32 Sch=eth_pmeb
+# ##### RVVI Ethernet ####
+# # taken from https://github.com/Digilent/digilent-xdc/blob/master/Genesys-2-Master.xdc
+# set_property -dict { PACKAGE_PIN AH11  IOSTANDARD LVCMOS15 } [get_ports { phy_rxctl }]; #IO_L18P_T2_33 Sch=eth_rx_ctl
+# set_property -dict { PACKAGE_PIN AG10  IOSTANDARD LVCMOS15 } [get_ports { phy_rx_clk }]; #IO_L13P_T2_MRCC_33 Sch=eth_rx_clk
+# set_property -dict { PACKAGE_PIN AJ14  IOSTANDARD LVCMOS15 } [get_ports { phy_rxd[0] }]; #IO_L21N_T3_DQS_33 Sch=eth_rx_d[0]
+# set_property -dict { PACKAGE_PIN AH14  IOSTANDARD LVCMOS15 } [get_ports { phy_rxd[1] }]; #IO_L21P_T3_DQS_33 Sch=eth_rx_d[1]
+# set_property -dict { PACKAGE_PIN AK13  IOSTANDARD LVCMOS15 } [get_ports { phy_rxd[2] }]; #IO_L20N_T3_33 Sch=eth_rx_d[2]
+# set_property -dict { PACKAGE_PIN AJ13  IOSTANDARD LVCMOS15 } [get_ports { phy_rxd[3] }]; #IO_L22P_T3_33 Sch=eth_rx_d[3]
+# set_property -dict { PACKAGE_PIN AE10  IOSTANDARD LVCMOS15 } [get_ports { phy_tx_clk }]; #IO_L14P_T2_SRCC_33 Sch=eth_tx_clk
+# set_property -dict { PACKAGE_PIN AK14  IOSTANDARD LVCMOS15 } [get_ports { phy_tx_en }]; #IO_L20P_T3_33 Sch=eth_tx_en
+# set_property -dict { PACKAGE_PIN AJ12  IOSTANDARD LVCMOS15 } [get_ports { phy_txd[0] }]; #IO_L22N_T3_33 Sch=eth_tx_d[0]
+# set_property -dict { PACKAGE_PIN AK11  IOSTANDARD LVCMOS15 } [get_ports { phy_txd[1] }]; #IO_L17P_T2_33 Sch=eth_tx_d[1]
+# set_property -dict { PACKAGE_PIN AJ11  IOSTANDARD LVCMOS15 } [get_ports { phy_txd[2] }]; #IO_L18N_T2_33 Sch=eth_tx_d[2]
+# set_property -dict { PACKAGE_PIN AK10  IOSTANDARD LVCMOS15 } [get_ports { phy_txd[3] }]; #IO_L17N_T2_33 Sch=eth_tx_d[3]
+# # have to update these in the future. Follow the rvviopt branch from the vcu108 config.
+# #set_property -dict { PACKAGE_PIN AK16  IOSTANDARD LVCMOS18 } [get_ports { eth_int_b }]; #IO_L1P_T0_32 Sch=eth_intb
+# #set_property -dict { PACKAGE_PIN AF12  IOSTANDARD LVCMOS15 } [get_ports { eth_mdc }]; #IO_L23P_T3_33 Sch=eth_mdc
+# #set_property -dict { PACKAGE_PIN AG12  IOSTANDARD LVCMOS15 } [get_ports { eth_mdio }]; #IO_L23N_T3_33 Sch=eth_mdio
+# #set_property -dict { PACKAGE_PIN AH24  IOSTANDARD LVCMOS33 } [get_ports { ETH_PHYRST_N }]; #IO_L14N_T2_SRCC_12 Sch=eth_phyrst_n
+# #set_property -dict { PACKAGE_PIN AK15  IOSTANDARD LVCMOS18 } [get_ports { eth_pme_b }]; #IO_L1N_T0_32 Sch=eth_pmeb
 
 ##### GPI ####
 set_property -dict { PACKAGE_PIN E18   IOSTANDARD LVCMOS12 } [get_ports { GPI[0] }]; #IO_25_17 Sch=btnc
@@ -351,3 +351,30 @@ set_property -dict { PACKAGE_PIN AD26    IOSTANDARD LVCMOS33 } [get_ports { usb1
 # Not enough but helps
 set_property PULLDOWN true [get_ports {usb0_dp usb0_dm usb1_dp usb1_dm}]
 
+
+## Ethernet
+set_property -dict { PACKAGE_PIN AK16  IOSTANDARD LVCMOS18 } [get_ports { rgmii_int_n }]; #IO_L1P_T0_32 Sch=eth_intb
+set_property -dict { PACKAGE_PIN AF12  IOSTANDARD LVCMOS15 } [get_ports { rgmii_mdc }]; #IO_L23P_T3_33 Sch=eth_mdc
+set_property -dict { PACKAGE_PIN AG12  IOSTANDARD LVCMOS15 } [get_ports { rgmii_mdio }]; #IO_L23N_T3_33 Sch=eth_mdio
+set_property -dict { PACKAGE_PIN AH24  IOSTANDARD LVCMOS33 } [get_ports { rgmii_rst_n }]; #IO_L14N_T2_SRCC_12 Sch=eth_phyrst_n
+#set_property -dict { PACKAGE_PIN AK15  IOSTANDARD LVCMOS18 } [get_ports { eth_pme_b }]; #IO_L1N_T0_32 Sch=eth_pmeb
+set_property -dict { PACKAGE_PIN AG10  IOSTANDARD LVCMOS15 } [get_ports { rgmii_clocks_rx }]; #IO_L13P_T2_MRCC_33 Sch=eth_rx_clk
+set_property -dict { PACKAGE_PIN AH11  IOSTANDARD LVCMOS15 } [get_ports { rgmii_rx_ctl }]; #IO_L18P_T2_33 Sch=eth_rx_ctl
+set_property -dict { PACKAGE_PIN AJ14  IOSTANDARD LVCMOS15 } [get_ports { rgmii_rx_data[0] }]; #IO_L21N_T3_DQS_33 Sch=eth_rx_d[0]
+set_property -dict { PACKAGE_PIN AH14  IOSTANDARD LVCMOS15 } [get_ports { rgmii_rx_data[1] }]; #IO_L21P_T3_DQS_33 Sch=eth_rx_d[1]
+set_property -dict { PACKAGE_PIN AK13  IOSTANDARD LVCMOS15 } [get_ports { rgmii_rx_data[2] }]; #IO_L20N_T3_33 Sch=eth_rx_d[2]
+set_property -dict { PACKAGE_PIN AJ13  IOSTANDARD LVCMOS15 } [get_ports { rgmii_rx_data[3] }]; #IO_L22P_T3_33 Sch=eth_rx_d[3]
+set_property -dict { PACKAGE_PIN AE10  IOSTANDARD LVCMOS15 } [get_ports { rgmii_clocks_tx }]; #IO_L14P_T2_SRCC_33 Sch=eth_tx_clk
+set_property -dict { PACKAGE_PIN AJ12  IOSTANDARD LVCMOS15 } [get_ports { rgmii_tx_data[0] }]; #IO_L22N_T3_33 Sch=eth_tx_d[0]
+set_property -dict { PACKAGE_PIN AK11  IOSTANDARD LVCMOS15 } [get_ports { rgmii_tx_data[1] }]; #IO_L17P_T2_33 Sch=eth_tx_d[1]
+set_property -dict { PACKAGE_PIN AJ11  IOSTANDARD LVCMOS15 } [get_ports { rgmii_tx_data[2] }]; #IO_L18N_T2_33 Sch=eth_tx_d[2]
+set_property -dict { PACKAGE_PIN AK10  IOSTANDARD LVCMOS15 } [get_ports { rgmii_tx_data[3] }]; #IO_L17N_T2_33 Sch=eth_tx_d[3]
+#set_property -dict { PACKAGE_PIN AK14  IOSTANDARD LVCMOS15 } [get_ports { ETH_TX_EN }]; #IO_L20P_T3_33 Sch=eth_tx_en
+set_property -dict { PACKAGE_PIN AK14  IOSTANDARD LVCMOS15 } [get_ports { rgmii_tx_ctl }]; #IO_L20P_T3_33 Sch=eth_tx_en
+# INTB needs internal pull-up
+set_property PULLUP true [get_ports { rgmii_int_n }]
+
+
+# Necessary for the IDELAYE2s instantiated in LiteEth
+set_property IODELAY_GROUP ETH_RGMII [get_cells -hier -regexp {.*liteEthAXI/u_liteeth/IDELAYE2.*}]
+set_property IODELAY_GROUP ETH_RGMII [get_cells -hier -regexp {.*liteEthAXI/u_idelayctrl_eth}]

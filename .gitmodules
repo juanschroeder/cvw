@@ -58,3 +58,7 @@
   url = https://github.com/fabriziotappero/ip-cores.git
   branch = communication_controller_uart_16550_core
   shallow = true
+[submodule "verilog-axi"]
+  path = addins/verilog-axi
+  url = https://github.com/alexforencich/verilog-axi.git
+  branch = master

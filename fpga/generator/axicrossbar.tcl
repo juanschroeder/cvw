@@ -17,14 +17,14 @@ create_ip -name axi_crossbar -vendor xilinx.com -library ip -module_name $ipName
 # - Keep ID_WIDTH and S00_THREAD_ID_WIDTH non-zero so the crossbar exposes the AXI ID ports.
 # - Do NOT truncate addresses into the crossbar (no [26:0] slicing on the S_AXI side). Feed full-width
 #   BUS_axi_awaddr/araddr into the crossbar so it can decode M00 vs M01 correctly.
-# - Only truncate 2 bits at the AXI side to map the 
+# - Only truncate 2 bits at the AXI side to map the
 #   addresses 0x80000000...XXXXXXXX to 0x00000000....(XXXXXXXX - 0x80000000)
 
-# Add USB: NUM_SI=4 (CPU, CDMA, VGA, USB), NUM_MI=4 (DDR, CDMA regs, VGA regs, USB regs)
+# Add USB: NUM_SI=4 (CPU, CDMA, VGA, USB), NUM_MI=4 (DDR, CDMA regs, VGA regs, USB regs, ETH regs)
 set_property -dict [list \
   CONFIG.PROTOCOL {AXI4} \
   CONFIG.NUM_SI {4} \
-  CONFIG.NUM_MI {4} \
+  CONFIG.NUM_MI {5} \
   CONFIG.ADDR_WIDTH {32} \
   CONFIG.DATA_WIDTH {64} \
   CONFIG.ID_WIDTH {4} \
@@ -53,6 +53,8 @@ set_property -dict [list \
   CONFIG.M02_A00_ADDR_WIDTH {12} \
   CONFIG.M03_A00_BASE_ADDR {0x00000000100C0000} \
   CONFIG.M03_A00_ADDR_WIDTH {12} \
+  CONFIG.M04_A00_BASE_ADDR {0x00000000100D0000} \
+  CONFIG.M04_A00_ADDR_WIDTH {16} \
   CONFIG.M00_S00_READ_CONNECTIVITY  {1} \
   CONFIG.M00_S00_WRITE_CONNECTIVITY {1} \
   CONFIG.M00_S01_READ_CONNECTIVITY  {1} \
@@ -61,12 +63,18 @@ set_property -dict [list \
   CONFIG.M00_S02_WRITE_CONNECTIVITY {1} \
   CONFIG.M00_S03_READ_CONNECTIVITY  {1} \
   CONFIG.M00_S03_WRITE_CONNECTIVITY {1} \
+  CONFIG.M00_S04_READ_CONNECTIVITY  {1} \
+  CONFIG.M00_S04_WRITE_CONNECTIVITY {1} \
   CONFIG.M01_S00_READ_CONNECTIVITY  {1} \
   CONFIG.M01_S00_WRITE_CONNECTIVITY {1} \
-  CONFIG.M01_S01_READ_CONNECTIVITY  {0} \
-  CONFIG.M01_S01_WRITE_CONNECTIVITY {0} \
-  CONFIG.M01_S02_READ_CONNECTIVITY  {0} \
-  CONFIG.M01_S02_WRITE_CONNECTIVITY {0} \
+  CONFIG.M01_S01_READ_CONNECTIVITY  {1} \
+  CONFIG.M01_S01_WRITE_CONNECTIVITY {1} \
+  CONFIG.M01_S02_READ_CONNECTIVITY  {1} \
+  CONFIG.M01_S02_WRITE_CONNECTIVITY {1} \
+  CONFIG.M01_S03_READ_CONNECTIVITY  {1} \
+  CONFIG.M01_S03_WRITE_CONNECTIVITY {1} \
+  CONFIG.M01_S04_READ_CONNECTIVITY  {1} \
+  CONFIG.M01_S04_WRITE_CONNECTIVITY {1} \
   CONFIG.M02_S00_READ_CONNECTIVITY  {1} \
   CONFIG.M02_S00_WRITE_CONNECTIVITY {1} \
   CONFIG.M02_S01_READ_CONNECTIVITY  {0} \
@@ -90,4 +98,3 @@ generate_target all [get_files ./$ipName.srcs/sources_1/ip/$ipName/$ipName.xci]
 create_ip_run [get_files -of_objects [get_fileset sources_1] ./$ipName.srcs/sources_1/ip/$ipName/$ipName.xci]
 launch_run -jobs 8 ${ipName}_synth_1
 wait_on_run ${ipName}_synth_1
-

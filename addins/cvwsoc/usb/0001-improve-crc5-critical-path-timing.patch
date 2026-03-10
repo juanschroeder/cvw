@@ -1,7 +1,7 @@
 diff --git a/uncore/usb/UsbOhciAxi4_p2_dma64.v b/uncore/usb/UsbOhciAxi4_p2_dma64.v
 index 11a684b1d..d0c9c7be7 100644
---- a/uncore/usb/UsbOhciAxi4_p2_dma64.v
-+++ b/uncore/usb/UsbOhciAxi4_p2_dma64.v
+--- a/cvwsoc/usb/UsbOhciAxi4_p2_dma64.v
++++ b/cvwsoc/usb/UsbOhciAxi4_p2_dma64.v
 @@ -14588,7 +14588,7 @@ module UsbOhciAxi4_p2_dma64_Crc (
    reg        [4:0]    acc_3;
    reg        [4:0]    acc_2;

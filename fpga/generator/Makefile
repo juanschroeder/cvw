@@ -168,12 +168,19 @@ PULP_LZC := $(PULP_DIR)/common_cells/src/lzc.sv
 .PHONY: PreProcessFilesSoC
 PreProcessFilesSoC: PreProcessFiles
 	# Copy Wishbone stuff
-	cp -r ../../addins/ahb3lite_wb_bridge/*.v ../src/CopiedFiles_do_not_add_to_repo/uncore
+	# ahb3lite_wb_bridge
+	mkdir ../src/CopiedFiles_do_not_add_to_repo/ahb3lite_wb_bridge
+	cp -r ../../addins/ahb3lite_wb_bridge/*.v ../src/CopiedFiles_do_not_add_to_repo/ahb3lite_wb_bridge/
 	# missing Opencores UART stuff here
-	mkdir -p ../src/CopiedFiles_do_not_add_to_repo/uncore/uart_16550/
-	cp -r ../../addins/oc_uart_16550/rtl/verilog/*.v ../src/CopiedFiles_do_not_add_to_repo/uncore/uart_16550/
+	mkdir -p ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/
+	cp -r ../../addins/oc_uart_16550/rtl/verilog/*.v ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/
+	# Copy verilog-axi stuff
+	cp -r ../../addins/verilog-axi  ../src/CopiedFiles_do_not_add_to_repo/
 	# Copy Pulp project stuff
 	cp -r ../../addins/pulp/ ../src/CopiedFiles_do_not_add_to_repo/
+	# Copy cvwsoc stuff
+	cp -r ../../addins/cvwsoc/  ../src/CopiedFiles_do_not_add_to_repo
+	# Apply patches
 	# modify PULP files to prevent name collision for 'lzc'
 	# 1) rename the module itself (only in the defining file)
 	sed -i -E 's/^([[:space:]]*module[[:space:]]+)lzc([[:space:]]*#)/\1lzc_pulp\2/' $(PULP_LZC)
@@ -188,10 +195,10 @@ PreProcessFilesSoC: PreProcessFiles
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
 	# 4) patch USB OHCI
 	patchdir="../src/CopiedFiles_do_not_add_to_repo"; \
-	find ../../src/uncore/usb -type f -name "*.patch" -print0 | sort -z | \
+	find ../../addins/cvwsoc/usb -type f -name "*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
 	# LITTLE_ENDIAN for UART core
-	grep -q 'define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/uncore/uart_16550/uart_defines.v || sed -i '1i`define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/uncore/uart_16550/uart_defines.v
+	grep -q 'define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v || sed -i '1i`define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v
 
 # build the Zero stage boot loader (ZSBL)
 .PHONY: zsbl

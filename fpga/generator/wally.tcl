@@ -96,15 +96,24 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexy
 
 if {$board=="nexysa7soc" || $board=="genesys2soc"} {
 
-    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/uncore/*/*.v]
     set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared \
-        ../src/CopiedFiles_do_not_add_to_repo/uncore \
+        ../src/CopiedFiles_do_not_add_to_repo/cvwsoc \
+        ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550 \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/axi/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/common_cells/include} [current_fileset]
+
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/*/*.v ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/*/*.sv]
+    # Pulp files
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/*/src/*.sv]
     # FIXME: what to do with patches in this 'vendor' subfolder?
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/vendor/*/src/*.sv]
+    # verilog-axi stuff
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/verilog-axi/rtl/*.v]
+    # oc uart stuff
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/*.v]
+    # ahb3lite_wb_bridge stuff
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/ahb3lite_wb_bridge/*.v]
 
     report_compile_order -constraints > reports/compile_order.rpt
 }
@@ -232,9 +241,9 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"} {
 
 launch_runs impl_1 -jobs 16
 if {$board=="nexysa7soc" || $board=="genesys2soc" } {
-	puts "###########################################################################"
-	report_property -all [get_runs impl_1]
-	puts "###########################################################################"
+    puts "###########################################################################"
+    report_property -all [get_runs impl_1]
+    puts "###########################################################################"
 }
 wait_on_run impl_1
 launch_runs impl_1 -to_step write_bitstream -jobs 16

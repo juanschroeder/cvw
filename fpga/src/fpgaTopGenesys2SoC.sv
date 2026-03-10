@@ -49,6 +49,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
    output logic         SDCCS,
    input logic         SDCCD,
    input logic         SDCWP,
+`ifdef RVVI_SYNTH_SUPPORTED
  /*
      * Ethernet: 100BASE-T MII
      */
@@ -60,6 +61,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
    output logic [3:0]  phy_txd,
    output logic         phy_tx_en,
    //output logic         phy_reset_n,
+`endif
 
    inout logic [31:0]  ddr3_dq,
    inout logic [3:0]   ddr3_dqs_n,
@@ -91,7 +93,18 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     inout  wire         WB_RMII_MDIO,
     output logic        WB_RMII_RST_N,
     input logic        WB_RMII_PHY_IRQ
-`endif 
+`endif
+    , input  logic          rgmii_clocks_rx,
+    output logic          rgmii_clocks_tx,
+    input  logic          rgmii_int_n,
+    output logic          rgmii_mdc,
+    inout  logic          rgmii_mdio,
+    output logic          rgmii_rst_n,
+    input  logic          rgmii_rx_ctl,
+    input  logic    [3:0] rgmii_rx_data,
+    output logic          rgmii_tx_ctl,
+    output logic    [3:0] rgmii_tx_data
+
     // VGA signals
     , output logic        vga_hsync,
     output logic        vga_vsync,
@@ -121,7 +134,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   // MMCM Signals
   logic          CPUCLK;
-  logic          c0_ddr4_ui_clk_sync_rst;
   logic          bus_struct_reset;
   logic          peripheral_reset;
   logic          interconnect_aresetn;
@@ -273,49 +285,49 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   // NUM_MI=4 => packed buses:
   //   - Addresses: [4*32-1:0] = [127:0] (M00=[31:0], M01=[63:32], M02=[95:64], M03=[127:96])
   //   - Data:      [4*64-1:0] = [255:0]
-  wire [15:0]   cb_m_axi_awid;
-  wire [127:0]  cb_m_axi_awaddr;
-  wire [31:0]   cb_m_axi_awlen;
-  wire [11:0]   cb_m_axi_awsize;
-  wire [7:0]    cb_m_axi_awburst;
-  wire [3:0]    cb_m_axi_awlock;
-  wire [15:0]   cb_m_axi_awcache;
-  wire [11:0]   cb_m_axi_awprot;
-  wire [15:0]   cb_m_axi_awregion;
-  wire [15:0]   cb_m_axi_awqos;
-  wire [3:0]    cb_m_axi_awvalid;
-  wire [3:0]    cb_m_axi_awready;
+  wire [19:0]   cb_m_axi_awid;
+  wire [159:0]  cb_m_axi_awaddr;
+  wire [39:0]   cb_m_axi_awlen;
+  wire [14:0]   cb_m_axi_awsize;
+  wire [9:0]    cb_m_axi_awburst;
+  wire [4:0]    cb_m_axi_awlock;
+  wire [19:0]   cb_m_axi_awcache;
+  wire [14:0]   cb_m_axi_awprot;
+  wire [19:0]   cb_m_axi_awregion;
+  wire [19:0]   cb_m_axi_awqos;
+  wire [4:0]    cb_m_axi_awvalid;
+  wire [4:0]    cb_m_axi_awready;
 
-  wire [255:0]  cb_m_axi_wdata;
-  wire [31:0]   cb_m_axi_wstrb;
-  wire [3:0]    cb_m_axi_wlast;
-  wire [3:0]    cb_m_axi_wvalid;
-  wire [3:0]    cb_m_axi_wready;
+  wire [319:0]  cb_m_axi_wdata;
+  wire [39:0]   cb_m_axi_wstrb;
+  wire [4:0]    cb_m_axi_wlast;
+  wire [4:0]    cb_m_axi_wvalid;
+  wire [4:0]    cb_m_axi_wready;
 
-  wire [15:0]   cb_m_axi_bid;
-  wire [7:0]    cb_m_axi_bresp;
-  wire [3:0]    cb_m_axi_bvalid;
-  wire [3:0]    cb_m_axi_bready;
+  wire [19:0]   cb_m_axi_bid;
+  wire [9:0]    cb_m_axi_bresp;
+  wire [4:0]    cb_m_axi_bvalid;
+  wire [4:0]    cb_m_axi_bready;
 
-  wire [15:0]   cb_m_axi_arid;
-  wire [127:0]  cb_m_axi_araddr;
-  wire [31:0]   cb_m_axi_arlen;
-  wire [11:0]   cb_m_axi_arsize;
-  wire [7:0]    cb_m_axi_arburst;
-  wire [3:0]    cb_m_axi_arlock;
-  wire [15:0]   cb_m_axi_arcache;
-  wire [11:0]   cb_m_axi_arprot;
-  wire [15:0]   cb_m_axi_arregion;
-  wire [15:0]   cb_m_axi_arqos;
-  wire [3:0]    cb_m_axi_arvalid;
-  wire [3:0]    cb_m_axi_arready;
+  wire [19:0]   cb_m_axi_arid;
+  wire [159:0]  cb_m_axi_araddr;
+  wire [39:0]   cb_m_axi_arlen;
+  wire [14:0]   cb_m_axi_arsize;
+  wire [9:0]    cb_m_axi_arburst;
+  wire [4:0]    cb_m_axi_arlock;
+  wire [19:0]   cb_m_axi_arcache;
+  wire [14:0]   cb_m_axi_arprot;
+  wire [19:0]   cb_m_axi_arregion;
+  wire [19:0]   cb_m_axi_arqos;
+  wire [4:0]    cb_m_axi_arvalid;
+  wire [4:0]    cb_m_axi_arready;
 
-  wire [15:0]   cb_m_axi_rid;
-  wire [255:0]  cb_m_axi_rdata;
-  wire [7:0]    cb_m_axi_rresp;
-  wire [3:0]    cb_m_axi_rlast;
-  wire [3:0]    cb_m_axi_rvalid;
-  wire [3:0]    cb_m_axi_rready;
+  wire [19:0]   cb_m_axi_rid;
+  wire [319:0]  cb_m_axi_rdata;
+  wire [9:0]    cb_m_axi_rresp;
+  wire [4:0]    cb_m_axi_rlast;
+  wire [4:0]    cb_m_axi_rvalid;
+  wire [4:0]    cb_m_axi_rready;
 
   // Crossbar packed S_AXI ports
   // NUM_SI=4 (S00=CPU, S01=CDMA, S02=VGA, S03=USB OHCI DMA)
@@ -440,7 +452,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic        vga_m_axi_rvalid;
   logic        vga_m_axi_rready;
 
-    // USB OHCI DMA M_AXI (master into crossbar S03)
+  // USB OHCI DMA M_AXI (master into crossbar S03)
   logic [3:0]  usb_m_axi_awid;
   logic [31:0] usb_m_axi_awaddr;
   logic [7:0]  usb_m_axi_awlen;
@@ -483,13 +495,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   logic        usb_irq;
 
-// VGA pins (internal for now)
-//   logic        vga_hsync;
-//   logic        vga_vsync;
-//   logic [4:0]  vga_r;
-//   logic [5:0]  vga_g;
-//   logic [4:0]  vga_b;
-
+  logic        liteeth_irq;
 
   // Regs window path (M01) signals from dwidth converter back to crossbar
   wire        reg_awready;
@@ -529,6 +535,19 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   wire [1:0]  usb_reg_rresp;
   wire [3:0]  usb_reg_rid;
   wire [63:0] usb_reg_rdata;
+
+  // USB regs window path (M03) signals back to crossbar
+  wire        liteeth_reg_awready;
+  wire        liteeth_reg_wready;
+  wire        liteeth_reg_arready;
+  wire        liteeth_reg_bvalid;
+  wire [1:0]  liteeth_reg_bresp;
+  wire [3:0]  liteeth_reg_bid;
+  wire        liteeth_reg_rvalid;
+  wire        liteeth_reg_rlast;
+  wire [1:0]  liteeth_reg_rresp;
+  wire [3:0]  liteeth_reg_rid;
+  wire [63:0] liteeth_reg_rdata;
 
   // AXI4-Lite/32 signals to USB OHCI control regs (driven by MMIO bridge)
   wire [31:0] usb_lite_awaddr;
@@ -677,7 +696,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   // Crossbar M00 -> MIG (BUS_cb_*)
   assign BUS_cb_axi_awid    = cb_m_axi_awid[3:0];
-  assign BUS_cb_axi_awaddr  = cb_m_axi_awaddr[29:0]; // DDR size dependent
+  assign BUS_cb_axi_awaddr  = cb_m_axi_awaddr[29:0]; // DDR size dependent (dropping higher order bits)
   assign BUS_cb_axi_awlen   = cb_m_axi_awlen[7:0];
   assign BUS_cb_axi_awsize  = cb_m_axi_awsize[2:0];
   assign BUS_cb_axi_awburst = cb_m_axi_awburst[1:0];
@@ -695,7 +714,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   assign BUS_cb_axi_bready  = cb_m_axi_bready[0];
 
   assign BUS_cb_axi_arid    = cb_m_axi_arid[3:0];
-  assign BUS_cb_axi_araddr  = cb_m_axi_araddr[29:0]; // DDR size dependent
+  assign BUS_cb_axi_araddr  = cb_m_axi_araddr[29:0]; // DDR size dependent (dropping higher order bits)
   assign BUS_cb_axi_arlen   = cb_m_axi_arlen[7:0];
   assign BUS_cb_axi_arsize  = cb_m_axi_arsize[2:0];
   assign BUS_cb_axi_arburst = cb_m_axi_arburst[1:0];
@@ -799,19 +818,19 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   // M02 (third MI) is used for VGA registers (AXI4/64 slave on BUSCLK).
   // Provide crossbar MI return channels from MIG (M00) and both regs paths (M01/M02).
     // Provide crossbar MI return channels from MIG (M00) and regs windows (M01=CDMA regs, M02=VGA regs, M03=USB regs)
-  assign cb_m_axi_awready = {usb_reg_awready, vga_reg_awready, reg_awready, BUS_cb_axi_awready};
-  assign cb_m_axi_wready  = {usb_reg_wready,  vga_reg_wready,  reg_wready,  BUS_cb_axi_wready};
-  assign cb_m_axi_arready = {usb_reg_arready, vga_reg_arready, reg_arready, BUS_cb_axi_arready};
+  assign cb_m_axi_awready = {liteeth_reg_awready, usb_reg_awready, vga_reg_awready, reg_awready, BUS_cb_axi_awready};
+  assign cb_m_axi_wready  = {liteeth_reg_wready,  usb_reg_wready,  vga_reg_wready,  reg_wready,  BUS_cb_axi_wready};
+  assign cb_m_axi_arready = {liteeth_reg_arready, usb_reg_arready, vga_reg_arready, reg_arready, BUS_cb_axi_arready};
 
-  assign cb_m_axi_bvalid  = {usb_reg_bvalid,  vga_reg_bvalid,  reg_bvalid,  BUS_cb_axi_bvalid};
-  assign cb_m_axi_bresp   = {usb_reg_bresp,   vga_reg_bresp,   reg_bresp,   BUS_cb_axi_bresp};
-  assign cb_m_axi_bid     = {usb_reg_bid,     vga_reg_bid,     reg_bid,     BUS_cb_axi_bid};
+  assign cb_m_axi_bvalid  = {liteeth_reg_bvalid,  usb_reg_bvalid,  vga_reg_bvalid,  reg_bvalid,  BUS_cb_axi_bvalid};
+  assign cb_m_axi_bresp   = {liteeth_reg_bresp,   usb_reg_bresp,   vga_reg_bresp,   reg_bresp,   BUS_cb_axi_bresp};
+  assign cb_m_axi_bid     = {liteeth_reg_bid,     usb_reg_bid,     vga_reg_bid,     reg_bid,     BUS_cb_axi_bid};
 
-  assign cb_m_axi_rvalid  = {usb_reg_rvalid,  vga_reg_rvalid,  reg_rvalid,  BUS_cb_axi_rvalid};
-  assign cb_m_axi_rlast   = {usb_reg_rlast,   vga_reg_rlast,   reg_rlast,   BUS_cb_axi_rlast};
-  assign cb_m_axi_rresp   = {usb_reg_rresp,   vga_reg_rresp,   reg_rresp,   BUS_cb_axi_rresp};
-  assign cb_m_axi_rid     = {usb_reg_rid,     vga_reg_rid,     reg_rid,     BUS_cb_axi_rid};
-  assign cb_m_axi_rdata   = {usb_reg_rdata,   vga_reg_rdata,   reg_rdata,   BUS_cb_axi_rdata};
+  assign cb_m_axi_rvalid  = {liteeth_reg_rvalid,  usb_reg_rvalid,  vga_reg_rvalid,  reg_rvalid,  BUS_cb_axi_rvalid};
+  assign cb_m_axi_rlast   = {liteeth_reg_rlast,   usb_reg_rlast,   vga_reg_rlast,   reg_rlast,   BUS_cb_axi_rlast};
+  assign cb_m_axi_rresp   = {liteeth_reg_rresp,   usb_reg_rresp,   vga_reg_rresp,   reg_rresp,   BUS_cb_axi_rresp};
+  assign cb_m_axi_rid     = {liteeth_reg_rid,     usb_reg_rid,     vga_reg_rid,     reg_rid,     BUS_cb_axi_rid};
+  assign cb_m_axi_rdata   = {liteeth_reg_rdata,   usb_reg_rdata,   vga_reg_rdata,   reg_rdata,   BUS_cb_axi_rdata};
 
 
   ///////////////////////////////////////////////////////////
@@ -822,7 +841,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic             c0_init_calib_complete;
   logic          dbg_clk;
   logic [511 : 0]   dbg_bus;
-  logic             ui_clk_sync_rst;
+  logic          BUSRST; //AXI bus reset
+  logic          BUSRSTn = ~BUSRST;
 
   logic          CLK208;
   logic             clk167;
@@ -858,9 +878,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   // USB clock
   logic            clk48MHz_raw, clk48MHz;
 (* ASYNC_REG="TRUE" *) logic usb_irq_ff1, usb_irq_ff2;
+(* ASYNC_REG="TRUE" *) logic liteeth_irq_ff1, liteeth_irq_ff2;
 
 
-  
   // FIXME: CHECK IF THIS IS OK. clk167 is actually 200 MHz. Only one 200 MHz clock output is really needed
   // FIXME: CHECK IF THIS IS OK. clk167 is actually 200 MHz. Only one 200 MHz clock output is really needed
   // FIXME: CHECK IF THIS IS OK. clk167 is actually 200 MHz. Only one 200 MHz clock output is really needed
@@ -889,7 +909,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     BUFG u_bufg_rmii (
     .I(phy_ref_clk_raw),
     .O(rmii_clk50)
-    );    
+    );
 
     // drive PHY + LiteEth
     //assign rmii_ref_clk = rmii_clk50;
@@ -940,6 +960,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
                     , .AXI_DMAIntr(dma_introut_sync)
                     //, .AXI_USBIntr(usb_irq)
                     , .AXI_USBIntr(usb_irq_ff2)
+                    , .AXI_EthIntr(liteeth_irq_ff2)
                     );
 
   // ahb lite to axi bridge
@@ -1039,7 +1060,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
      .s_axi_rready(m_axi_rready),
 
      .m_axi_aclk(BUSCLK),
-     .m_axi_aresetn(resetn),
+     .m_axi_aresetn(BUSRSTn),
      .m_axi_awid(BUS_axi_awid),
      .m_axi_awlen(BUS_axi_awlen),
      .m_axi_awsize(BUS_axi_awsize),
@@ -1082,7 +1103,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   axicrossbar axicrossbar (
     .aclk(BUSCLK),
-    .aresetn(resetn),
+    .aresetn(BUSRSTn),
 
     // Packed S_AXI (S00=CPU, S01=CDMA)
     .s_axi_awaddr(cb_s_axi_awaddr),
@@ -1178,7 +1199,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   // M02 (AXI4/64) -> axi_vga_wrap (AXI slave regs + AXI master scanout), all on BUSCLK
   axi_vga_wrap axi_vga_wrap_i (
     .aclk    (BUSCLK),
-    .aresetn (resetn),
+    .aresetn (BUSRSTn),
 
     // AXI slave regs (from crossbar M02)
     .s_axi_awid    (cb_m_axi_awid[11:8]),
@@ -1273,9 +1294,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   );
 
   // M03 (AXI4/64) -> MMIO bridge -> AXI4-Lite/32 -> USB OHCI control regs
-  axi64_mmio_to_axilite32 mmio_usbregs (
+  axi64_mmio_to_axilite32_v2 mmio_usbregs (
     .aclk(BUSCLK),
-    .aresetn(resetn),
+    .aresetn(BUSRSTn),
 
     // AXI4 slave side from crossbar M03
     .s_axi_awid    (cb_m_axi_awid[15:12]),
@@ -1341,17 +1362,17 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   BUFG u_bufg_usb (
     .I(clk48MHz_raw),
     .O(clk48MHz)
-  );    
+  );
 
   // USB OHCI wrapper (SpinalHDL UsbOhciAxi4_p2_dma64)
   // NOTE: phy_clk should be 48 MHz (or another integer multiple of 12 MHz). rmii_clk50 is only a placeholder.
   usb_ohci_wrap usb_ohci_i (
     // Clocks / resets
     .ctrl_clk     (BUSCLK),
-    .ctrl_aresetn (resetn),
+    .ctrl_aresetn (BUSRSTn),
     //.phy_clk      (rmii_clk50),
     .phy_clk   (clk48MHz),
-    .phy_aresetn  (resetn),
+    .phy_aresetn  (BUSRSTn),
 
     // Control (AXI4/32, AXI-Lite subset)
     .s_axi_awid    (usb_ctrl_awid),
@@ -1446,21 +1467,103 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   );
 
   // latch/synchronize INT request coming from a different clock domain after two flip-flops
-  always_ff @(posedge CPUCLK or negedge resetn) begin
-    if (!resetn) begin
+  always_ff @(posedge CPUCLK or negedge peripheral_aresetn) begin
+    if (!peripheral_aresetn) begin
         usb_irq_ff1 <= 1'b0;
         usb_irq_ff2 <= 1'b0;
     end else begin
         usb_irq_ff1 <= usb_irq;       // usb_irq is from BUSCLK domain
         usb_irq_ff2 <= usb_irq_ff1;
     end
-  end  
+  end
+
+  liteEthRGMIIAxiWrap  #(
+    .RX_BASE(P.AXI_ETH_BASE),
+    .TX_BASE(P.AXI_ETH_BASE + 'h1000),
+    .CSR_BASE(P.AXI_ETH_BASE + 'h2000)
+  ) liteEthAXI   (
+    .bus_clk(BUSCLK),
+    .bus_resetn(BUSRSTn),   // active-low reset (for adapter/shim)
+    .clk200(clk200),    // 200 MHz ref clock
+    .clk200_locked(mmcm1_locked),
+
+    // ------------------------------------------------------------
+    // AXI4 (64-bit) SLAVE interface (connect directly to crossbar)
+    // ------------------------------------------------------------
+    .s_axi_awid    (cb_m_axi_awid[19:16]),
+    .s_axi_awaddr  (cb_m_axi_awaddr[159:128]),
+    .s_axi_awlen   (cb_m_axi_awlen[39:32]),
+    .s_axi_awsize  (cb_m_axi_awsize[14:12]),
+    .s_axi_awburst (cb_m_axi_awburst[9:8]),
+    .s_axi_awvalid (cb_m_axi_awvalid[4]),
+    .s_axi_awready (liteeth_reg_awready),
+
+    .s_axi_wdata   (cb_m_axi_wdata[319:256]),
+    .s_axi_wstrb   (cb_m_axi_wstrb[39:32]),
+    .s_axi_wlast   (cb_m_axi_wlast[4]),
+    .s_axi_wvalid  (cb_m_axi_wvalid[4]),
+    .s_axi_wready  (liteeth_reg_wready),
+
+
+    .s_axi_bresp   (liteeth_reg_bresp),
+    .s_axi_bvalid  (liteeth_reg_bvalid),
+    .s_axi_bid     (liteeth_reg_bid),
+    .s_axi_bready  (cb_m_axi_bready[4]),
+
+
+    .s_axi_arid    (cb_m_axi_arid[19:16]),
+    .s_axi_araddr  (cb_m_axi_araddr[159:128]),
+    .s_axi_arlen   (cb_m_axi_arlen[39:32]),
+    .s_axi_arsize  (cb_m_axi_arsize[14:12]),
+    .s_axi_arburst (cb_m_axi_arburst[9:8]),
+    .s_axi_arvalid (cb_m_axi_arvalid[4]),
+    .s_axi_arready (liteeth_reg_arready),
+
+    .s_axi_rdata   (liteeth_reg_rdata),
+    .s_axi_rresp   (liteeth_reg_rresp),
+    .s_axi_rlast   (liteeth_reg_rlast),
+    .s_axi_rvalid  (liteeth_reg_rvalid),
+    .s_axi_rid     (liteeth_reg_rid),
+    .s_axi_rready  (cb_m_axi_rready[4]),
+
+
+    // ------------------------------------------------------------
+    // LiteEth PHY pins
+    // ------------------------------------------------------------
+    .rgmii_clocks_rx(rgmii_clocks_rx),
+    .rgmii_clocks_tx(rgmii_clocks_tx),
+    .rgmii_int_n(rgmii_int_n),
+    .rgmii_mdc(rgmii_mdc),
+    .rgmii_mdio(rgmii_mdio),
+    .rgmii_rst_n(rgmii_rst_n),
+    .rgmii_rx_ctl(rgmii_rx_ctl),
+    .rgmii_rx_data(rgmii_rx_data),
+    .rgmii_tx_ctl(rgmii_tx_ctl),
+    .rgmii_tx_data(rgmii_tx_data),
+
+    // ------------------------------------------------------------
+    // Interrupt (BUS clock domain, raw from core)
+    // ------------------------------------------------------------
+    .interrupt(liteeth_irq)
+  );
+
+
+  // latch/synchronize INT request coming from a BUS CLK domain
+  always_ff @(posedge CPUCLK or negedge peripheral_aresetn) begin
+    if (!peripheral_aresetn) begin
+        liteeth_irq_ff1 <= 1'b0;
+        liteeth_irq_ff2 <= 1'b0;
+    end else begin
+        liteeth_irq_ff1 <= liteeth_irq;       // liteeth_irq is from BUSCLK domain
+        liteeth_irq_ff2 <= liteeth_irq_ff1;
+    end
+  end
 
 
   // M01 (AXI4/64) -> MMIO bridge -> AXI4-Lite/32 -> CDMA regs
-  axi64_mmio_to_axilite32 mmio_cdmaregs (
+  axi64_mmio_to_axilite32_v2 mmio_cdmaregs (
     .aclk(BUSCLK),
-    .aresetn(resetn),
+    .aresetn(BUSRSTn),
 
     // AXI4 slave side from crossbar M01
     .s_axi_awid    (cb_m_axi_awid[7:4]),
@@ -1527,8 +1630,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     (* ASYNC_REG="TRUE" *) logic [1:0] dma_irq_sync;
 
     //always_ff @(posedge clk_out3_mmcm or posedge reset) begin
-    always_ff @(posedge CPUCLK or posedge reset) begin
-    if (reset)
+    always_ff @(posedge CPUCLK or posedge peripheral_reset) begin
+    if (peripheral_reset)
         dma_irq_sync <= 2'b00;
     else
         dma_irq_sync <= {dma_irq_sync[0], dma_introut}; // dma_introut = introut signal
@@ -1540,12 +1643,12 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   axicdma axicdma (
     .m_axi_aclk        (BUSCLK),
     .s_axi_lite_aclk   (BUSCLK),
-    .s_axi_lite_aresetn(resetn),
+    .s_axi_lite_aresetn(BUSRSTn),
 
     // AXI4-Lite control
-	    // This project generates CDMA with a small AXI4-Lite address port (6 bits).
-	    // Base address decode is done in the crossbar; CDMA only needs low bits for register offsets.
-	    .s_axi_lite_awaddr (pc_lite_awaddr[5:0]),
+        // This project generates CDMA with a small AXI4-Lite address port (6 bits).
+        // Base address decode is done in the crossbar; CDMA only needs low bits for register offsets.
+    .s_axi_lite_awaddr (pc_lite_awaddr[5:0]),
     .s_axi_lite_awvalid(pc_lite_awvalid),
     .s_axi_lite_awready(pc_lite_awready),
 
@@ -1557,7 +1660,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .s_axi_lite_bvalid (pc_lite_bvalid),
     .s_axi_lite_bready (pc_lite_bready),
 
-	    .s_axi_lite_araddr (pc_lite_araddr[5:0]),
+    .s_axi_lite_araddr (pc_lite_araddr[5:0]),
     .s_axi_lite_arvalid(pc_lite_arvalid),
     .s_axi_lite_arready(pc_lite_arready),
 
@@ -1642,7 +1745,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
      .clk_ref_i(clk200),
 
      .ui_clk(BUSCLK),
-     .ui_clk_sync_rst(ui_clk_sync_rst),
+     .ui_clk_sync_rst(BUSRST),
+     // FIXME: Is this OK?
      .aresetn(resetn),
      .sys_rst(resetn),    // omg. this is active low?!?!??
      .mmcm_locked(mmcm_locked),

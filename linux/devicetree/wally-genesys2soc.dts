@@ -102,7 +102,7 @@
       mmc@0 {
         compatible = "mmc-spi-slot";
         reg = <0>;
-        spi-max-frequency = <25000000>;
+        spi-max-frequency = <10000000>;
         voltage-ranges = <3300 3300>;
         disable-wp;
       };
@@ -128,16 +128,16 @@
         status = "okay";
   };
 
-    eth0: ethernet@11003000 {
+    eth0: ethernet@100D3000 {
         compatible = "litex,liteeth";
 
-        reg = <0x0 0x11003000 0x0 0x100>,     // mac  (csr+0x1000) 
-                <0x0 0x11002800 0x0 0x100>,   // mdio (csr+0x0800)
-                <0x0 0x11000000 0x0 0x2000>;  // buffer 
+        reg = <0x0 0x100D3000 0x0 0x100>,     // mac  (csr+0x1000)
+                <0x0 0x100D2800 0x0 0x100>,   // mdio (csr+0x0800)
+                <0x0 0x100D0000 0x0 0x2000>;  // buffer
         reg-names = "mac", "mdio", "buffer";
 
         interrupt-parent = <0x03>;
-        interrupts = <0xC>;
+        interrupts = <15>;
 
         litex,rx-slots  = <2>;
         litex,tx-slots  = <2>;
@@ -152,7 +152,7 @@
 
             ethphy0: ethernet-phy@0 {
                 reg = <0>;
-};
+            };
         };
 
     };
@@ -161,7 +161,7 @@
     busclk: busclk {
       #clock-cells = <0>;
       compatible = "fixed-clock";
-      clock-frequency = <81250000>;
+      clock-frequency = <200000000>;
       clock-output-names = "busclk";
     };
 
@@ -173,7 +173,7 @@
         xlnx,addrwidth = <0x20>; // 32-bit addresses
         status = "okay";
 
-        
+
         // DMA visible memory window.
         // For your 128MB DDR at 0x8000_0000..0x87FF_FFFF:
         //dma-ranges = <0x80000000 0x80000000 0x08000000>;
@@ -212,14 +212,14 @@
     #address-cells = <2>;
     #size-cells = <2>;
     ranges;
-    framebuffer@BFF60000 {
-        reg = <0x0 0xB7F00000 0x0 0x00096000>; // 640 KiB reserved
+    framebuffer@BFF00000 {
+        reg = <0x0 0xBFF00000 0x0 0x00096000>; // 640 KiB reserved
         no-map;
     };
 
-    dmabuffer@BFF60000 {
+    dmabuffer@BFE00000 {
         compatible = "shared-dma-pool";
-        reg = <0x0 0x87400000 0x0 0x00100000>; // 1 MiB reserved
+        reg = <0x0 0xBFE00000 0x0 0x00100000>; // 1 MiB reserved
         no-map;
     };
 
@@ -229,12 +229,12 @@
         no-map;
     };
   };
-    
+
 
   //320 x 240
-  framebuffer0: framebuffer@BFF60000 {
+  framebuffer0: framebuffer@BFF00000 {
     compatible = "simple-framebuffer";
-    reg = <0x0 0xBFF60000 0x0 0x00025800>;
+    reg = <0x0 0xBFF00000 0x0 0x00025800>;
     width = <320>;
     height = <240>;
     stride = <640>;  // 320 * 2
@@ -242,5 +242,3 @@
   };
 
 };
-
-
