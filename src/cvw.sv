@@ -145,6 +145,9 @@ typedef struct packed {
   logic         SPI_SUPPORTED;
   logic [63:0]  SPI_BASE;
   logic [63:0]  SPI_RANGE;
+  logic         XILINX_AXI_BR_SUPPORTED;
+  logic         XILINX_CDC_SUPPORTED;
+  logic         XILINX_XBAR_SUPPORTED;
   logic         WISHBONE_SUPPORTED;
   logic [63:0]  WISHBONE_BASE;
   logic [63:0]  WISHBONE_RANGE;

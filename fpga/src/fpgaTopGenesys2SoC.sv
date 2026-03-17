@@ -134,6 +134,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   // MMCM Signals
   logic          CPUCLK;
+  logic          c0_ddr4_ui_clk_sync_rst;
   logic          bus_struct_reset;
   logic          peripheral_reset;
   logic          interconnect_aresetn;
@@ -145,18 +146,18 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic          HRESETnOpen;
   logic [63:0]      HRDATAEXT;
   logic          HREADYEXT;
-  logic          HRESPEXT;
+  (* mark_debug = "true" *) logic          HRESPEXT;
   logic          HSELEXT;
   logic [55:0]      HADDR;
   logic [63:0]      HWDATA;
   logic [64/8-1:0]  HWSTRB;
   logic          HWRITE;
   logic [2:0]      HSIZE;
-  logic [2:0]      HBURST;
+  (* mark_debug = "true" *) logic [2:0]      HBURST;
   logic [1:0]      HTRANS;
   logic          HREADY;
-  logic [3:0]      HPROT;
-  logic          HMASTLOCK;
+  (* mark_debug = "true" *) logic [3:0]      HPROT;
+  (* mark_debug = "true" *) logic          HMASTLOCK;
 
   // GPIO Signals
   logic [31:0]      GPIOIN, GPIOOUT, GPIOEN;
@@ -182,7 +183,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic             m_axi_bvalid;
   logic             m_axi_bready;
   logic [3:0]      m_axi_arid;
-  logic [7:0]      m_axi_arlen;
+  (* mark_debug = "true" *) logic [7:0]      m_axi_arlen;
   logic [2:0]      m_axi_arsize;
   logic [1:0]      m_axi_arburst;
   logic [2:0]      m_axi_arprot;
@@ -204,40 +205,40 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic [3:0]      BUS_axi_awregion;
   logic [3:0]      BUS_axi_awqos;
   logic [3:0]      BUS_axi_awid;
-  logic [7:0]      BUS_axi_awlen;
-  logic [2:0]      BUS_axi_awsize;
-  logic [1:0]      BUS_axi_awburst;
+  (* mark_debug = "true" *) logic [7:0]      BUS_axi_awlen;
+  (* mark_debug = "true" *) logic [2:0]      BUS_axi_awsize;
+  (* mark_debug = "true" *) logic [1:0]      BUS_axi_awburst;
   logic [3:0]      BUS_axi_awcache;
-  logic [31:0]      BUS_axi_awaddr;
+  (* mark_debug = "true" *) logic [31:0]      BUS_axi_awaddr;
   logic [2:0]      BUS_axi_awprot;
-  logic          BUS_axi_awvalid;
-  logic          BUS_axi_awready;
-  logic          BUS_axi_awlock;
+  (* mark_debug = "true" *) logic          BUS_axi_awvalid;
+  (* mark_debug = "true" *) logic          BUS_axi_awready;
+  (* mark_debug = "true" *) logic          BUS_axi_awlock;
   logic [63:0]      BUS_axi_wdata;
   logic [7:0]      BUS_axi_wstrb;
-  logic          BUS_axi_wlast;
+  (* mark_debug = "true" *) logic          BUS_axi_wlast;
   logic          BUS_axi_wvalid;
   logic          BUS_axi_wready;
   logic [3:0]      BUS_axi_bid;
   logic [1:0]      BUS_axi_bresp;
   logic          BUS_axi_bvalid;
   logic          BUS_axi_bready;
-  logic [3:0]      BUS_axi_arid;
-  logic [7:0]      BUS_axi_arlen;
-  logic [2:0]      BUS_axi_arsize;
-  logic [1:0]      BUS_axi_arburst;
-  logic [2:0]      BUS_axi_arprot;
-  logic [3:0]      BUS_axi_arcache;
-  logic          BUS_axi_arvalid;
-  logic [31:0]      BUS_axi_araddr;
-  logic          BUS_axi_arlock;
-  logic          BUS_axi_arready;
-  logic [3:0]      BUS_axi_rid;
-  logic [63:0]      BUS_axi_rdata;
-  logic [1:0]      BUS_axi_rresp;
-  logic          BUS_axi_rvalid;
-  logic          BUS_axi_rlast;
-  logic          BUS_axi_rready;
+  (* mark_debug = "true" *) logic [3:0]      BUS_axi_arid;
+  (* mark_debug = "true" *) logic [7:0]      BUS_axi_arlen;
+  (* mark_debug = "true" *) logic [2:0]      BUS_axi_arsize;
+  (* mark_debug = "true" *) logic [1:0]      BUS_axi_arburst;
+  (* mark_debug = "true" *) logic [2:0]      BUS_axi_arprot;
+  (* mark_debug = "true" *) logic [3:0]      BUS_axi_arcache;
+  (* mark_debug = "true" *) logic          BUS_axi_arvalid;
+  (* mark_debug = "true" *) logic [31:0]      BUS_axi_araddr;
+  (* mark_debug = "true" *) logic          BUS_axi_arlock;
+  (* mark_debug = "true" *) logic          BUS_axi_arready;
+  (* mark_debug = "true" *) logic [3:0]      BUS_axi_rid;
+  (* mark_debug = "true" *) logic [63:0]      BUS_axi_rdata;
+  (* mark_debug = "true" *) logic [1:0]      BUS_axi_rresp;
+  (* mark_debug = "true" *) logic          BUS_axi_rvalid;
+  (* mark_debug = "true" *) logic          BUS_axi_rlast;
+  (* mark_debug = "true" *) logic          BUS_axi_rready;
 
   // AXI master Signals going out of Clock Converter (MIG-facing, M00 slice)
   logic [3:0]      BUS_cb_axi_arregion;
@@ -452,7 +453,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic        vga_m_axi_rvalid;
   logic        vga_m_axi_rready;
 
-  // USB OHCI DMA M_AXI (master into crossbar S03)
+    // USB OHCI DMA M_AXI (master into crossbar S03)
   logic [3:0]  usb_m_axi_awid;
   logic [31:0] usb_m_axi_awaddr;
   logic [7:0]  usb_m_axi_awlen;
@@ -645,6 +646,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   wire        pc_lite_rready;
 
   wire        dma_introut;
+  logic       dma_introut_sync;
+  logic      usb_phy_resetn_sync;
+
 
   // IMPORTANT: the generated AXI CDMA instance in this project is an ID-less / lock-less AXI master.
   // It does not expose m_axi_awid/arid/bid/rid nor m_axi_awlock/arlock ports.
@@ -836,13 +840,18 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   ///////////////////////////////////////////////////////////
 
   logic          BUSCLK;
-  logic             sdio_reset_open;
+  logic          BUSRST;
+  logic          BUSRSTn;
+  logic          sdio_reset_open;
+  logic          ahblite_resetn;
+  logic          cpu_reset;
+  logic          calib;
+
 
   logic             c0_init_calib_complete;
   logic          dbg_clk;
   logic [511 : 0]   dbg_bus;
-  logic          BUSRST; //AXI bus reset
-  logic          BUSRSTn = ~BUSRST;
+  logic             ui_clk_sync_rst;
 
   logic          CLK208;
   logic             clk167;
@@ -856,6 +865,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic             mmcm1_locked;
 
 (* mark_debug = "true" *)  logic              RVVIStall;
+
+  assign BUSRST = ui_clk_sync_rst;
+  assign BUSRSTn = ~ui_clk_sync_rst;
 
   assign GPIOIN = {25'b0, SDCCD, SDCWP, 1'b0, GPI};
   assign GPO = GPIOOUT[4:0];
@@ -918,13 +930,24 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
 `endif
 
+
+  logic init_calib_complete_cpu;
+  // FIXME: use 'synchronizer' instead
+  // CDC timing fix for async reset
+  (* ASYNC_REG="TRUE" *) logic [1:0] calib_sync;
+  //always_ff @(posedge CPUCLK or negedge resetn) begin
+  always_ff @(posedge CPUCLK) begin
+    calib_sync <= {calib_sync[0], c0_init_calib_complete};
+  end
+  assign init_calib_complete_cpu = calib_sync[1];
+
   // reset controller XILINX IP
   sysrst sysrst
     (.slowest_sync_clk(CPUCLK),
      .ext_reset_in(1'b0),
      .aux_reset_in(south_reset),
      .mb_debug_sys_rst(1'b0),
-     .dcm_locked(c0_init_calib_complete),
+     .dcm_locked(init_calib_complete_cpu),
      .mb_reset(mb_reset),  //open
      .bus_struct_reset(bus_struct_reset),
      .peripheral_reset(peripheral_reset), //open
@@ -963,6 +986,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
                     , .AXI_EthIntr(liteeth_irq_ff2)
                     );
 
+  if (P.XILINX_AXI_BR_SUPPORTED) begin
   // ahb lite to axi bridge
   ahbaxibridge ahbaxibridge
     (.s_ahb_hclk(CPUCLK),
@@ -1014,93 +1038,372 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
      .m_axi_rvalid(m_axi_rvalid),
      .m_axi_rlast(m_axi_rlast),
      .m_axi_rready(m_axi_rready));
+  end else begin
 
-  // AXI Clock Converter
-  clkconverter clkconverter
-    (.s_axi_aclk(CPUCLK),
-     .s_axi_aresetn(peripheral_aresetn),
-     .s_axi_awid(m_axi_awid),
-     .s_axi_awlen(m_axi_awlen),
-     .s_axi_awsize(m_axi_awsize),
-     .s_axi_awburst(m_axi_awburst),
-     .s_axi_awcache(m_axi_awcache),
-     .s_axi_awaddr(m_axi_awaddr[31:0] ),
-     .s_axi_awprot(m_axi_awprot),
-     .s_axi_awregion(4'b0), // bridge does not provide these
-     .s_axi_awqos(4'b0),    // bridge does not provide these
-     .s_axi_awvalid(m_axi_awvalid),
-     .s_axi_awready(m_axi_awready),
-     .s_axi_awlock(m_axi_awlock),
-     .s_axi_wdata(m_axi_wdata),
-     .s_axi_wstrb(m_axi_wstrb),
-     .s_axi_wlast(m_axi_wlast),
-     .s_axi_wvalid(m_axi_wvalid),
-     .s_axi_wready(m_axi_wready),
-     .s_axi_bid(m_axi_bid),
-     .s_axi_bresp(m_axi_bresp),
-     .s_axi_bvalid(m_axi_bvalid),
-     .s_axi_bready(m_axi_bready),
-     .s_axi_arid(m_axi_arid),
-     .s_axi_arlen(m_axi_arlen),
-     .s_axi_arsize(m_axi_arsize),
-     .s_axi_arburst(m_axi_arburst),
-     .s_axi_arprot(m_axi_arprot),
-     .s_axi_arregion(4'b0), // bridge does not provide these
-     .s_axi_arqos(4'b0),    // bridge does not provide these
-     .s_axi_arcache(m_axi_arcache),
-     .s_axi_arvalid(m_axi_arvalid),
-     .s_axi_araddr(m_axi_araddr[31:0]),
-     .s_axi_arlock(m_axi_arlock),
-     .s_axi_arready(m_axi_arready),
-     .s_axi_rid(m_axi_rid),
-     .s_axi_rdata(m_axi_rdata),
-     .s_axi_rresp(m_axi_rresp),
-     .s_axi_rvalid(m_axi_rvalid),
-     .s_axi_rlast(m_axi_rlast),
-     .s_axi_rready(m_axi_rready),
+    ahb_to_axi4_burst ahbaxibridge
+    (
+        .clk(CPUCLK),
+        .resetn(peripheral_aresetn),
 
-     .m_axi_aclk(BUSCLK),
-     .m_axi_aresetn(BUSRSTn),
-     .m_axi_awid(BUS_axi_awid),
-     .m_axi_awlen(BUS_axi_awlen),
-     .m_axi_awsize(BUS_axi_awsize),
-     .m_axi_awburst(BUS_axi_awburst),
-     .m_axi_awcache(BUS_axi_awcache),
-     .m_axi_awaddr(BUS_axi_awaddr),
-     .m_axi_awprot(BUS_axi_awprot),
-     .m_axi_awregion(BUS_axi_awregion),
-     .m_axi_awqos(BUS_axi_awqos),
-     .m_axi_awvalid(BUS_axi_awvalid),
-     .m_axi_awready(BUS_axi_awready),
-     .m_axi_awlock(BUS_axi_awlock),
-     .m_axi_wdata(BUS_axi_wdata),
-     .m_axi_wstrb(BUS_axi_wstrb),
-     .m_axi_wlast(BUS_axi_wlast),
-     .m_axi_wvalid(BUS_axi_wvalid),
-     .m_axi_wready(BUS_axi_wready),
-     .m_axi_bid(BUS_axi_bid),
-     .m_axi_bresp(BUS_axi_bresp),
-     .m_axi_bvalid(BUS_axi_bvalid),
-     .m_axi_bready(BUS_axi_bready),
-     .m_axi_arid(BUS_axi_arid),
-     .m_axi_arlen(BUS_axi_arlen),
-     .m_axi_arsize(BUS_axi_arsize),
-     .m_axi_arburst(BUS_axi_arburst),
-     .m_axi_arprot(BUS_axi_arprot),
-     .m_axi_arregion(BUS_axi_arregion),
-     .m_axi_arqos(BUS_axi_arqos),
-     .m_axi_arcache(BUS_axi_arcache),
-     .m_axi_arvalid(BUS_axi_arvalid),
-     .m_axi_araddr(BUS_axi_araddr),
-     .m_axi_arlock(BUS_axi_arlock),
-     .m_axi_arready(BUS_axi_arready),
-     .m_axi_rid(BUS_axi_rid),
-     .m_axi_rdata(BUS_axi_rdata),
-     .m_axi_rresp(BUS_axi_rresp),
-     .m_axi_rvalid(BUS_axi_rvalid),
-     .m_axi_rlast(BUS_axi_rlast),
-     .m_axi_rready(BUS_axi_rready));
+        .HSEL(HSELEXT),
+        .HADDR(HADDR[31:0]),
+        .HPROT(HPROT),
+        .HTRANS(HTRANS),
+        .HSIZE(HSIZE),
+        .HWRITE(HWRITE),
+        .HBURST(HBURST),
+        .HWDATA(HWDATA),
+        .HREADY(HREADYEXT),
+        .HREADYIN(HREADY),
+        .HRDATA(HRDATAEXT),
+        .HRESP(HRESPEXT),
+        // not in ahbaxibridge
+        .HMASTLOCK(HMASTLOCK),
 
+        .AWID(m_axi_awid),
+        .AWLEN(m_axi_awlen),
+        .AWSIZE(m_axi_awsize),
+        .AWBURST(m_axi_awburst),
+        .AWCACHE(m_axi_awcache),
+        .AWADDR(m_axi_awaddr),
+        .AWPROT(m_axi_awprot),
+        .AWVALID(m_axi_awvalid),
+        .AWREADY(m_axi_awready),
+        .AWLOCK(m_axi_awlock),
+        // not in ahbaxibridge
+        .AWQOS(4'b0000),
+
+        .WDATA(m_axi_wdata),
+        .WSTRB(m_axi_wstrb),
+        .WLAST(m_axi_wlast),
+        .WVALID(m_axi_wvalid),
+        .WREADY(m_axi_wready),
+
+        // ── AXI4 Master: Write Response ─────────────────────────────────────────────
+        .BID(m_axi_bid),
+        .BRESP(m_axi_bresp),
+        .BVALID(m_axi_bvalid),
+        .BREADY(m_axi_bready),
+
+        // ── AXI4 Master: Read Address ───────────────────────────────────────────────
+        .ARID(m_axi_arid),
+        .ARLEN(m_axi_arlen),
+        .ARSIZE(m_axi_arsize),
+        .ARBURST(m_axi_arburst),
+        .ARPROT(m_axi_arprot),
+        .ARCACHE(m_axi_arcache),
+        .ARVALID(m_axi_arvalid),
+        .ARADDR(m_axi_araddr),
+        .ARLOCK(m_axi_arlock),
+        .ARREADY(m_axi_arready),
+        // not in ahbaxibridge
+        .ARQOS(4'b0000),
+
+        // ── AXI4 Master: Read Data ──────────────────────────────────────────────────
+        .RID(m_axi_rid),
+        .RDATA(m_axi_rdata),
+        .RRESP(m_axi_rresp),
+        .RVALID(m_axi_rvalid),
+        .RLAST(m_axi_rlast),
+        .RREADY(m_axi_rready)
+
+    );
+  end;
+
+
+
+  // PULP STYLE DEFINITIONS
+  // Matches your Vivado TCL intent: NUM_SI=4, NUM_MI=4, ADDR=32, DATA=64.
+  // Slave-port ID width = 2 (your real initiator ID bits).
+  localparam int unsigned ADDR_W    = 32; // FIXME
+  //localparam int unsigned DATA_W    = 64;
+  localparam int unsigned DATA_W    = P.XLEN;
+  localparam int unsigned STRB_W    = DATA_W/8;
+
+  localparam int unsigned N_SLV     = 4;
+  localparam int unsigned N_MST     = 4;
+  localparam int unsigned SLV_ID_W  = 2;
+  localparam int unsigned MST_ID_W  = SLV_ID_W + $clog2(N_SLV); // 2+2=4 (goes to MIG)
+  localparam int unsigned N_RULES   = 4;
+
+  typedef logic [SLV_ID_W-1:0] slv_id_t;
+  typedef logic [MST_ID_W-1:0] mst_id_t;
+
+  // FIXME
+  localparam int unsigned MIG_ADDR_WIDTH = 30;
+
+  // Reuse your existing DDR region size exponent from the Vivado config.
+  // (Xilinx Mxx_Ayy_ADDR_WIDTH means region size = 2^ADDR_WIDTH bytes.)
+  localparam int unsigned DDR_ADDR_BITS = MIG_ADDR_WIDTH;
+
+  typedef logic [ADDR_W-1:0] axi_addr_t;
+  typedef logic [DATA_W-1:0] axi_data_t;
+  typedef logic [STRB_W-1:0] axi_strb_t;
+
+  typedef logic user_t; // unused user, tie-off to 0
+
+  // Slave-port channel/req/resp types (initiators)
+  `AXI_TYPEDEF_AW_CHAN_T(slv_aw_t, axi_addr_t, slv_id_t, user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(slv_ar_t, axi_addr_t, slv_id_t, user_t)
+  `AXI_TYPEDEF_W_CHAN_T (axi_w_t,  axi_data_t, axi_strb_t, user_t)
+  `AXI_TYPEDEF_B_CHAN_T (slv_b_t,  slv_id_t, user_t)
+  `AXI_TYPEDEF_R_CHAN_T (slv_r_t,  axi_data_t, slv_id_t, user_t)
+  `AXI_TYPEDEF_REQ_T    (slv_req_t, slv_aw_t, axi_w_t, slv_ar_t)
+  `AXI_TYPEDEF_RESP_T   (slv_resp_t, slv_b_t, slv_r_t)
+
+  // Master-port channel/req/resp types (targets)
+  `AXI_TYPEDEF_AW_CHAN_T(mst_aw_t, axi_addr_t, mst_id_t, user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(mst_ar_t, axi_addr_t, mst_id_t, user_t)
+  `AXI_TYPEDEF_B_CHAN_T (mst_b_t,  mst_id_t, user_t)
+  `AXI_TYPEDEF_R_CHAN_T (mst_r_t,  axi_data_t, mst_id_t, user_t)
+  `AXI_TYPEDEF_REQ_T    (mst_req_t, mst_aw_t, axi_w_t, mst_ar_t)
+  `AXI_TYPEDEF_RESP_T   (mst_resp_t, mst_b_t, mst_r_t)
+
+  localparam int unsigned AXI_USER_W = 1;
+  typedef logic [AXI_USER_W-1:0] axi_user_t; //what is this for?
+
+  // Channel typedefs (PULP macros)
+  `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, axi_addr_t, mst_id_t, axi_user_t)
+  `AXI_TYPEDEF_W_CHAN_T (w_chan_t,  axi_data_t, axi_strb_t, axi_user_t)
+  `AXI_TYPEDEF_B_CHAN_T (b_chan_t,  mst_id_t, axi_user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, axi_addr_t, mst_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T (r_chan_t,  axi_data_t, mst_id_t, axi_user_t)
+
+  `AXI_TYPEDEF_REQ_T (axi_req_t,  aw_chan_t, w_chan_t, ar_chan_t)
+  `AXI_TYPEDEF_RESP_T(axi_resp_t, b_chan_t,  r_chan_t)
+
+
+  if (P.XILINX_CDC_SUPPORTED) begin
+
+    // AXI Clock Converter
+    clkconverter clkconverter
+      (.s_axi_aclk(CPUCLK),
+       .s_axi_aresetn(peripheral_aresetn),
+       .s_axi_awid(m_axi_awid),
+       .s_axi_awlen(m_axi_awlen),
+       .s_axi_awsize(m_axi_awsize),
+       .s_axi_awburst(m_axi_awburst),
+       .s_axi_awcache(m_axi_awcache),
+       .s_axi_awaddr(m_axi_awaddr[31:0] ),
+       .s_axi_awprot(m_axi_awprot),
+       .s_axi_awregion(4'b0), // bridge does not provide these
+       .s_axi_awqos(4'b0),    // bridge does not provide these
+       .s_axi_awvalid(m_axi_awvalid),
+       .s_axi_awready(m_axi_awready),
+       .s_axi_awlock(m_axi_awlock),
+       .s_axi_wdata(m_axi_wdata),
+       .s_axi_wstrb(m_axi_wstrb),
+       .s_axi_wlast(m_axi_wlast),
+       .s_axi_wvalid(m_axi_wvalid),
+       .s_axi_wready(m_axi_wready),
+       .s_axi_bid(m_axi_bid),
+       .s_axi_bresp(m_axi_bresp),
+       .s_axi_bvalid(m_axi_bvalid),
+       .s_axi_bready(m_axi_bready),
+       .s_axi_arid(m_axi_arid),
+       .s_axi_arlen(m_axi_arlen),
+       .s_axi_arsize(m_axi_arsize),
+       .s_axi_arburst(m_axi_arburst),
+       .s_axi_arprot(m_axi_arprot),
+       .s_axi_arregion(4'b0), // bridge does not provide these
+       .s_axi_arqos(4'b0),    // bridge does not provide these
+       .s_axi_arcache(m_axi_arcache),
+       .s_axi_arvalid(m_axi_arvalid),
+       .s_axi_araddr(m_axi_araddr[31:0]),
+       .s_axi_arlock(m_axi_arlock),
+       .s_axi_arready(m_axi_arready),
+       .s_axi_rid(m_axi_rid),
+       .s_axi_rdata(m_axi_rdata),
+       .s_axi_rresp(m_axi_rresp),
+       .s_axi_rvalid(m_axi_rvalid),
+       .s_axi_rlast(m_axi_rlast),
+       .s_axi_rready(m_axi_rready),
+
+       .m_axi_aclk(BUSCLK),
+       .m_axi_aresetn(BUSRSTn),
+       .m_axi_awid(BUS_axi_awid),
+       .m_axi_awlen(BUS_axi_awlen),
+       .m_axi_awsize(BUS_axi_awsize),
+       .m_axi_awburst(BUS_axi_awburst),
+       .m_axi_awcache(BUS_axi_awcache),
+       .m_axi_awaddr(BUS_axi_awaddr),
+       .m_axi_awprot(BUS_axi_awprot),
+       .m_axi_awregion(BUS_axi_awregion),
+       .m_axi_awqos(BUS_axi_awqos),
+       .m_axi_awvalid(BUS_axi_awvalid),
+       .m_axi_awready(BUS_axi_awready),
+       .m_axi_awlock(BUS_axi_awlock),
+       .m_axi_wdata(BUS_axi_wdata),
+       .m_axi_wstrb(BUS_axi_wstrb),
+       .m_axi_wlast(BUS_axi_wlast),
+       .m_axi_wvalid(BUS_axi_wvalid),
+       .m_axi_wready(BUS_axi_wready),
+       .m_axi_bid(BUS_axi_bid),
+       .m_axi_bresp(BUS_axi_bresp),
+       .m_axi_bvalid(BUS_axi_bvalid),
+       .m_axi_bready(BUS_axi_bready),
+       .m_axi_arid(BUS_axi_arid),
+       .m_axi_arlen(BUS_axi_arlen),
+       .m_axi_arsize(BUS_axi_arsize),
+       .m_axi_arburst(BUS_axi_arburst),
+       .m_axi_arprot(BUS_axi_arprot),
+       .m_axi_arregion(BUS_axi_arregion),
+       .m_axi_arqos(BUS_axi_arqos),
+       .m_axi_arcache(BUS_axi_arcache),
+       .m_axi_arvalid(BUS_axi_arvalid),
+       .m_axi_araddr(BUS_axi_araddr),
+       .m_axi_arlock(BUS_axi_arlock),
+       .m_axi_arready(BUS_axi_arready),
+       .m_axi_rid(BUS_axi_rid),
+       .m_axi_rdata(BUS_axi_rdata),
+       .m_axi_rresp(BUS_axi_rresp),
+       .m_axi_rvalid(BUS_axi_rvalid),
+       .m_axi_rlast(BUS_axi_rlast),
+       .m_axi_rready(BUS_axi_rready));
+  end else begin
+
+
+
+
+    // Bundles in each clock domain
+    axi_req_t  cpu_req, bus_req;
+    axi_resp_t cpu_resp, bus_resp;
+
+    // -------------------------
+    // CPUCLK domain (SRC side)
+    // -------------------------
+
+    // Write address channel
+    assign cpu_req.aw.id     = m_axi_awid;
+    assign cpu_req.aw.addr   = m_axi_awaddr[31:0];
+    assign cpu_req.aw.len    = m_axi_awlen;
+    assign cpu_req.aw.size   = m_axi_awsize;
+    assign cpu_req.aw.burst  = m_axi_awburst;
+    assign cpu_req.aw.lock   = m_axi_awlock;
+    assign cpu_req.aw.cache  = m_axi_awcache;
+    assign cpu_req.aw.prot   = m_axi_awprot;
+    assign cpu_req.aw.region = 4'b0;      // like your current tie-off
+    assign cpu_req.aw.qos    = 4'b0;      // like your current tie-off
+    assign cpu_req.aw.atop   = 6'b0;      // if present in your PULP version; otherwise delete
+    assign cpu_req.aw.user   = '0;
+    assign cpu_req.aw_valid  = m_axi_awvalid;
+    assign m_axi_awready     = cpu_resp.aw_ready;
+
+    // Write data channel
+    assign cpu_req.w.data    = m_axi_wdata;
+    assign cpu_req.w.strb    = m_axi_wstrb;
+    assign cpu_req.w.last    = m_axi_wlast;
+    assign cpu_req.w.user    = '0;
+    assign cpu_req.w_valid   = m_axi_wvalid;
+    assign m_axi_wready      = cpu_resp.w_ready;
+
+    // Write response channel
+    assign m_axi_bid         = cpu_resp.b.id;
+    assign m_axi_bresp       = cpu_resp.b.resp;
+    assign m_axi_bvalid      = cpu_resp.b_valid;
+    assign cpu_req.b_ready   = m_axi_bready;
+
+    // Read address channel
+    assign cpu_req.ar.id     = m_axi_arid;
+    assign cpu_req.ar.addr   = m_axi_araddr[31:0];
+    assign cpu_req.ar.len    = m_axi_arlen;
+    assign cpu_req.ar.size   = m_axi_arsize;
+    assign cpu_req.ar.burst  = m_axi_arburst;
+    assign cpu_req.ar.lock   = m_axi_arlock;
+    assign cpu_req.ar.cache  = m_axi_arcache;
+    assign cpu_req.ar.prot   = m_axi_arprot;
+    assign cpu_req.ar.region = 4'b0;      // tie-off
+    assign cpu_req.ar.qos    = 4'b0;      // tie-off
+    assign cpu_req.ar.user   = '0;
+    assign cpu_req.ar_valid  = m_axi_arvalid;
+    assign m_axi_arready     = cpu_resp.ar_ready;
+
+    // Read data channel
+    assign m_axi_rid         = cpu_resp.r.id;
+    assign m_axi_rdata       = cpu_resp.r.data;
+    assign m_axi_rresp       = cpu_resp.r.resp;
+    assign m_axi_rlast       = cpu_resp.r.last;
+    assign m_axi_rvalid      = cpu_resp.r_valid;
+    assign cpu_req.r_ready   = m_axi_rready;
+    //---
+    // -------------------------
+    // BUSCLK domain (DST side)
+    // -------------------------
+
+    // Write address
+    assign BUS_axi_awid      = bus_req.aw.id;
+    assign BUS_axi_awaddr    = bus_req.aw.addr;
+    assign BUS_axi_awlen     = bus_req.aw.len;
+    assign BUS_axi_awsize    = bus_req.aw.size;
+    assign BUS_axi_awburst   = bus_req.aw.burst;
+    assign BUS_axi_awlock    = bus_req.aw.lock;
+    assign BUS_axi_awcache   = bus_req.aw.cache;
+    assign BUS_axi_awprot    = bus_req.aw.prot;
+    assign BUS_axi_awregion  = bus_req.aw.region;
+    assign BUS_axi_awqos     = bus_req.aw.qos;
+    assign BUS_axi_awvalid   = bus_req.aw_valid;
+    assign bus_resp.aw_ready = BUS_axi_awready;
+
+    // Write data
+    assign BUS_axi_wdata     = bus_req.w.data;
+    assign BUS_axi_wstrb     = bus_req.w.strb;
+    assign BUS_axi_wlast     = bus_req.w.last;
+    assign BUS_axi_wvalid    = bus_req.w_valid;
+    assign bus_resp.w_ready  = BUS_axi_wready;
+
+    // Write response
+    assign bus_resp.b.id     = BUS_axi_bid;
+    assign bus_resp.b.resp   = BUS_axi_bresp;
+    assign bus_resp.b_valid  = BUS_axi_bvalid;
+    assign BUS_axi_bready    = bus_req.b_ready;
+
+    // Read address
+    assign BUS_axi_arid      = bus_req.ar.id;
+    assign BUS_axi_araddr    = bus_req.ar.addr;
+    assign BUS_axi_arlen     = bus_req.ar.len;
+    assign BUS_axi_arsize    = bus_req.ar.size;
+    assign BUS_axi_arburst   = bus_req.ar.burst;
+    assign BUS_axi_arlock    = bus_req.ar.lock;
+    assign BUS_axi_arcache   = bus_req.ar.cache;
+    assign BUS_axi_arprot    = bus_req.ar.prot;
+    assign BUS_axi_arregion  = bus_req.ar.region;
+    assign BUS_axi_arqos     = bus_req.ar.qos;
+    assign BUS_axi_arvalid   = bus_req.ar_valid;
+    assign bus_resp.ar_ready = BUS_axi_arready;
+
+    // Read data
+    assign bus_resp.r.id     = BUS_axi_rid;
+    assign bus_resp.r.data   = BUS_axi_rdata;
+    assign bus_resp.r.resp   = BUS_axi_rresp;
+    assign bus_resp.r.last   = BUS_axi_rlast;
+    assign bus_resp.r_valid  = BUS_axi_rvalid;
+    assign BUS_axi_rready    = bus_req.r_ready;
+
+    axi_cdc #(
+        .aw_chan_t ( aw_chan_t   ),
+        .w_chan_t  ( w_chan_t    ),
+        .b_chan_t  ( b_chan_t    ),
+        .ar_chan_t ( ar_chan_t   ),
+        .r_chan_t  ( r_chan_t    ),
+        .axi_req_t ( axi_req_t   ),
+        .axi_resp_t( axi_resp_t  ),
+        .LogDepth  ( 2           ), // FIFO depth = 2**LogDepth; tune if needed
+        .SyncStages( 2           )
+        ) u_axi_cdc (
+        .src_clk_i  ( CPUCLK             ),
+        .src_rst_ni ( peripheral_aresetn ),
+        .src_req_i  ( cpu_req            ),
+        .src_resp_o ( cpu_resp           ),
+
+        .dst_clk_i  ( BUSCLK             ),
+        //.dst_rst_ni ( resetn             ),
+        .dst_rst_ni ( BUSRSTn            ),
+        .dst_req_o  ( bus_req            ),
+        .dst_resp_i ( bus_resp           )
+    );
+  end
+
+  if (P.XILINX_XBAR_SUPPORTED) begin
   axicrossbar axicrossbar (
     .aclk(BUSCLK),
     .aresetn(BUSRSTn),
@@ -1195,6 +1498,219 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .m_axi_bid(cb_m_axi_bid),
     .m_axi_rid(cb_m_axi_rid)
   );
+  end else begin
+    // -----------------------------------------------------------------------------
+    // PULP axi_xbar drop-in replacement for Xilinx packed-vector AXI crossbar
+    // -----------------------------------------------------------------------------
+
+    // Internal struct arrays
+    slv_req_t  [N_SLV-1:0] slv_req;
+    slv_resp_t [N_SLV-1:0] slv_resp;
+    mst_req_t  [N_MST-1:0] mst_req;
+    mst_resp_t [N_MST-1:0] mst_resp;
+
+    // Crossbar configuration (recommended timing baseline: CUT_ALL_AX, FallThrough=0)
+    localparam axi_pkg::xbar_cfg_t XBAR_CFG = '{
+        NoSlvPorts:         N_SLV,
+        NoMstPorts:         N_MST,
+        MaxMstTrans:        16,
+        MaxSlvTrans:        16,
+        FallThrough:        1'b0,
+        //LatencyMode:        axi_pkg::CUT_ALL_AX,
+        // Cheshire uses CUT_ALL_PORTS
+        LatencyMode:        axi_pkg::CUT_ALL_PORTS,
+
+        // Newer cfg field: number of axi_multicut stages in the xbar datapaths
+        PipelineStages:     0,
+
+        AxiIdWidthSlvPorts: SLV_ID_W,
+        AxiIdUsedSlvPorts:  SLV_ID_W,
+        UniqueIds:          1'b0,
+        AxiAddrWidth:       ADDR_W,
+        AxiDataWidth:       DATA_W,
+        NoAddrRules:        N_RULES
+    };
+
+    // Connectivity[slv][mst]:
+    // S00 -> all, S01/S02/S03 -> DDR only (M00)
+    // localparam bit [N_SLV-1:0][N_MST-1:0] CONN = '{
+    //     4'b1111, // S00
+    //     4'b0001, // S01
+    //     4'b0001, // S02
+    //     4'b0001  // S03
+    // };
+    // Still doesn't work
+    //localparam bit [N_MST-1:0][N_SLV-1:0] CONN = '{
+    //    4'b1111, // M00 (DDR)  <- allow all S ports
+    //    4'b0001, // M01 (CDMA regs) <- allow only S00 (CPU)
+    //    4'b0001, // M02 (VGA regs)  <- allow only S00
+    //    4'b0001  // M03 (USB regs)  <- allow only S00
+    //};
+
+    // Address map rules (end_addr is exclusive)
+    //localparam axi_pkg::xbar_rule_32_t ADDR_MAP [N_RULES-1:0] = '{
+    localparam axi_pkg::xbar_rule_32_t [N_RULES-1:0] ADDR_MAP  = '{
+        // DDR/MIG on M00
+        '{ idx: 0,
+            start_addr: 32'h8000_0000,
+            end_addr:   axi_addr_t'(64'h8000_0000 + (64'(1) << DDR_ADDR_BITS)) },
+
+        // 4KB register windows
+        '{ idx: 1, start_addr: 32'h100A_0000, end_addr: 32'h100A_1000 }, // CDMA regs
+        '{ idx: 2, start_addr: 32'h100B_0000, end_addr: 32'h100B_1000 }, // VGA regs
+        '{ idx: 3, start_addr: 32'h100C_0000, end_addr: 32'h100C_1000 }  // USB regs
+    };
+
+    // ------------------------------
+    // Unpack packed S_AXI -> slv_req
+    // ------------------------------
+    for (genvar s = 0; s < N_SLV; s++) begin : gen_slv_unpack
+        // AW
+        assign slv_req[s].aw.addr   = cb_s_axi_awaddr [s*ADDR_W +: ADDR_W];
+        assign slv_req[s].aw.id     = cb_s_axi_awid   [s*4      +: SLV_ID_W]; // take low 2 bits
+        assign slv_req[s].aw.len    = cb_s_axi_awlen  [s*8      +: 8];
+        assign slv_req[s].aw.size   = cb_s_axi_awsize [s*3      +: 3];
+        assign slv_req[s].aw.burst  = cb_s_axi_awburst[s*2      +: 2];
+        assign slv_req[s].aw.lock   = cb_s_axi_awlock [s];
+        assign slv_req[s].aw.cache  = cb_s_axi_awcache[s*4      +: 4];
+        assign slv_req[s].aw.prot   = cb_s_axi_awprot [s*3      +: 3];
+        assign slv_req[s].aw.qos    = cb_s_axi_awqos  [s*4      +: 4];
+        assign slv_req[s].aw.region = '0;
+        assign slv_req[s].aw.atop   = '0;
+        assign slv_req[s].aw.user   = '0;
+        assign slv_req[s].aw_valid  = cb_s_axi_awvalid[s];
+        assign cb_s_axi_awready[s]  = slv_resp[s].aw_ready;
+
+        // W
+        assign slv_req[s].w.data    = cb_s_axi_wdata [s*DATA_W +: DATA_W];
+        assign slv_req[s].w.strb    = cb_s_axi_wstrb [s*STRB_W +: STRB_W];
+        assign slv_req[s].w.last    = cb_s_axi_wlast [s];
+        assign slv_req[s].w.user    = '0;
+        assign slv_req[s].w_valid   = cb_s_axi_wvalid[s];
+        assign cb_s_axi_wready[s]   = slv_resp[s].w_ready;
+
+        // B
+        assign slv_req[s].b_ready   = cb_s_axi_bready[s];
+        assign cb_s_axi_bvalid[s]   = slv_resp[s].b_valid;
+        assign cb_s_axi_bresp[s*2 +: 2] = slv_resp[s].b.resp;
+        assign cb_s_axi_bid  [s*4 +: 4] = {2'b00, slv_resp[s].b.id}; // keep your old padding convention
+
+        // AR
+        assign slv_req[s].ar.addr   = cb_s_axi_araddr [s*ADDR_W +: ADDR_W];
+        assign slv_req[s].ar.id     = cb_s_axi_arid   [s*4      +: SLV_ID_W]; // low 2 bits
+        assign slv_req[s].ar.len    = cb_s_axi_arlen  [s*8      +: 8];
+        assign slv_req[s].ar.size   = cb_s_axi_arsize [s*3      +: 3];
+        assign slv_req[s].ar.burst  = cb_s_axi_arburst[s*2      +: 2];
+        assign slv_req[s].ar.lock   = cb_s_axi_arlock [s];
+        assign slv_req[s].ar.cache  = cb_s_axi_arcache[s*4      +: 4];
+        assign slv_req[s].ar.prot   = cb_s_axi_arprot [s*3      +: 3];
+        assign slv_req[s].ar.qos    = cb_s_axi_arqos  [s*4      +: 4];
+        assign slv_req[s].ar.region = '0;
+        assign slv_req[s].ar.user   = '0;
+        assign slv_req[s].ar_valid  = cb_s_axi_arvalid[s];
+        assign cb_s_axi_arready[s]  = slv_resp[s].ar_ready;
+
+        // R
+        assign slv_req[s].r_ready   = cb_s_axi_rready[s];
+        assign cb_s_axi_rvalid[s]   = slv_resp[s].r_valid;
+        assign cb_s_axi_rdata[s*DATA_W +: DATA_W] = slv_resp[s].r.data;
+        assign cb_s_axi_rresp[s*2     +: 2]      = slv_resp[s].r.resp;
+        assign cb_s_axi_rlast[s]                 = slv_resp[s].r.last;
+        assign cb_s_axi_rid  [s*4     +: 4]      = {2'b00, slv_resp[s].r.id}; // keep old padding
+    end
+
+    // ------------------------------------
+    // Pack mst_req -> packed M_AXI vectors
+    // and unpack packed M_AXI -> mst_resp
+    // ------------------------------------
+    for (genvar m = 0; m < N_MST; m++) begin : gen_mst_pack
+        // AW out
+        assign cb_m_axi_awaddr  [m*ADDR_W +: ADDR_W] = mst_req[m].aw.addr;
+        assign cb_m_axi_awid    [m*4      +: 4]      = mst_req[m].aw.id;      // widened 4-bit ID
+        assign cb_m_axi_awlen   [m*8      +: 8]      = mst_req[m].aw.len;
+        assign cb_m_axi_awsize  [m*3      +: 3]      = mst_req[m].aw.size;
+        assign cb_m_axi_awburst [m*2      +: 2]      = mst_req[m].aw.burst;
+        assign cb_m_axi_awlock  [m]                  = mst_req[m].aw.lock;
+        assign cb_m_axi_awcache [m*4      +: 4]      = mst_req[m].aw.cache;
+        assign cb_m_axi_awprot  [m*3      +: 3]      = mst_req[m].aw.prot;
+        assign cb_m_axi_awqos   [m*4      +: 4]      = mst_req[m].aw.qos;
+        assign cb_m_axi_awregion[m*4      +: 4]      = mst_req[m].aw.region;
+        assign cb_m_axi_awvalid [m]                  = mst_req[m].aw_valid;
+        assign mst_resp[m].aw_ready                  = cb_m_axi_awready[m];
+
+        // W out
+        assign cb_m_axi_wdata [m*DATA_W +: DATA_W] = mst_req[m].w.data;
+        assign cb_m_axi_wstrb [m*STRB_W +: STRB_W] = mst_req[m].w.strb;
+        assign cb_m_axi_wlast [m]                  = mst_req[m].w.last;
+        assign cb_m_axi_wvalid[m]                  = mst_req[m].w_valid;
+        assign mst_resp[m].w_ready                 = cb_m_axi_wready[m];
+
+        // B in
+        assign cb_m_axi_bready[m]        = mst_req[m].b_ready;
+        assign mst_resp[m].b_valid       = cb_m_axi_bvalid[m];
+        assign mst_resp[m].b.id          = cb_m_axi_bid  [m*4 +: 4];
+        assign mst_resp[m].b.resp        = cb_m_axi_bresp[m*2 +: 2];
+        assign mst_resp[m].b.user        = '0;
+
+        // AR out
+        assign cb_m_axi_araddr  [m*ADDR_W +: ADDR_W] = mst_req[m].ar.addr;
+        assign cb_m_axi_arid    [m*4      +: 4]      = mst_req[m].ar.id;
+        assign cb_m_axi_arlen   [m*8      +: 8]      = mst_req[m].ar.len;
+        assign cb_m_axi_arsize  [m*3      +: 3]      = mst_req[m].ar.size;
+        assign cb_m_axi_arburst [m*2      +: 2]      = mst_req[m].ar.burst;
+        assign cb_m_axi_arlock  [m]                  = mst_req[m].ar.lock;
+        assign cb_m_axi_arcache [m*4      +: 4]      = mst_req[m].ar.cache;
+        assign cb_m_axi_arprot  [m*3      +: 3]      = mst_req[m].ar.prot;
+        assign cb_m_axi_arqos   [m*4      +: 4]      = mst_req[m].ar.qos;
+        assign cb_m_axi_arregion[m*4      +: 4]      = mst_req[m].ar.region;
+        assign cb_m_axi_arvalid [m]                  = mst_req[m].ar_valid;
+        assign mst_resp[m].ar_ready                  = cb_m_axi_arready[m];
+
+        // R in
+        assign cb_m_axi_rready[m]        = mst_req[m].r_ready;
+        assign mst_resp[m].r_valid       = cb_m_axi_rvalid[m];
+        assign mst_resp[m].r.id          = cb_m_axi_rid  [m*4      +: 4];
+        assign mst_resp[m].r.data        = cb_m_axi_rdata[m*DATA_W +: DATA_W];
+        assign mst_resp[m].r.resp        = cb_m_axi_rresp[m*2      +: 2];
+        assign mst_resp[m].r.last        = cb_m_axi_rlast[m];
+        assign mst_resp[m].r.user        = '0;
+    end
+
+    axi_xbar #(
+        .Cfg            (XBAR_CFG),
+        .ATOPs          (1'b0),
+        //.Connectivity   (CONN), // FIXME
+        .Connectivity   ( '1 ), // Cheshire (all connected)
+
+        .slv_aw_chan_t  (slv_aw_t),
+        .mst_aw_chan_t  (mst_aw_t),
+        .w_chan_t       (axi_w_t),
+        .slv_b_chan_t   (slv_b_t),
+        .mst_b_chan_t   (mst_b_t),
+        .slv_ar_chan_t  (slv_ar_t),
+        .mst_ar_chan_t  (mst_ar_t),
+        .slv_r_chan_t   (slv_r_t),
+        .mst_r_chan_t   (mst_r_t),
+        .slv_req_t      (slv_req_t),
+        .slv_resp_t     (slv_resp_t),
+        .mst_req_t      (mst_req_t),
+        .mst_resp_t     (mst_resp_t),
+
+        .rule_t         (axi_pkg::xbar_rule_32_t)
+        ) i_axi_xbar (
+        .clk_i                 (BUSCLK),
+        .rst_ni                 (BUSRSTn),
+        .test_i                (1'b0),
+        .slv_ports_req_i       (slv_req),
+        .slv_ports_resp_o      (slv_resp),
+        .mst_ports_req_o       (mst_req),
+        .mst_ports_resp_i      (mst_resp),
+        .addr_map_i            (ADDR_MAP),
+        .en_default_mst_port_i ('0),
+        .default_mst_port_i    ('0)
+    );
+  end
+
 
   // M02 (AXI4/64) -> axi_vga_wrap (AXI slave regs + AXI master scanout), all on BUSCLK
   axi_vga_wrap axi_vga_wrap_i (
@@ -1364,6 +1880,15 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .O(clk48MHz)
   );
 
+  (* ASYNC_REG="TRUE" *) logic [1:0] usb_phy_resetn_ff;
+  always_ff @(posedge clk48MHz or posedge BUSRST) begin
+    if (BUSRST)
+      usb_phy_resetn_ff <= 2'b00;            // assert reset immediately
+    else
+      usb_phy_resetn_ff <= {usb_phy_resetn_ff[0], 1'b1};
+  end
+  assign usb_phy_resetn_sync = usb_phy_resetn_ff[1];
+
   // USB OHCI wrapper (SpinalHDL UsbOhciAxi4_p2_dma64)
   // NOTE: phy_clk should be 48 MHz (or another integer multiple of 12 MHz). rmii_clk50 is only a placeholder.
   usb_ohci_wrap usb_ohci_i (
@@ -1372,7 +1897,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .ctrl_aresetn (BUSRSTn),
     //.phy_clk      (rmii_clk50),
     .phy_clk   (clk48MHz),
-    .phy_aresetn  (BUSRSTn),
+    .phy_aresetn(usb_phy_resetn_sync),
 
     // Control (AXI4/32, AXI-Lite subset)
     .s_axi_awid    (usb_ctrl_awid),
@@ -1625,20 +2150,21 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .m_axil_rvalid (pc_lite_rvalid),
     .m_axil_rready (pc_lite_rready)
   );
-    // SYNC CDMA INT signal in different clock domain
-    // latch/synchronize CDMA interrupt request coming from a different clock domain after two flip-flops
-    (* ASYNC_REG="TRUE" *) logic [1:0] dma_irq_sync;
 
-    //always_ff @(posedge clk_out3_mmcm or posedge reset) begin
-    always_ff @(posedge CPUCLK or posedge peripheral_reset) begin
-    if (peripheral_reset)
-        dma_irq_sync <= 2'b00;
-    else
-        dma_irq_sync <= {dma_irq_sync[0], dma_introut}; // dma_introut = introut signal
-    end
+  // SYNC CDMA INT signal in different clock domain
+  // latch/synchronize CDMA interrupt request coming from a different clock domain after two flip-flops
+  (* ASYNC_REG="TRUE" *) logic [1:0] dma_irq_sync;
 
-    //assign plic_request_for_dma = dma_irq_sync[1];
-    assign dma_introut_sync = dma_irq_sync[1];
+  //always_ff @(posedge clk_out3_mmcm or posedge reset) begin
+  always_ff @(posedge CPUCLK or posedge peripheral_reset) begin
+  if (peripheral_reset)
+    dma_irq_sync <= 2'b00;
+  else
+    dma_irq_sync <= {dma_irq_sync[0], dma_introut}; // dma_introut = introut signal
+  end
+
+  //assign plic_request_for_dma = dma_irq_sync[1];
+  assign dma_introut_sync = dma_irq_sync[1];
 
   axicdma axicdma (
     .m_axi_aclk        (BUSCLK),
@@ -1646,8 +2172,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .s_axi_lite_aresetn(BUSRSTn),
 
     // AXI4-Lite control
-        // This project generates CDMA with a small AXI4-Lite address port (6 bits).
-        // Base address decode is done in the crossbar; CDMA only needs low bits for register offsets.
+    // This project generates CDMA with a small AXI4-Lite address port (6 bits).
+    // Base address decode is done in the crossbar; CDMA only needs low bits for register offsets.
     .s_axi_lite_awaddr (pc_lite_awaddr[5:0]),
     .s_axi_lite_awvalid(pc_lite_awvalid),
     .s_axi_lite_awready(pc_lite_awready),
@@ -1707,20 +2233,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .cdma_introut  (dma_introut)
   );
 
-  //CDC timing fix suggested by ChatGPT: do not feed asynchronous and different Clock domain signal into DDR2 block
-    // (* ASYNC_REG="TRUE" *) logic [1:0] calib_sync;
-
-    // always_ff @(posedge CPUCLK or negedge resetn) begin
-    // if (!resetn)
-    //     calib_sync <= 2'b00;
-    // else
-    //     calib_sync <= {calib_sync[0], c0_init_calib_complete};
-    // end
-
-    // logic init_calib_complete_cpu;
-    // assign init_calib_complete_cpu = calib_sync[1];
-
-
   // DDR3 Controller
   ddr3 ddr3
     (
@@ -1745,7 +2257,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
      .clk_ref_i(clk200),
 
      .ui_clk(BUSCLK),
-     .ui_clk_sync_rst(BUSRST),
+     .ui_clk_sync_rst(ui_clk_sync_rst),
      // FIXME: Is this OK?
      .aresetn(resetn),
      .sys_rst(resetn),    // omg. this is active low?!?!??

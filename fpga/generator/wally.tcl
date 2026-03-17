@@ -36,14 +36,18 @@ if {$board=="ArtyA7"} {
     add_files  {../src/fpgaTopNexysA7SoC.sv}
 } elseif {$board=="genesys2soc"} {
     add_files  {../src/fpgaTopGenesys2SoC.sv}
+} elseif {$board=="genesys2socxlnx"} {
+    add_files  {../src/fpgaTopGenesys2SoC.sv}
 } else {
     add_files  {../src/fpgaTop.sv}
 }
 
 # read in ip
 import_ip IP/sysrst.srcs/sources_1/ip/sysrst/sysrst.xci
+if {$board != "genesys2soc"} {
 import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
 import_ip IP/clkconverter.srcs/sources_1/ip/clkconverter/clkconverter.xci
+}
 
 if {$board=="ArtyA7" || $board=="genesys2"} {
     import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
@@ -57,6 +61,12 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
     import_ip IP/axicrossbar.srcs/sources_1/ip/axicrossbar/axicrossbar.xci
     import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
 } elseif {$board=="genesys2soc" } {
+    import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
+    import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
+    # FIXME: remove later
+    import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
+    import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
+} elseif {$board=="genesys2socxlnx" } {
     import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
     import_ip IP/axicrossbar.srcs/sources_1/ip/axicrossbar/axicrossbar.xci
@@ -89,12 +99,15 @@ report_compile_order -constraints > reports/compile_order.rpt
 if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexysa7soc" || $board=="genesys2soc" } {
     add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board.xdc
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board.xdc]
+} elseif {$board=="genesys2socxlnx" } {
+    add_files -fileset constrs_1 -norecurse ../constraints/constraints-genesys2soc.xdc
+    set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-genesys2soc.xdc]
 } else {
     add_files -fileset constrs_1 -norecurse ../constraints/constraints-$boardSubName.xdc
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$boardSubName.xdc]
 }
 
-if {$board=="nexysa7soc" || $board=="genesys2soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} {
 
     set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared \
         ../src/CopiedFiles_do_not_add_to_repo/cvwsoc \
@@ -119,11 +132,13 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"} {
 }
 
 set_param messaging.defaultLimit 100000
-if {$board=="nexysa7soc" || $board=="genesys2soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} {
     set_param general.maxThreads 16
 
     puts "###########################################################################"
     report_property -all [get_runs synth_1]
+    puts "###########################################################################"
+    report_compile_order -fileset sources_1 -used_in synthesis -sources
     puts "###########################################################################"
 }
 
@@ -160,7 +175,7 @@ if {$board=="ArtyA7"} {
     #source ../constraints/big-debug-spi.xdc
     #source ../constraints/debug-spi.xdc
     # NO ILA
-} elseif {$board=="genesys2soc"} {
+} elseif {$board=="genesys2soc" || $board=="genesys2socxlnx" } {
     source ../constraints/debug-boot.xdc
 } else {
     #source ../constraints/vcu-small-debug.xdc
@@ -189,7 +204,7 @@ if {$board=="nexysa7soc"} {
 }
 
 
-if {$board=="nexysa7soc" || $board=="genesys2soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} {
     #set_property STEPS.ROUTE_DESIGN.ARGS.ULTRATHREADS true [get_runs impl_1] #doesn't exist
     #set_property "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" "-ultrathreads -no_psir" [get_runs impl_1]
     # set_property -name "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" \
@@ -222,8 +237,14 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"} {
 
     # Strategy targets high fanout (AXI VGA) => Better than Performance_ExplorePostRoutePhysOpt
     set_property strategy Performance_WLBlockPlacementFanoutOpt [get_runs impl_1]
+}
 
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} {
+    if {$board=="genesys2socxlnx" } {
+        set hook [file normalize ../constraints/constraints-genesys2soc-timing.tcl]
+    } else {
     set hook [file normalize ../constraints/constraints-$board-timing.tcl]
+    }
     set_property STEPS.INIT_DESIGN.TCL.POST $hook [get_runs impl_1]
 
     # CHECK!! MIGHT NOT BE NEEDED LATER (supposedly takes long!!)
@@ -239,8 +260,8 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"} {
     reset_runs impl_1
 }
 
-launch_runs impl_1 -jobs 16
-if {$board=="nexysa7soc" || $board=="genesys2soc" } {
+launch_runs impl_1 -jobs 12
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx" } {
     puts "###########################################################################"
     report_property -all [get_runs impl_1]
     puts "###########################################################################"

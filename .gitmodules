@@ -62,3 +62,11 @@
   path = addins/verilog-axi
   url = https://github.com/alexforencich/verilog-axi.git
   branch = master
+[submodule "veer-el2"]
+  path = addins/veer-el2
+  url = https://github.com/chipsalliance/Cores-VeeR-EL2.git
+  branch = main
+[submodule "ahb-to-axi"]
+  path = addins/ahb-to-axi
+  url = https://github.com/juanschroeder/ahbl-to-axi4.git
+  branch = main

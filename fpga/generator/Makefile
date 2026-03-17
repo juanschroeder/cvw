@@ -51,9 +51,18 @@ genesys2soc: export XILINX_PART := xc7k325tffg900-2
 genesys2soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 genesys2soc: export board := genesys2soc
 genesys2soc: export SYSTEMCLOCK := 40000000
-genesys2soc: export MAXSDCCLOCK  := 10000000
+genesys2soc: export MAXSDCCLOCK  := 5000000
 genesys2soc: export MIG_ADDR_WIDTH  :=  30
 genesys2soc: FPGA_GENESYS2SOC
+
+genesys2socxlnx: export XILINX_PART := xc7k325tffg900-2
+genesys2socxlnx: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
+genesys2socxlnx: export board := genesys2socxlnx
+genesys2socxlnx: export SYSTEMCLOCK := 40000000
+genesys2socxlnx: export MAXSDCCLOCK  := 5000000
+genesys2socxlnx: export MIG_ADDR_WIDTH  :=  30
+genesys2socxlnx: FPGA_GENESYS2SOCXLNX
+
 
 # variables computed from config
 EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
@@ -88,6 +97,9 @@ FPGA_NEXYSA7SOC: PreProcessFilesSoC IP_NEXYSA7SOC zsbl
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
 FPGA_GENESYS2SOC: PreProcessFilesSoC IP_GENESYS2SOC zsbl
+	@$(call VIVADO_TCL,wally.tcl,wally.log)
+
+FPGA_GENESYS2SOCXLNX: PreProcessFilesSoC IP_GENESYS2SOCXLNX zsbl
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
 # Generate IP Blocks
@@ -125,10 +137,16 @@ IP_NEXYSA7SOC: $(dst)/sysrst.log \
 IP_GENESYS2SOC: $(dst)/sysrst.log \
 	MEM_GENESYS2 \
 	$(dst)/mmcm-genesys2soc.log \
-	$(dst)/clkconverter.log \
 	$(dst)/ahbaxibridge.log \
-	$(dst)/axicrossbar.log \
 	$(dst)/axicdma.log
+
+IP_GENESYS2SOCXLNX: $(dst)/sysrst.log \
+	MEM_GENESYS2SOCXLNX \
+	$(dst)/mmcm-genesys2soc.log \
+	$(dst)/ahbaxibridge.log \
+	$(dst)/axicdma.log \
+	$(dst)/axicrossbar.log  \
+	$(dst)/clkconverter.log
 
 # Generate Memory IP Blocks
 .PHONY: MEM_VCU MEM_Arty
@@ -139,6 +157,9 @@ MEM_Arty:
 
 MEM_GENESYS2:
 	$(MAKE) $(dst)/ddr3-$(board).log
+
+MEM_GENESYS2SOCXLNX:
+	$(MAKE) $(dst)/ddr3-genesys2soc.log
 
 MEM_NEXYSA7:
 	$(MAKE) $(dst)/ddr2-$(board).log
@@ -197,6 +218,13 @@ PreProcessFilesSoC: PreProcessFiles
 	patchdir="../src/CopiedFiles_do_not_add_to_repo"; \
 	find ../../addins/cvwsoc/usb -type f -name "*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
+	# copy AHB-AXI4 bridge from VeeR EL2
+	#mkdir -p ../src/CopiedFiles_do_not_add_to_repo/ahb_to_axi4/
+	#cp ../../addins/veer-el2/design/lib/ahb_to_axi4.sv ../src/CopiedFiles_do_not_add_to_repo/ahb_to_axi4/
+	#cp ../../addins/veer-el2/design/lib/beh_lib.sv ../src/CopiedFiles_do_not_add_to_repo/ahb_to_axi4/
+	# copy AHB-Lite-to-AXI4 bridge
+	cp -r ../../addins/ahb-to-axi ../src/CopiedFiles_do_not_add_to_repo/
+
 	# LITTLE_ENDIAN for UART core
 	grep -q 'define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v || sed -i '1i`define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v
 

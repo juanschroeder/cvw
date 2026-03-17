@@ -4,7 +4,7 @@
 # This clock is not used by wally or the AHB Bus. However it is used by the AXI BUS on the DD3 IP.
 
 #create_generated_clock -name CLKDiv64_Gen -source [get_pins wallypipelinedsoc/uncore.uncore/sdc.SDC/sd_top/slow_clk_divider/clkMux/I0] -multiply_by 1 -divide_by 1 [get_pins wallypipelinedsoc/uncore.uncore/sdc.SDC/sd_top/slow_clk_divider/clkMux/O]
-create_generated_clock -name SPISDCClock -source [get_pins mmcm/clk_out3] -multiply_by 1 -divide_by 1 [get_pins wallypipelinedsoc/uncoregen.uncore/sdc.sdc/SPICLK]
+create_generated_clock -name SPISDCClock -source [get_pins mmcm/clk_out3] -multiply_by 1 -divide_by 1 [get_pins wallypipelinedsoc/SPICLK]
 
 ##### clock #####
 set_property PACKAGE_PIN AD12 [get_ports default_200mhz_clk_p]
