@@ -38,3 +38,4 @@ uncore/plic_apb.sv : logic requests
 uncore/plic_apb.sv : logic intInProgress
 uncore/plic_apb.sv : logic intPending
 uncore/plic_apb.sv : logic intClaim
+ieu/datapath.sv : logic ResultW

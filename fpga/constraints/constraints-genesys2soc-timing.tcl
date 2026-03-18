@@ -63,17 +63,12 @@ if {[llength $p]} { set_false_path -to $p }
 #if {[llength $a] && [llength $b]} { set_clock_groups -asynchronous -group $a -group $b }
 
 # USB BuferCC
-# CDC for: usb_ohci_i/u_ohci/cc/input_lowSpeed_buffercc/buffers_0_reg/D
-#By listing all input pins connected to the net feeding buffers_0_reg/D and seeing no other loads, we 
-# proved it’s an isolated synchronizer input, so set_false_path -to .../buffers_0_reg/D is the correct constraint.
-#set_false_path -to [get_pins -hier -regexp {.*usb_ohci_i/u_ohci/cc/input_lowSpeed_buffercc/buffers_0_reg/D}]
-set_false_path -to [get_pins -hier -regexp {.*input_usbResume_buffercc.*/buffers_0_reg/D}]
-set_false_path -to [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/input_.*_buffercc.*/buffers_0_reg/D}]
-# other CDC: this one does not apply for the moment for Genesys 2 (clocks were renamed)
-#set_false_path -to [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/input_tx_ccToggle/popArea_stream_rData_fragment_reg\[[0-9]+\]/D$}]
-# CDC that showed up in a Genesys 2 build: ccToggle CDC: ignore timing into popArea rData regs (covers *_last_reg and fragments) (MORE NAME-GENERIC)
-#set_false_path -to [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/.*_ccToggle/popArea_.*rData_.*_reg/D$}]
-set_false_path -to [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/.*_ccToggle/popArea_.*_reg(\[[0-9]+\])?/D$}]
+set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/.*buffercc/buffers_0_reg/D$}]
+if {[llength $dst]} {
+  set_false_path -to $dst
+} else {
+  error "Did not match any OHCI BufferCC stage-0 D pins"
+}
 
 # After init_design (clocks exist here)
 set c_pll  [get_clocks -quiet -include_generated_clocks clk_pll_i]
@@ -93,19 +88,12 @@ if {[llength $c_pll] && [llength $c_out2]} {
 set dst [get_pins -hier -quiet -regexp {.*usb_irq_ff1_reg.*/D}]
 if {[llength $dst]} { set_false_path -to $dst }
 
-# ------------------------------------------------------------
-# USB OHCI: BufferCC inputs (clk_pll_i <-> clk_out2_mmcm)
-# Cut timing into the FIRST stage ("buffers_0_reg/D") of ANY input_*_buffercc.
-# (Covers your input_lowSpeed_buffercc example.)
-set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/input_.*_buffercc.*/buffers_0_reg/D}]
-if {[llength $dst]} { set_false_path -to $dst }
 
 # ------------------------------------------------------------
 # USB OHCI: ccToggle crossings (clk_out2_mmcm <-> clk_pll_i)
 # These are toggle-based CDC blocks; Vivado still reports reg->reg across domains.
 # Cut timing into the destination "outputArea" regs.
-set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/output_.*_ccToggle/outputArea_.*_reg/D}]
-if {[llength $dst]} { set_false_path -to $dst }
+set_false_path -to [must_get_pins {.*usb_ohci_i/u_ohci/cc/output_.*_ccToggle/outputArea_.*_reg(\[[0-9]+\])?/D$}]
 
 # # ------------------------------------------------------------
 # # LiteEth: async reset pins (PRE) recovery/removal checks across RMII/system clocks
@@ -129,3 +117,30 @@ if {[llength $dst]} { set_false_path -to $dst }
 set f [open "HOOK_RAN.txt" w]
 puts $f "HOOK RAN at [clock format [clock seconds]]"
 close $f
+
+# ANY OHCI BufferCC first-stage flop
+set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/.*buffercc/buffers_0_reg/D$}]
+if {[llength $dst]} {
+  set_false_path -to $dst
+} else {
+  error "Did not match any OHCI BufferCC stage-0 D pins"
+}
+
+set_false_path -to [must_get_pins {(^|.*/)usb_phy_resetn_ff_reg\[[01]\]/CLR$}]
+
+
+# ccToggle -> BufferCC first stage (this one was NOT covered by your old regexes)
+set_false_path -to [must_get_pins {.*usb_ohci_i/u_ohci/cc/.*_ccToggle/popArea_.*_reg(\[[0-9]+\])?/D$}]
+if {[llength $p]} { set_false_path -to $p }
+set_false_path -to [must_get_pins {.*usb_ohci_i/u_ohci/cc/.*_asyncAssertSyncDeassert_buffercc/buffers_[01]_reg/PRE$}]
+
+set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/output_tick_pulseCCByToggle/inArea_target_buffercc/buffers_0_reg/D$}]
+if {[llength $dst]} { set_false_path -to $dst }
+
+
+# USB reset synchronizer
+set_property ASYNC_REG TRUE [get_cells -hier -regexp {.*usb_phy_resetn_ff_reg\[[01]\]$}]
+# OHCI CDC synchronizer: input_lowSpeed_buffercc
+set_property ASYNC_REG TRUE [get_cells -hier -regexp {.*input_lowSpeed_buffercc/buffers_[01]_reg$}]
+# OHCI CDC synchronizer: outHitSignal_buffercc
+set_property ASYNC_REG TRUE [get_cells -hier -regexp {.*outHitSignal_buffercc/buffers_[01]_reg$}]
