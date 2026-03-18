@@ -249,7 +249,8 @@ if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} 
 
     # CHECK!! MIGHT NOT BE NEEDED LATER (supposedly takes long!!)
     # phys_opt_design is an optional QoR pass
-    set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
+    # is this causing Vivado crashes 2024.2 crashes??
+    #set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
 
     set_property STEPS.INIT_DESIGN.TCL.POST $hook [get_runs impl_1]
 
