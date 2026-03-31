@@ -68,6 +68,13 @@ genesys2socxlnx: FPGA_GENESYS2SOCXLNX
 EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 
 EXT_MEM_RANGE = $(shell grep 'EXT_MEM_RANGE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
+LITEDRAM_SUPPORTED = $(shell grep 'LITEDRAM_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
+LITEDRAM_BASE = $(shell grep 'LITEDRAM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
+UNCORE_RAM_BASE = $(shell grep 'UNCORE_RAM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
+UNCORE_RAM_RANGE = $(shell grep 'UNCORE_RAM_RANGE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
+UBERDDR3_SUPPORTED = $(shell grep 'UBERDDR3_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
+genesys2soc: export LITEDRAM_SUPPORTED := $(LITEDRAM_SUPPORTED)
+genesys2soc: export UBERDDR3_SUPPORTED := $(UBERDDR3_SUPPORTED)
 
 
 .PHONY: FPGA_Arty FPGA_VCU
@@ -96,7 +103,7 @@ endef
 FPGA_NEXYSA7SOC: PreProcessFilesSoC IP_NEXYSA7SOC zsbl
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
-FPGA_GENESYS2SOC: PreProcessFilesSoC IP_GENESYS2SOC zsbl
+FPGA_GENESYS2SOC: PreProcessFilesSoC IP_GENESYS2SOC liblitedram zsblsoc
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
 FPGA_GENESYS2SOCXLNX: PreProcessFilesSoC IP_GENESYS2SOCXLNX zsbl
@@ -224,6 +231,10 @@ PreProcessFilesSoC: PreProcessFiles
 	#cp ../../addins/veer-el2/design/lib/beh_lib.sv ../src/CopiedFiles_do_not_add_to_repo/ahb_to_axi4/
 	# copy AHB-Lite-to-AXI4 bridge
 	cp -r ../../addins/ahb-to-axi ../src/CopiedFiles_do_not_add_to_repo/
+	# copy Wb2axi
+	cp -r ../../addins/wb2axip ../src/CopiedFiles_do_not_add_to_repo/
+	# copy uberddr3
+	cp -r ../../addins/uberddr3 ../src/CopiedFiles_do_not_add_to_repo/
 
 	# LITTLE_ENDIAN for UART core
 	grep -q 'define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v || sed -i '1i`define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v
@@ -233,6 +244,28 @@ PreProcessFilesSoC: PreProcessFiles
 zsbl:
 	$(MAKE) -C ../zsbl clean
 	SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) $(MAKE) -C ../zsbl
+
+export LIBLITEDRAM_SRC_DIR =  $(PWD)/../../addins/litex/litex/soc/software/liblitedram
+LITEDRAM_INC_DIRS = "$(PWD)/../../addins/cvwsoc/litedram/$(board)/include \
+					$(PWD)/../../addins/cvwsoc/litedram/$(board)          \
+					$(PWD)/../../addins/cvwsoc/litedram                   \
+					$(LIBLITEDRAM_DIRECTORY)/../include                   \
+					$(LIBLITEDRAM_DIRECTORY)/.. $(LIBLITEDRAM_SRC_DIR)"
+LIBS = "-L$(PWD)/../../addins/cvwsoc/litedram -llitedram"
+# build the Zero stage boot loader (ZSBL)
+.PHONY: zsblsoc liblitedram
+zsblsoc:
+	$(MAKE) -C ../zsbl clean
+	SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
+		LITEDRAM_SUPPORTED=$(LITEDRAM_SUPPORTED) LITEDRAM_BASE=$(LITEDRAM_BASE)            \
+		UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE)            \
+		LIBS=$(LIBS) INC_DIRS=$(LITEDRAM_INC_DIRS) $(MAKE) -C ../zsbl
+
+LIBLITEDRAM_DIRECTORY = $(LIBLITEDRAM_SRC_DIR)
+liblitedram:
+	$(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk clean
+	EXT_MEM_BASE=$(EXT_MEM_BASE) LITEDRAM_BASE=$(LITEDRAM_BASE) LIBLITEDRAM_DIRECTORY=$(LIBLITEDRAM_DIRECTORY) $(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk
+
 
 # Generate Individual IP Blocks
 $(dst)/%.log: %.tcl

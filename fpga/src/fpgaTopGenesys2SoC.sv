@@ -164,24 +164,24 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   // AHB to AXI Bridge Signals
   logic [3:0]      m_axi_awid;
-  logic [7:0]      m_axi_awlen;
-  logic [2:0]      m_axi_awsize;
-  logic [1:0]      m_axi_awburst;
+  (* mark_debug = "true" *) logic [7:0]      m_axi_awlen;
+  (* mark_debug = "true" *) logic [2:0]      m_axi_awsize;
+  (* mark_debug = "true" *) logic [1:0]      m_axi_awburst;
   logic [3:0]      m_axi_awcache;
-  logic [31:0]      m_axi_awaddr;
+  (* mark_debug = "true" *) logic [31:0]      m_axi_awaddr;
   logic [2:0]      m_axi_awprot;
-  logic             m_axi_awvalid;
-  logic             m_axi_awready;
+  (* mark_debug = "true" *) logic             m_axi_awvalid;
+  (* mark_debug = "true" *) logic             m_axi_awready;
   logic             m_axi_awlock;
-  logic [63:0]      m_axi_wdata;
-  logic [7:0]      m_axi_wstrb;
-  logic             m_axi_wlast;
-  logic             m_axi_wvalid;
-  logic             m_axi_wready;
+  (* mark_debug = "true" *) logic [63:0]      m_axi_wdata;
+  (* mark_debug = "true" *) logic [7:0]      m_axi_wstrb;
+  (* mark_debug = "true" *) logic             m_axi_wlast;
+  (* mark_debug = "true" *) logic             m_axi_wvalid;
+  (* mark_debug = "true" *) logic             m_axi_wready;
   logic [3:0]      m_axi_bid;
   logic [1:0]      m_axi_bresp;
-  logic             m_axi_bvalid;
-  logic             m_axi_bready;
+  (* mark_debug = "true" *) logic             m_axi_bvalid;
+  (* mark_debug = "true" *) logic             m_axi_bready;
   logic [3:0]      m_axi_arid;
   (* mark_debug = "true" *) logic [7:0]      m_axi_arlen;
   logic [2:0]      m_axi_arsize;
@@ -214,11 +214,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   (* mark_debug = "true" *) logic          BUS_axi_awvalid;
   (* mark_debug = "true" *) logic          BUS_axi_awready;
   (* mark_debug = "true" *) logic          BUS_axi_awlock;
-  logic [63:0]      BUS_axi_wdata;
+  (* mark_debug = "true" *) logic [63:0]      BUS_axi_wdata;
   logic [7:0]      BUS_axi_wstrb;
   (* mark_debug = "true" *) logic          BUS_axi_wlast;
   logic          BUS_axi_wvalid;
-  logic          BUS_axi_wready;
+  (* mark_debug = "true" *) logic          BUS_axi_wready;
   logic [3:0]      BUS_axi_bid;
   logic [1:0]      BUS_axi_bresp;
   logic          BUS_axi_bvalid;
@@ -246,20 +246,20 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic [3:0]      BUS_cb_axi_awregion;
   logic [3:0]      BUS_cb_axi_awqos;
   logic [3:0]      BUS_cb_axi_awid;
-  logic [7:0]      BUS_cb_axi_awlen;
-  logic [2:0]      BUS_cb_axi_awsize;
+  (* mark_debug = "true" *) logic [7:0]      BUS_cb_axi_awlen;
+  (* mark_debug = "true" *) logic [2:0]      BUS_cb_axi_awsize;
   logic [1:0]      BUS_cb_axi_awburst;
   logic [3:0]      BUS_cb_axi_awcache;
-  logic [31:0]     BUS_cb_axi_awaddr;
+  (* mark_debug = "true" *) logic [31:0]     BUS_cb_axi_awaddr;
   logic [2:0]      BUS_cb_axi_awprot;
-  logic            BUS_cb_axi_awvalid;
-  logic            BUS_cb_axi_awready;
+  (* mark_debug = "true" *) logic            BUS_cb_axi_awvalid;
+  (* mark_debug = "true" *) logic            BUS_cb_axi_awready;
   logic            BUS_cb_axi_awlock;
-  logic [63:0]     BUS_cb_axi_wdata;
+  (* mark_debug = "true" *) logic [63:0]     BUS_cb_axi_wdata;
   logic [7:0]      BUS_cb_axi_wstrb;
-  logic            BUS_cb_axi_wlast;
-  logic            BUS_cb_axi_wvalid;
-  logic            BUS_cb_axi_wready;
+  (* mark_debug = "true" *) logic            BUS_cb_axi_wlast;
+  (* mark_debug = "true" *) logic            BUS_cb_axi_wvalid;
+  (* mark_debug = "true" *) logic            BUS_cb_axi_wready;
   logic [3:0]      BUS_cb_axi_bid;
   (* mark_debug = "true" *) logic [1:0]      BUS_cb_axi_bresp;
   (* mark_debug = "true" *) logic            BUS_cb_axi_bvalid;
@@ -286,49 +286,49 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   // NUM_MI=4 => packed buses:
   //   - Addresses: [4*32-1:0] = [127:0] (M00=[31:0], M01=[63:32], M02=[95:64], M03=[127:96])
   //   - Data:      [4*64-1:0] = [255:0]
-  wire [19:0]   cb_m_axi_awid;
-  wire [159:0]  cb_m_axi_awaddr;
-  wire [39:0]   cb_m_axi_awlen;
-  wire [14:0]   cb_m_axi_awsize;
-  wire [9:0]    cb_m_axi_awburst;
-  wire [4:0]    cb_m_axi_awlock;
-  wire [19:0]   cb_m_axi_awcache;
-  wire [14:0]   cb_m_axi_awprot;
-  wire [19:0]   cb_m_axi_awregion;
-  wire [19:0]   cb_m_axi_awqos;
-  wire [4:0]    cb_m_axi_awvalid;
-  wire [4:0]    cb_m_axi_awready;
+  wire [23:0]   cb_m_axi_awid;
+  wire [191:0]  cb_m_axi_awaddr;
+  wire [47:0]   cb_m_axi_awlen;
+  wire [17:0]   cb_m_axi_awsize;
+  wire [11:0]    cb_m_axi_awburst;
+  wire [5:0]    cb_m_axi_awlock;
+  wire [23:0]   cb_m_axi_awcache;
+  wire [17:0]   cb_m_axi_awprot;
+  wire [23:0]   cb_m_axi_awregion;
+  wire [23:0]   cb_m_axi_awqos;
+  wire [5:0]    cb_m_axi_awvalid;
+  wire [5:0]    cb_m_axi_awready;
 
-  wire [319:0]  cb_m_axi_wdata;
-  wire [39:0]   cb_m_axi_wstrb;
-  wire [4:0]    cb_m_axi_wlast;
-  wire [4:0]    cb_m_axi_wvalid;
-  wire [4:0]    cb_m_axi_wready;
+  wire [383:0]  cb_m_axi_wdata;
+  wire [47:0]   cb_m_axi_wstrb;
+  wire [5:0]    cb_m_axi_wlast;
+  wire [5:0]    cb_m_axi_wvalid;
+  wire [5:0]    cb_m_axi_wready;
 
-  wire [19:0]   cb_m_axi_bid;
-  wire [9:0]    cb_m_axi_bresp;
-  wire [4:0]    cb_m_axi_bvalid;
-  wire [4:0]    cb_m_axi_bready;
+  wire [23:0]   cb_m_axi_bid;
+  wire [11:0]    cb_m_axi_bresp;
+  wire [5:0]    cb_m_axi_bvalid;
+  wire [5:0]    cb_m_axi_bready;
 
-  wire [19:0]   cb_m_axi_arid;
-  wire [159:0]  cb_m_axi_araddr;
-  wire [39:0]   cb_m_axi_arlen;
-  wire [14:0]   cb_m_axi_arsize;
-  wire [9:0]    cb_m_axi_arburst;
-  wire [4:0]    cb_m_axi_arlock;
-  wire [19:0]   cb_m_axi_arcache;
-  wire [14:0]   cb_m_axi_arprot;
-  wire [19:0]   cb_m_axi_arregion;
-  wire [19:0]   cb_m_axi_arqos;
-  wire [4:0]    cb_m_axi_arvalid;
-  wire [4:0]    cb_m_axi_arready;
+  wire [23:0]   cb_m_axi_arid;
+  wire [191:0]  cb_m_axi_araddr;
+  wire [47:0]   cb_m_axi_arlen;
+  wire [17:0]   cb_m_axi_arsize;
+  wire [11:0]    cb_m_axi_arburst;
+  wire [5:0]    cb_m_axi_arlock;
+  wire [23:0]   cb_m_axi_arcache;
+  wire [17:0]   cb_m_axi_arprot;
+  wire [23:0]   cb_m_axi_arregion;
+  wire [23:0]   cb_m_axi_arqos;
+  wire [5:0]    cb_m_axi_arvalid;
+  wire [5:0]    cb_m_axi_arready;
 
-  wire [19:0]   cb_m_axi_rid;
-  wire [319:0]  cb_m_axi_rdata;
-  wire [9:0]    cb_m_axi_rresp;
-  wire [4:0]    cb_m_axi_rlast;
-  wire [4:0]    cb_m_axi_rvalid;
-  wire [4:0]    cb_m_axi_rready;
+  wire [23:0]   cb_m_axi_rid;
+  wire [383:0]  cb_m_axi_rdata;
+  wire [11:0]    cb_m_axi_rresp;
+  wire [5:0]    cb_m_axi_rlast;
+  wire [5:0]    cb_m_axi_rvalid;
+  wire [5:0]    cb_m_axi_rready;
 
   // Crossbar packed S_AXI ports
   // NUM_SI=4 (S00=CPU, S01=CDMA, S02=VGA, S03=USB OHCI DMA)
@@ -549,6 +549,21 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   wire [1:0]  liteeth_reg_rresp;
   wire [3:0]  liteeth_reg_rid;
   wire [63:0] liteeth_reg_rdata;
+
+  // LiteDRAM CSR path (M05) signals back to crossbar — declared at module level
+  // so they are visible in the module-level cb_m_axi_* concatenations.
+  // Driven by u_axi64_to_axil_dram when LITEDRAM_SUPPORTED=1; tied to 0 otherwise.
+  logic        litedram_axi_awready;
+  logic        litedram_axi_wready;
+  logic        litedram_axi_arready;
+  logic        litedram_axi_bvalid;
+  logic [1:0]  litedram_axi_bresp;
+  logic [3:0]  litedram_axi_bid;
+  logic        litedram_axi_rvalid;
+  logic        litedram_axi_rlast;
+  logic [1:0]  litedram_axi_rresp;
+  logic [3:0]  litedram_axi_rid;
+  logic [63:0] litedram_axi_rdata;
 
   // AXI4-Lite/32 signals to USB OHCI control regs (driven by MMIO bridge)
   wire [31:0] usb_lite_awaddr;
@@ -820,21 +835,20 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   // M01 (second MI) is used for CDMA registers via dwidth+protocol converters.
   // M02 (third MI) is used for VGA registers (AXI4/64 slave on BUSCLK).
-  // Provide crossbar MI return channels from MIG (M00) and both regs paths (M01/M02).
-    // Provide crossbar MI return channels from MIG (M00) and regs windows (M01=CDMA regs, M02=VGA regs, M03=USB regs)
-  assign cb_m_axi_awready = {liteeth_reg_awready, usb_reg_awready, vga_reg_awready, reg_awready, BUS_cb_axi_awready};
-  assign cb_m_axi_wready  = {liteeth_reg_wready,  usb_reg_wready,  vga_reg_wready,  reg_wready,  BUS_cb_axi_wready};
-  assign cb_m_axi_arready = {liteeth_reg_arready, usb_reg_arready, vga_reg_arready, reg_arready, BUS_cb_axi_arready};
+  // Provide crossbar MI return channels from MIG (M00) and regs windows (M01=CDMA regs, M02=VGA regs, M03=USB regs)
+  assign cb_m_axi_awready = {litedram_axi_awready, liteeth_reg_awready, usb_reg_awready, vga_reg_awready, reg_awready, BUS_cb_axi_awready};
+  assign cb_m_axi_wready  = {litedram_axi_wready, liteeth_reg_wready,  usb_reg_wready,  vga_reg_wready,  reg_wready,  BUS_cb_axi_wready};
+  assign cb_m_axi_arready = {litedram_axi_arready, liteeth_reg_arready, usb_reg_arready, vga_reg_arready, reg_arready, BUS_cb_axi_arready};
 
-  assign cb_m_axi_bvalid  = {liteeth_reg_bvalid,  usb_reg_bvalid,  vga_reg_bvalid,  reg_bvalid,  BUS_cb_axi_bvalid};
-  assign cb_m_axi_bresp   = {liteeth_reg_bresp,   usb_reg_bresp,   vga_reg_bresp,   reg_bresp,   BUS_cb_axi_bresp};
-  assign cb_m_axi_bid     = {liteeth_reg_bid,     usb_reg_bid,     vga_reg_bid,     reg_bid,     BUS_cb_axi_bid};
+  assign cb_m_axi_bvalid  = {litedram_axi_bvalid, liteeth_reg_bvalid,  usb_reg_bvalid,  vga_reg_bvalid,  reg_bvalid,  BUS_cb_axi_bvalid};
+  assign cb_m_axi_bresp   = {litedram_axi_bresp, liteeth_reg_bresp,   usb_reg_bresp,   vga_reg_bresp,   reg_bresp,   BUS_cb_axi_bresp};
+  assign cb_m_axi_bid     = {litedram_axi_bid, liteeth_reg_bid,     usb_reg_bid,     vga_reg_bid,     reg_bid,     BUS_cb_axi_bid};
 
-  assign cb_m_axi_rvalid  = {liteeth_reg_rvalid,  usb_reg_rvalid,  vga_reg_rvalid,  reg_rvalid,  BUS_cb_axi_rvalid};
-  assign cb_m_axi_rlast   = {liteeth_reg_rlast,   usb_reg_rlast,   vga_reg_rlast,   reg_rlast,   BUS_cb_axi_rlast};
-  assign cb_m_axi_rresp   = {liteeth_reg_rresp,   usb_reg_rresp,   vga_reg_rresp,   reg_rresp,   BUS_cb_axi_rresp};
-  assign cb_m_axi_rid     = {liteeth_reg_rid,     usb_reg_rid,     vga_reg_rid,     reg_rid,     BUS_cb_axi_rid};
-  assign cb_m_axi_rdata   = {liteeth_reg_rdata,   usb_reg_rdata,   vga_reg_rdata,   reg_rdata,   BUS_cb_axi_rdata};
+  assign cb_m_axi_rvalid  = {litedram_axi_rvalid, liteeth_reg_rvalid,  usb_reg_rvalid,  vga_reg_rvalid,  reg_rvalid,  BUS_cb_axi_rvalid};
+  assign cb_m_axi_rlast   = {litedram_axi_rlast, liteeth_reg_rlast,   usb_reg_rlast,   vga_reg_rlast,   reg_rlast,   BUS_cb_axi_rlast};
+  assign cb_m_axi_rresp   = {litedram_axi_rresp, liteeth_reg_rresp,   usb_reg_rresp,   vga_reg_rresp,   reg_rresp,   BUS_cb_axi_rresp};
+  assign cb_m_axi_rid     = {litedram_axi_rid, liteeth_reg_rid,     usb_reg_rid,     vga_reg_rid,     reg_rid,     BUS_cb_axi_rid};
+  assign cb_m_axi_rdata   = {litedram_axi_rdata, liteeth_reg_rdata,   usb_reg_rdata,   vga_reg_rdata,   reg_rdata,   BUS_cb_axi_rdata};
 
 
   ///////////////////////////////////////////////////////////
@@ -842,10 +856,15 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic          BUSCLK;
   logic          BUSRST;
   logic          BUSRSTn;
+  // reset for CPU -> DDR AXI path
+  logic          BUSCORERST;
+  logic          BUSCORERSTn;
   logic          sdio_reset_open;
   logic          ahblite_resetn;
   logic          cpu_reset;
   logic          calib;
+  logic          init_error;
+  logic          ddr_ready;
 
 
   logic             c0_init_calib_complete;
@@ -865,9 +884,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic             mmcm1_locked;
 
 (* mark_debug = "true" *)  logic              RVVIStall;
-
-  assign BUSRST = ui_clk_sync_rst;
-  assign BUSRSTn = ~ui_clk_sync_rst;
 
   assign GPIOIN = {25'b0, SDCCD, SDCWP, 1'b0, GPI};
   assign GPO = GPIOOUT[4:0];
@@ -935,7 +951,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   // FIXME: use 'synchronizer' instead
   // CDC timing fix for async reset
   (* ASYNC_REG="TRUE" *) logic [1:0] calib_sync;
-  //always_ff @(posedge CPUCLK or negedge resetn) begin
   always_ff @(posedge CPUCLK) begin
     calib_sync <= {calib_sync[0], c0_init_calib_complete};
   end
@@ -947,7 +962,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
      .ext_reset_in(1'b0),
      .aux_reset_in(south_reset),
      .mb_debug_sys_rst(1'b0),
-     .dcm_locked(init_calib_complete_cpu),
+     .dcm_locked(mmcm1_locked),
      .mb_reset(mb_reset),  //open
      .bus_struct_reset(bus_struct_reset),
      .peripheral_reset(peripheral_reset), //open
@@ -1116,15 +1131,16 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   // Matches your Vivado TCL intent: NUM_SI=4, NUM_MI=4, ADDR=32, DATA=64.
   // Slave-port ID width = 2 (your real initiator ID bits).
   localparam int unsigned ADDR_W    = 32; // FIXME
-  //localparam int unsigned DATA_W    = 64;
   localparam int unsigned DATA_W    = P.XLEN;
   localparam int unsigned STRB_W    = DATA_W/8;
 
+  // XBAR is slave for: CPU, CDMA, VGA, USB
   localparam int unsigned N_SLV     = 4;
-  localparam int unsigned N_MST     = 4;
+  // XBAR is master for: DDR3, CDMA, VGA, USB, LITEETH
+  localparam int unsigned N_MST     = 6;
   localparam int unsigned SLV_ID_W  = 2;
   localparam int unsigned MST_ID_W  = SLV_ID_W + $clog2(N_SLV); // 2+2=4 (goes to MIG)
-  localparam int unsigned N_RULES   = 4;
+  localparam int unsigned N_RULES   = 6;
 
   typedef logic [SLV_ID_W-1:0] slv_id_t;
   typedef logic [MST_ID_W-1:0] mst_id_t;
@@ -1220,7 +1236,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
        .s_axi_rready(m_axi_rready),
 
        .m_axi_aclk(BUSCLK),
-       .m_axi_aresetn(BUSRSTn),
+       .m_axi_aresetn(BUSCORERSTn),
        .m_axi_awid(BUS_axi_awid),
        .m_axi_awlen(BUS_axi_awlen),
        .m_axi_awsize(BUS_axi_awsize),
@@ -1397,107 +1413,107 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
         .dst_clk_i  ( BUSCLK             ),
         //.dst_rst_ni ( resetn             ),
-        .dst_rst_ni ( BUSRSTn            ),
+        .dst_rst_ni ( BUSCORERSTn            ),
         .dst_req_o  ( bus_req            ),
         .dst_resp_i ( bus_resp           )
     );
   end
 
   if (P.XILINX_XBAR_SUPPORTED) begin
-  axicrossbar axicrossbar (
-    .aclk(BUSCLK),
-    .aresetn(BUSRSTn),
+    axicrossbar axicrossbar (
+        .aclk(BUSCLK),
+        .aresetn(BUSCORERSTn),
 
-    // Packed S_AXI (S00=CPU, S01=CDMA)
-    .s_axi_awaddr(cb_s_axi_awaddr),
-    .s_axi_awlen(cb_s_axi_awlen),
-    .s_axi_awsize(cb_s_axi_awsize),
-    .s_axi_awburst(cb_s_axi_awburst),
-    .s_axi_awlock(cb_s_axi_awlock),
-    .s_axi_awcache(cb_s_axi_awcache),
-    .s_axi_awprot(cb_s_axi_awprot),
-    .s_axi_awqos(cb_s_axi_awqos),
-    .s_axi_awvalid(cb_s_axi_awvalid),
-    .s_axi_awready(cb_s_axi_awready),
+        // Packed S_AXI (S00=CPU, S01=CDMA)
+        .s_axi_awaddr(cb_s_axi_awaddr),
+        .s_axi_awlen(cb_s_axi_awlen),
+        .s_axi_awsize(cb_s_axi_awsize),
+        .s_axi_awburst(cb_s_axi_awburst),
+        .s_axi_awlock(cb_s_axi_awlock),
+        .s_axi_awcache(cb_s_axi_awcache),
+        .s_axi_awprot(cb_s_axi_awprot),
+        .s_axi_awqos(cb_s_axi_awqos),
+        .s_axi_awvalid(cb_s_axi_awvalid),
+        .s_axi_awready(cb_s_axi_awready),
 
-    .s_axi_wdata(cb_s_axi_wdata),
-    .s_axi_wstrb(cb_s_axi_wstrb),
-    .s_axi_wlast(cb_s_axi_wlast),
-    .s_axi_wvalid(cb_s_axi_wvalid),
-    .s_axi_wready(cb_s_axi_wready),
+        .s_axi_wdata(cb_s_axi_wdata),
+        .s_axi_wstrb(cb_s_axi_wstrb),
+        .s_axi_wlast(cb_s_axi_wlast),
+        .s_axi_wvalid(cb_s_axi_wvalid),
+        .s_axi_wready(cb_s_axi_wready),
 
-    .s_axi_bresp(cb_s_axi_bresp),
-    .s_axi_bvalid(cb_s_axi_bvalid),
-    .s_axi_bready(cb_s_axi_bready),
+        .s_axi_bresp(cb_s_axi_bresp),
+        .s_axi_bvalid(cb_s_axi_bvalid),
+        .s_axi_bready(cb_s_axi_bready),
 
-    .s_axi_araddr(cb_s_axi_araddr),
-    .s_axi_arlen(cb_s_axi_arlen),
-    .s_axi_arsize(cb_s_axi_arsize),
-    .s_axi_arburst(cb_s_axi_arburst),
-    .s_axi_arlock(cb_s_axi_arlock),
-    .s_axi_arcache(cb_s_axi_arcache),
-    .s_axi_arprot(cb_s_axi_arprot),
-    .s_axi_arqos(cb_s_axi_arqos),
-    .s_axi_arvalid(cb_s_axi_arvalid),
-    .s_axi_arready(cb_s_axi_arready),
+        .s_axi_araddr(cb_s_axi_araddr),
+        .s_axi_arlen(cb_s_axi_arlen),
+        .s_axi_arsize(cb_s_axi_arsize),
+        .s_axi_arburst(cb_s_axi_arburst),
+        .s_axi_arlock(cb_s_axi_arlock),
+        .s_axi_arcache(cb_s_axi_arcache),
+        .s_axi_arprot(cb_s_axi_arprot),
+        .s_axi_arqos(cb_s_axi_arqos),
+        .s_axi_arvalid(cb_s_axi_arvalid),
+        .s_axi_arready(cb_s_axi_arready),
 
-    .s_axi_rdata(cb_s_axi_rdata),
-    .s_axi_rresp(cb_s_axi_rresp),
-    .s_axi_rlast(cb_s_axi_rlast),
-    .s_axi_rvalid(cb_s_axi_rvalid),
-    .s_axi_rready(cb_s_axi_rready),
+        .s_axi_rdata(cb_s_axi_rdata),
+        .s_axi_rresp(cb_s_axi_rresp),
+        .s_axi_rlast(cb_s_axi_rlast),
+        .s_axi_rvalid(cb_s_axi_rvalid),
+        .s_axi_rready(cb_s_axi_rready),
 
-    .s_axi_awid(cb_s_axi_awid),
-    .s_axi_arid(cb_s_axi_arid),
-    .s_axi_bid(cb_s_axi_bid),
-    .s_axi_rid(cb_s_axi_rid),
+        .s_axi_awid(cb_s_axi_awid),
+        .s_axi_arid(cb_s_axi_arid),
+        .s_axi_bid(cb_s_axi_bid),
+        .s_axi_rid(cb_s_axi_rid),
 
-    // Packed M_AXI (M00=DDR/MIG, M01=CDMA regs, M02=VGA regs)
-    .m_axi_awaddr(cb_m_axi_awaddr),
-    .m_axi_awlen(cb_m_axi_awlen),
-    .m_axi_awsize(cb_m_axi_awsize),
-    .m_axi_awburst(cb_m_axi_awburst),
-    .m_axi_awlock(cb_m_axi_awlock),
-    .m_axi_awcache(cb_m_axi_awcache),
-    .m_axi_awprot(cb_m_axi_awprot),
-    .m_axi_awregion(cb_m_axi_awregion),
-    .m_axi_awqos(cb_m_axi_awqos),
-    .m_axi_awvalid(cb_m_axi_awvalid),
-    .m_axi_awready(cb_m_axi_awready),
+        // Packed M_AXI (M00=DDR/MIG, M01=CDMA regs, M02=VGA regs)
+        .m_axi_awaddr(cb_m_axi_awaddr),
+        .m_axi_awlen(cb_m_axi_awlen),
+        .m_axi_awsize(cb_m_axi_awsize),
+        .m_axi_awburst(cb_m_axi_awburst),
+        .m_axi_awlock(cb_m_axi_awlock),
+        .m_axi_awcache(cb_m_axi_awcache),
+        .m_axi_awprot(cb_m_axi_awprot),
+        .m_axi_awregion(cb_m_axi_awregion),
+        .m_axi_awqos(cb_m_axi_awqos),
+        .m_axi_awvalid(cb_m_axi_awvalid),
+        .m_axi_awready(cb_m_axi_awready),
 
-    .m_axi_wdata(cb_m_axi_wdata),
-    .m_axi_wstrb(cb_m_axi_wstrb),
-    .m_axi_wlast(cb_m_axi_wlast),
-    .m_axi_wvalid(cb_m_axi_wvalid),
-    .m_axi_wready(cb_m_axi_wready),
+        .m_axi_wdata(cb_m_axi_wdata),
+        .m_axi_wstrb(cb_m_axi_wstrb),
+        .m_axi_wlast(cb_m_axi_wlast),
+        .m_axi_wvalid(cb_m_axi_wvalid),
+        .m_axi_wready(cb_m_axi_wready),
 
-    .m_axi_bresp(cb_m_axi_bresp),
-    .m_axi_bvalid(cb_m_axi_bvalid),
-    .m_axi_bready(cb_m_axi_bready),
+        .m_axi_bresp(cb_m_axi_bresp),
+        .m_axi_bvalid(cb_m_axi_bvalid),
+        .m_axi_bready(cb_m_axi_bready),
 
-    .m_axi_araddr(cb_m_axi_araddr),
-    .m_axi_arlen(cb_m_axi_arlen),
-    .m_axi_arsize(cb_m_axi_arsize),
-    .m_axi_arburst(cb_m_axi_arburst),
-    .m_axi_arlock(cb_m_axi_arlock),
-    .m_axi_arcache(cb_m_axi_arcache),
-    .m_axi_arprot(cb_m_axi_arprot),
-    .m_axi_arregion(cb_m_axi_arregion),
-    .m_axi_arqos(cb_m_axi_arqos),
-    .m_axi_arvalid(cb_m_axi_arvalid),
-    .m_axi_arready(cb_m_axi_arready),
+        .m_axi_araddr(cb_m_axi_araddr),
+        .m_axi_arlen(cb_m_axi_arlen),
+        .m_axi_arsize(cb_m_axi_arsize),
+        .m_axi_arburst(cb_m_axi_arburst),
+        .m_axi_arlock(cb_m_axi_arlock),
+        .m_axi_arcache(cb_m_axi_arcache),
+        .m_axi_arprot(cb_m_axi_arprot),
+        .m_axi_arregion(cb_m_axi_arregion),
+        .m_axi_arqos(cb_m_axi_arqos),
+        .m_axi_arvalid(cb_m_axi_arvalid),
+        .m_axi_arready(cb_m_axi_arready),
 
-    .m_axi_rdata(cb_m_axi_rdata),
-    .m_axi_rresp(cb_m_axi_rresp),
-    .m_axi_rlast(cb_m_axi_rlast),
-    .m_axi_rvalid(cb_m_axi_rvalid),
-    .m_axi_rready(cb_m_axi_rready),
+        .m_axi_rdata(cb_m_axi_rdata),
+        .m_axi_rresp(cb_m_axi_rresp),
+        .m_axi_rlast(cb_m_axi_rlast),
+        .m_axi_rvalid(cb_m_axi_rvalid),
+        .m_axi_rready(cb_m_axi_rready),
 
-    .m_axi_awid(cb_m_axi_awid),
-    .m_axi_arid(cb_m_axi_arid),
-    .m_axi_bid(cb_m_axi_bid),
-    .m_axi_rid(cb_m_axi_rid)
-  );
+        .m_axi_awid(cb_m_axi_awid),
+        .m_axi_arid(cb_m_axi_arid),
+        .m_axi_bid(cb_m_axi_bid),
+        .m_axi_rid(cb_m_axi_rid)
+    );
   end else begin
     // -----------------------------------------------------------------------------
     // PULP axi_xbar drop-in replacement for Xilinx packed-vector AXI crossbar
@@ -1555,10 +1571,12 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
             start_addr: 32'h8000_0000,
             end_addr:   axi_addr_t'(64'h8000_0000 + (64'(1) << DDR_ADDR_BITS)) },
 
-        // 4KB register windows
+        // register windows
         '{ idx: 1, start_addr: 32'h100A_0000, end_addr: 32'h100A_1000 }, // CDMA regs
         '{ idx: 2, start_addr: 32'h100B_0000, end_addr: 32'h100B_1000 }, // VGA regs
-        '{ idx: 3, start_addr: 32'h100C_0000, end_addr: 32'h100C_1000 }  // USB regs
+        '{ idx: 3, start_addr: 32'h100C_0000, end_addr: 32'h100C_1000 },  // USB regs
+        '{ idx: 4, start_addr: 32'h100D_0000, end_addr: 32'h100F_0000 },  // AXI ETH regs
+        '{ idx: 5, start_addr: 32'h100F_0000, end_addr: 32'h100F_2000 }  // LiteDRAM CSR interface
     };
 
     // ------------------------------
@@ -1699,7 +1717,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
         .rule_t         (axi_pkg::xbar_rule_32_t)
         ) i_axi_xbar (
         .clk_i                 (BUSCLK),
-        .rst_ni                 (BUSRSTn),
+        .rst_ni                 (BUSCORERSTn),
         .test_i                (1'b0),
         .slv_ports_req_i       (slv_req),
         .slv_ports_resp_o      (slv_resp),
@@ -1895,7 +1913,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     // Clocks / resets
     .ctrl_clk     (BUSCLK),
     .ctrl_aresetn (BUSRSTn),
-    //.phy_clk      (rmii_clk50),
     .phy_clk   (clk48MHz),
     .phy_aresetn(usb_phy_resetn_sync),
 
@@ -2163,7 +2180,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     dma_irq_sync <= {dma_irq_sync[0], dma_introut}; // dma_introut = introut signal
   end
 
-  //assign plic_request_for_dma = dma_irq_sync[1];
   assign dma_introut_sync = dma_irq_sync[1];
 
   axicdma axicdma (
@@ -2233,84 +2249,426 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .cdma_introut  (dma_introut)
   );
 
-  // DDR3 Controller
-  ddr3 ddr3
-    (
-     // ddr3 I/O
-     .ddr3_dq(ddr3_dq),
-     .ddr3_dqs_n(ddr3_dqs_n),
-     .ddr3_dqs_p(ddr3_dqs_p),
-     .ddr3_addr(ddr3_addr),
-     .ddr3_ba(ddr3_ba),
-     .ddr3_ras_n(ddr3_ras_n),
-     .ddr3_cas_n(ddr3_cas_n),
-     .ddr3_we_n(ddr3_we_n),
-     .ddr3_reset_n(ddr3_reset_n),
-     .ddr3_ck_p(ddr3_ck_p),
-     .ddr3_ck_n(ddr3_ck_n),
-     .ddr3_cke(ddr3_cke),
-     .ddr3_cs_n(ddr3_cs_n),
-     .ddr3_dm(ddr3_dm),
-     .ddr3_odt(ddr3_odt),
+  assign ddr_ready    = c0_init_calib_complete & ~init_error;
 
-     .sys_clk_i(clk167),
-     .clk_ref_i(clk200),
+  assign BUSCORERST  = ~mmcm_locked;    // deassert once BUSCLK is stable; ui_clk_sync_rst stays high through calibration
+  assign BUSCORERSTn = ~BUSCORERST;
 
-     .ui_clk(BUSCLK),
-     .ui_clk_sync_rst(ui_clk_sync_rst),
-     // FIXME: Is this OK?
-     .aresetn(resetn),
-     .sys_rst(resetn),    // omg. this is active low?!?!??
-     .mmcm_locked(mmcm_locked),
+  assign BUSRST       = ui_clk_sync_rst | ~ddr_ready;
+  assign BUSRSTn      = ~BUSRST;
 
-     .app_sr_req(1'b0),  // reserved command
-     .app_ref_req(1'b0), // refresh command
-     .app_zq_req(1'b0),  // recalibrate command
-     .app_sr_active(app_sr_active), // reserved response
-     .app_ref_ack(app_ref_ack),     // refresh ack
-     .app_zq_ack(app_zq_ack),       // recalibrate ack
 
-     // AXI (FROM CROSSBAR M00 -> MIG)
-     .s_axi_awid(BUS_cb_axi_awid),
-     .s_axi_awaddr(BUS_cb_axi_awaddr[29:0]), // This width must match DDR size
-     .s_axi_awlen(BUS_cb_axi_awlen),
-     .s_axi_awsize(BUS_cb_axi_awsize),
-     .s_axi_awburst(BUS_cb_axi_awburst),
-     .s_axi_awlock(BUS_cb_axi_awlock),
-     .s_axi_awcache(BUS_cb_axi_awcache),
-     .s_axi_awprot(BUS_cb_axi_awprot),
-     .s_axi_awqos(BUS_cb_axi_awqos),
-     .s_axi_awvalid(BUS_cb_axi_awvalid),
-     .s_axi_awready(BUS_cb_axi_awready),
-     .s_axi_wdata(BUS_cb_axi_wdata),
-     .s_axi_wstrb(BUS_cb_axi_wstrb),
-     .s_axi_wlast(BUS_cb_axi_wlast),
-     .s_axi_wvalid(BUS_cb_axi_wvalid),
-     .s_axi_wready(BUS_cb_axi_wready),
-     .s_axi_bready(BUS_cb_axi_bready),
-     .s_axi_bid(BUS_cb_axi_bid),
-     .s_axi_bresp(BUS_cb_axi_bresp),
-     .s_axi_bvalid(BUS_cb_axi_bvalid),
-     .s_axi_arid(BUS_cb_axi_arid),
-     .s_axi_araddr(BUS_cb_axi_araddr[29:0]), // This width must match DDR size
-     .s_axi_arlen(BUS_cb_axi_arlen),
-     .s_axi_arsize(BUS_cb_axi_arsize),
-     .s_axi_arburst(BUS_cb_axi_arburst),
-     .s_axi_arlock(BUS_cb_axi_arlock),
-     .s_axi_arcache(BUS_cb_axi_arcache),
-     .s_axi_arprot(BUS_cb_axi_arprot),
-     .s_axi_arqos(BUS_cb_axi_arqos),
-     .s_axi_arvalid(BUS_cb_axi_arvalid),
-     .s_axi_arready(BUS_cb_axi_arready),
-     .s_axi_rready(BUS_cb_axi_rready),
-     .s_axi_rlast(BUS_cb_axi_rlast),
-     .s_axi_rvalid(BUS_cb_axi_rvalid),
-     .s_axi_rresp(BUS_cb_axi_rresp),
-     .s_axi_rid(BUS_cb_axi_rid),
-     .s_axi_rdata(BUS_cb_axi_rdata),
+  if (!P.LITEDRAM_SUPPORTED & !P.UBERDDR3_SUPPORTED) begin
 
-     .init_calib_complete(c0_init_calib_complete),
-     .device_temp(device_temp));
+    // no need to access DDR while not fully functional
+    assign init_error = 1'b0;
+
+    // No LiteDRAM CSR interface when using Xilinx MIG — tie M05 responses to 0
+    assign litedram_axi_awready = 1'b0;
+    assign litedram_axi_wready  = 1'b0;
+    assign litedram_axi_arready = 1'b0;
+    assign litedram_axi_bvalid  = 1'b0;
+    assign litedram_axi_bresp   = 2'b0;
+    assign litedram_axi_bid     = 4'b0;
+    assign litedram_axi_rvalid  = 1'b0;
+    assign litedram_axi_rlast   = 1'b0;
+    assign litedram_axi_rresp   = 2'b0;
+    assign litedram_axi_rid     = 4'b0;
+    assign litedram_axi_rdata   = 64'b0;
+
+    // DDR3 Controller
+    ddr3 ddr3
+        (
+        // ddr3 I/O
+        .ddr3_dq(ddr3_dq),
+        .ddr3_dqs_n(ddr3_dqs_n),
+        .ddr3_dqs_p(ddr3_dqs_p),
+        .ddr3_addr(ddr3_addr),
+        .ddr3_ba(ddr3_ba),
+        .ddr3_ras_n(ddr3_ras_n),
+        .ddr3_cas_n(ddr3_cas_n),
+        .ddr3_we_n(ddr3_we_n),
+        .ddr3_reset_n(ddr3_reset_n),
+        .ddr3_ck_p(ddr3_ck_p),
+        .ddr3_ck_n(ddr3_ck_n),
+        .ddr3_cke(ddr3_cke),
+        .ddr3_cs_n(ddr3_cs_n),
+        .ddr3_dm(ddr3_dm),
+        .ddr3_odt(ddr3_odt),
+
+        .sys_clk_i(clk167),
+        .clk_ref_i(clk200),
+
+        .ui_clk(BUSCLK),
+        .ui_clk_sync_rst(ui_clk_sync_rst),
+        // FIXME: Is this OK?
+        .aresetn(resetn),
+        .sys_rst(resetn),    // omg. this is active low?!?!??
+        .mmcm_locked(mmcm_locked),
+
+        .app_sr_req(1'b0),  // reserved command
+        .app_ref_req(1'b0), // refresh command
+        .app_zq_req(1'b0),  // recalibrate command
+        .app_sr_active(app_sr_active), // reserved response
+        .app_ref_ack(app_ref_ack),     // refresh ack
+        .app_zq_ack(app_zq_ack),       // recalibrate ack
+
+        // AXI (FROM CROSSBAR M00 -> MIG)
+        .s_axi_awid(BUS_cb_axi_awid),
+        .s_axi_awaddr(BUS_cb_axi_awaddr[29:0]), // This width must match DDR size
+        .s_axi_awlen(BUS_cb_axi_awlen),
+        .s_axi_awsize(BUS_cb_axi_awsize),
+        .s_axi_awburst(BUS_cb_axi_awburst),
+        .s_axi_awlock(BUS_cb_axi_awlock),
+        .s_axi_awcache(BUS_cb_axi_awcache),
+        .s_axi_awprot(BUS_cb_axi_awprot),
+        .s_axi_awqos(BUS_cb_axi_awqos),
+        .s_axi_awvalid(BUS_cb_axi_awvalid),
+        .s_axi_awready(BUS_cb_axi_awready),
+        .s_axi_wdata(BUS_cb_axi_wdata),
+        .s_axi_wstrb(BUS_cb_axi_wstrb),
+        .s_axi_wlast(BUS_cb_axi_wlast),
+        .s_axi_wvalid(BUS_cb_axi_wvalid),
+        .s_axi_wready(BUS_cb_axi_wready),
+        .s_axi_bready(BUS_cb_axi_bready),
+        .s_axi_bid(BUS_cb_axi_bid),
+        .s_axi_bresp(BUS_cb_axi_bresp),
+        .s_axi_bvalid(BUS_cb_axi_bvalid),
+        .s_axi_arid(BUS_cb_axi_arid),
+        .s_axi_araddr(BUS_cb_axi_araddr[29:0]), // This width must match DDR size
+        .s_axi_arlen(BUS_cb_axi_arlen),
+        .s_axi_arsize(BUS_cb_axi_arsize),
+        .s_axi_arburst(BUS_cb_axi_arburst),
+        .s_axi_arlock(BUS_cb_axi_arlock),
+        .s_axi_arcache(BUS_cb_axi_arcache),
+        .s_axi_arprot(BUS_cb_axi_arprot),
+        .s_axi_arqos(BUS_cb_axi_arqos),
+        .s_axi_arvalid(BUS_cb_axi_arvalid),
+        .s_axi_arready(BUS_cb_axi_arready),
+        .s_axi_rready(BUS_cb_axi_rready),
+        .s_axi_rlast(BUS_cb_axi_rlast),
+        .s_axi_rvalid(BUS_cb_axi_rvalid),
+        .s_axi_rresp(BUS_cb_axi_rresp),
+        .s_axi_rid(BUS_cb_axi_rid),
+        .s_axi_rdata(BUS_cb_axi_rdata),
+
+        .init_calib_complete(c0_init_calib_complete),
+        .device_temp(device_temp));
+  end else if (P.LITEDRAM_SUPPORTED) begin
+
+    // ===========================================================================
+    // AXI4->AXI-Lite signals (adapter master side)
+    // ===========================================================================
+    logic [31:0] axil_awaddr;
+    logic [2:0]  axil_awprot;
+    logic        axil_awvalid;
+    logic        axil_awready;
+
+    logic [31:0] axil_wdata;
+    logic [3:0]  axil_wstrb;
+    logic        axil_wvalid;
+    logic        axil_wready;
+
+    logic [1:0]  axil_bresp;
+    logic        axil_bvalid;
+    logic        axil_bready;
+
+    logic [31:0] axil_araddr;
+    logic [2:0]  axil_arprot;
+    logic        axil_arvalid;
+    logic        axil_arready;
+
+    logic [31:0] axil_rdata;
+    logic [1:0]  axil_rresp;
+    logic        axil_rvalid;
+    logic        axil_rready;
+
+
+    logic          wb_ctrl_ack;
+    logic   [29:0] wb_ctrl_adr;
+    logic    [1:0] wb_ctrl_bte;
+    logic    [2:0] wb_ctrl_cti;
+    logic          wb_ctrl_cyc;
+    logic   [31:0] wb_ctrl_dat_r;
+    logic   [31:0] wb_ctrl_dat_w;
+    logic          wb_ctrl_err;
+    logic    [3:0] wb_ctrl_sel;
+    logic          wb_ctrl_stb;
+    logic          wb_ctrl_we;
+
+
+    // litedram_axi_* are declared at module level (driven by u_axi64_to_axil_dram below)
+
+    logic   litedram_reset_unused;
+
+
+    axi64_mmio_to_axilite32_v2 u_axi64_to_axil_dram (
+        .aclk          (BUSCLK),
+        .aresetn(BUSCORERSTn),
+
+        .s_axi_awid    (cb_m_axi_awid[23:20]),
+        .s_axi_awaddr  (cb_m_axi_awaddr[191:160]),
+        .s_axi_awlen   (cb_m_axi_awlen[47:40]),
+        .s_axi_awsize  (cb_m_axi_awsize[17:15]),
+        .s_axi_awburst (cb_m_axi_awburst[11:10]),
+        .s_axi_awvalid (cb_m_axi_awvalid[5]),
+        .s_axi_awready (litedram_axi_awready),
+
+        .s_axi_wdata   (cb_m_axi_wdata[383:320]),
+        .s_axi_wstrb   (cb_m_axi_wstrb[47:40]),
+        .s_axi_wlast   (cb_m_axi_wlast[5]),
+        .s_axi_wvalid  (cb_m_axi_wvalid[5]),
+        .s_axi_wready  (litedram_axi_wready),
+
+        .s_axi_bresp   (litedram_axi_bresp),
+        .s_axi_bvalid  (litedram_axi_bvalid),
+        .s_axi_bid     (litedram_axi_bid),
+        .s_axi_bready  (cb_m_axi_bready[5]),
+
+        .s_axi_arid    (cb_m_axi_arid[23:20]),
+        .s_axi_araddr  (cb_m_axi_araddr[191:160]),
+        .s_axi_arlen   (cb_m_axi_arlen[47:40]),
+        .s_axi_arsize  (cb_m_axi_arsize[17:15]),
+        .s_axi_arburst (cb_m_axi_arburst[11:10]),
+        .s_axi_arvalid (cb_m_axi_arvalid[5]),
+        .s_axi_arready (litedram_axi_arready),
+
+        .s_axi_rdata   (litedram_axi_rdata),
+        .s_axi_rresp   (litedram_axi_rresp),
+        .s_axi_rlast   (litedram_axi_rlast),
+        .s_axi_rvalid  (litedram_axi_rvalid),
+        .s_axi_rid     (litedram_axi_rid),
+        .s_axi_rready  (cb_m_axi_rready[5]),
+
+        // AXI lite side
+        .m_axil_awaddr (axil_awaddr),
+        .m_axil_awprot (axil_awprot),
+        .m_axil_awvalid(axil_awvalid),
+        .m_axil_awready(axil_awready),
+
+        .m_axil_wdata  (axil_wdata),
+        .m_axil_wstrb  (axil_wstrb),
+        .m_axil_wvalid (axil_wvalid),
+        .m_axil_wready (axil_wready),
+
+        .m_axil_bresp  (axil_bresp),
+        .m_axil_bvalid (axil_bvalid),
+        .m_axil_bready (axil_bready),
+
+        .m_axil_araddr (axil_araddr),
+        .m_axil_arprot (axil_arprot),
+        .m_axil_arvalid(axil_arvalid),
+        .m_axil_arready(axil_arready),
+
+        .m_axil_rdata  (axil_rdata),
+        .m_axil_rresp  (axil_rresp),
+        .m_axil_rvalid (axil_rvalid),
+        .m_axil_rready (axil_rready)
+    );
+
+    axlite2wbsp
+        axil2wb (
+            .i_clk(BUSCLK),
+            .i_axi_reset_n(BUSCORERSTn),
+
+            // AXI signals
+            .i_axi_awvalid(axil_awvalid),
+            .o_axi_awready(axil_awready),
+            .i_axi_awaddr(axil_awaddr),
+            .i_axi_awprot(axil_awprot),
+            .i_axi_wvalid(axil_wvalid),
+            .o_axi_wready(axil_wready),
+            .i_axi_wdata(axil_wdata),
+            .i_axi_wstrb(axil_wstrb),
+            .o_axi_bvalid(axil_bvalid),
+            .i_axi_bready(axil_bready),
+            .o_axi_bresp(axil_bresp),
+            .i_axi_arvalid(axil_arvalid),
+            .o_axi_arready(axil_arready),
+            .i_axi_araddr(axil_araddr),
+            .i_axi_arprot(axil_arprot),
+            .o_axi_rvalid(axil_rvalid),
+            .i_axi_rready(axil_rready),
+            .o_axi_rdata(axil_rdata),
+            .o_axi_rresp(axil_rresp),
+
+            .o_reset(litedram_reset_unused),
+
+            // Wishbone signals
+            .o_wb_cyc(wb_ctrl_cyc),
+            .o_wb_stb(wb_ctrl_stb),
+            .o_wb_we(wb_ctrl_we),
+            .o_wb_addr(wb_ctrl_adr),
+            .o_wb_data(wb_ctrl_dat_w),
+            .o_wb_sel(wb_ctrl_sel),
+            .i_wb_stall(1'b0),
+            .i_wb_ack(wb_ctrl_ack),
+            .i_wb_data(wb_ctrl_dat_r),
+            .i_wb_err(wb_ctrl_err)
+        );
+
+    litedram_genesys2_fixed ddr3(
+        .clk      (clk200),          // external 200 MHz board clock
+        .rst(reset),
+
+        .ddram_a(ddr3_addr),
+        .ddram_ba(ddr3_ba),
+        .ddram_cas_n(ddr3_cas_n),
+        .ddram_cke(ddr3_cke),
+        .ddram_clk_n(ddr3_ck_n),
+        .ddram_clk_p(ddr3_ck_p),
+        .ddram_cs_n(ddr3_cs_n),
+        .ddram_dm(ddr3_dm),
+        .ddram_dq(ddr3_dq),
+        .ddram_dqs_n(ddr3_dqs_n),
+        .ddram_dqs_p(ddr3_dqs_p),
+        .ddram_odt(ddr3_odt),
+        .ddram_ras_n(ddr3_ras_n),
+        .ddram_reset_n(ddr3_reset_n),
+        .ddram_we_n(ddr3_we_n),
+
+        .init_done(c0_init_calib_complete),
+        .init_error(init_error),
+        .pll_locked(mmcm_locked),
+        .user_clk (BUSCLK),
+        .user_rst (ui_clk_sync_rst),
+
+        .user_port_axi_0_araddr(BUS_cb_axi_araddr),
+        .user_port_axi_0_arburst(BUS_cb_axi_arburst),
+        .user_port_axi_0_arid(BUS_cb_axi_arid),
+        .user_port_axi_0_arlen(BUS_cb_axi_arlen),
+        .user_port_axi_0_arready(BUS_cb_axi_arready),
+        .user_port_axi_0_arsize(BUS_cb_axi_arsize),
+        .user_port_axi_0_arvalid(BUS_cb_axi_arvalid),
+        .user_port_axi_0_awaddr(BUS_cb_axi_awaddr),
+        .user_port_axi_0_awburst(BUS_cb_axi_awburst),
+        .user_port_axi_0_awid(BUS_cb_axi_awid),
+        .user_port_axi_0_awlen(BUS_cb_axi_awlen),
+        .user_port_axi_0_awready(BUS_cb_axi_awready),
+        .user_port_axi_0_awsize(BUS_cb_axi_awsize),
+        .user_port_axi_0_awvalid(BUS_cb_axi_awvalid),
+        .user_port_axi_0_bid(BUS_cb_axi_bid),
+        .user_port_axi_0_bready(BUS_cb_axi_bready),
+        .user_port_axi_0_bresp(BUS_cb_axi_bresp),
+        .user_port_axi_0_bvalid(BUS_cb_axi_bvalid),
+        .user_port_axi_0_rdata(BUS_cb_axi_rdata),
+        .user_port_axi_0_rid(BUS_cb_axi_rid),
+        .user_port_axi_0_rlast(BUS_cb_axi_rlast),
+        .user_port_axi_0_rready(BUS_cb_axi_rready),
+        .user_port_axi_0_rresp(BUS_cb_axi_rresp),
+        .user_port_axi_0_rvalid(BUS_cb_axi_rvalid),
+        .user_port_axi_0_wdata(BUS_cb_axi_wdata),
+        .user_port_axi_0_wlast(BUS_cb_axi_wlast),
+        .user_port_axi_0_wready(BUS_cb_axi_wready),
+        .user_port_axi_0_wstrb(BUS_cb_axi_wstrb),
+        .user_port_axi_0_wvalid(BUS_cb_axi_wvalid),
+
+        .wb_ctrl_ack(wb_ctrl_ack),
+        .wb_ctrl_adr(wb_ctrl_adr),
+        .wb_ctrl_bte(2'b00),
+        .wb_ctrl_cti(3'b000),
+        .wb_ctrl_cyc(wb_ctrl_cyc),
+        .wb_ctrl_dat_r(wb_ctrl_dat_r),
+        .wb_ctrl_dat_w(wb_ctrl_dat_w),
+        .wb_ctrl_err(wb_ctrl_err),
+        .wb_ctrl_sel(wb_ctrl_sel),
+        .wb_ctrl_stb(wb_ctrl_stb),
+        .wb_ctrl_we(wb_ctrl_we)
+
+    );
+  end else begin
+
+    logic dummy_rstn;
+    logic dummy_clk200;
+    assign init_error = 1'b0;
+
+    // No LiteDRAM CSR interface
+    assign litedram_axi_awready = 1'b0;
+    assign litedram_axi_wready  = 1'b0;
+    assign litedram_axi_arready = 1'b0;
+    assign litedram_axi_bvalid  = 1'b0;
+    assign litedram_axi_bresp   = 2'b0;
+    assign litedram_axi_bid     = 4'b0;
+    assign litedram_axi_rvalid  = 1'b0;
+    assign litedram_axi_rlast   = 1'b0;
+    assign litedram_axi_rresp   = 2'b0;
+    assign litedram_axi_rid     = 4'b0;
+    assign litedram_axi_rdata   = 64'b0;
+
+    uberddr3_wrapper ddr3 (
+
+        .i_clk_200(clk200),
+        .i_sys_rst(reset),        // active-high global reset
+
+        .o_ui_clk(BUSCLK),         // AXI/UI clock for the SoC side (100 MHz)
+        .o_ref_clk_200(dummy_clk200),    // buffered 200 MHz reference clock
+        .o_ui_clk_sync_rst(ui_clk_sync_rst),// active-high reset synchronous to o_ui_clk
+        .o_ui_aresetn(dummy_rstn),     // active-low version of the same reset
+        .o_pll_locked(mmcm_locked),
+        .o_init_calib_complete(c0_init_calib_complete),
+
+        // AXI slave interface (SoC side, kept MIG/LiteDRAM-like)
+        .i_s_axi_awid(BUS_cb_axi_awid),
+        .i_s_axi_awaddr(BUS_cb_axi_awaddr),
+        .i_s_axi_awlen(BUS_cb_axi_awlen),
+        .i_s_axi_awsize(BUS_cb_axi_awsize),
+        .i_s_axi_awburst(BUS_cb_axi_awburst),
+        .i_s_axi_awlock(BUS_cb_axi_awlock),
+        .i_s_axi_awcache(BUS_cb_axi_awcache),
+        .i_s_axi_awprot(BUS_cb_axi_awprot),
+        .i_s_axi_awqos(BUS_cb_axi_awqos),
+        .i_s_axi_awvalid(BUS_cb_axi_awvalid),
+        .o_s_axi_awready(BUS_cb_axi_awready),
+
+        .i_s_axi_wdata(BUS_cb_axi_wdata),
+        .i_s_axi_wstrb(BUS_cb_axi_wstrb),
+        .i_s_axi_wlast(BUS_cb_axi_wlast),
+        .i_s_axi_wvalid(BUS_cb_axi_wvalid),
+        .o_s_axi_wready(BUS_cb_axi_wready),
+
+        .o_s_axi_bid(BUS_cb_axi_bid),
+        .o_s_axi_bresp(BUS_cb_axi_bresp),
+        .o_s_axi_bvalid(BUS_cb_axi_bvalid),
+        .i_s_axi_bready(BUS_cb_axi_bready),
+
+        .i_s_axi_arid(BUS_cb_axi_arid),
+        .i_s_axi_araddr(BUS_cb_axi_araddr),
+        .i_s_axi_arlen(BUS_cb_axi_arlen),
+        .i_s_axi_arsize(BUS_cb_axi_arsize),
+        .i_s_axi_arburst(BUS_cb_axi_arburst),
+        .i_s_axi_arlock(BUS_cb_axi_arlock),
+        .i_s_axi_arcache(BUS_cb_axi_arcache),
+        .i_s_axi_arprot(BUS_cb_axi_arprot),
+        .i_s_axi_arqos(BUS_cb_axi_arqos),
+        .i_s_axi_arvalid(BUS_cb_axi_arvalid),
+        .o_s_axi_arready(BUS_cb_axi_arready),
+
+        .o_s_axi_rid(BUS_cb_axi_rid),
+        .o_s_axi_rdata(BUS_cb_axi_rdata),
+        .o_s_axi_rresp(BUS_cb_axi_rresp),
+        .o_s_axi_rlast(BUS_cb_axi_rlast),
+        .o_s_axi_rvalid(BUS_cb_axi_rvalid),
+        .i_s_axi_rready(BUS_cb_axi_rready),
+
+        // DDR3 pins
+        .io_ddr3_dq(ddr3_dq),
+        .io_ddr3_dqs_n(ddr3_dqs_n),
+        .io_ddr3_dqs_p(ddr3_dqs_p),
+        .o_ddr3_addr(ddr3_addr),
+        .o_ddr3_ba(ddr3_ba),
+        .o_ddr3_ras_n(ddr3_ras_n),
+        .o_ddr3_cas_n(ddr3_cas_n),
+        .o_ddr3_we_n(ddr3_we_n),
+        .o_ddr3_reset_n(ddr3_reset_n),
+        .o_ddr3_ck_p(ddr3_ck_p),
+        .o_ddr3_ck_n(ddr3_ck_n),
+        .o_ddr3_cke(ddr3_cke),
+        .o_ddr3_cs_n(ddr3_cs_n),
+        .o_ddr3_dm(ddr3_dm),
+        .o_ddr3_odt(ddr3_odt)
+    );
+
+  end
 
   (* mark_debug = "true" *)  logic IlaTrigger;
 

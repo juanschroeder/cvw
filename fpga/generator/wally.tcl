@@ -61,7 +61,7 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
     import_ip IP/axicrossbar.srcs/sources_1/ip/axicrossbar/axicrossbar.xci
     import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
 } elseif {$board=="genesys2soc" } {
-    import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
+    # import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
     # FIXME: remove later
     import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
@@ -107,6 +107,27 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexy
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$boardSubName.xdc]
 }
 
+# only tested on the Genesys 2
+if {$board=="nexysa7soc" || $board=="genesys2soc"} {
+    set uberddr3_supported [expr {[info exists ::env(UBERDDR3_SUPPORTED)] ? $::env(UBERDDR3_SUPPORTED) : "0"}]
+    set litedram_supported  [expr {[info exists ::env(LITEDRAM_SUPPORTED)]  ? $::env(LITEDRAM_SUPPORTED)  : "0"}]
+
+    puts "DEBUG uberddr3_supported=($uberddr3_supported)"
+    puts "DEBUG litedram_supported=($litedram_supported)"
+
+    if {$litedram_supported=="1"} {
+        add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-litedram.xdc
+        set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-litedram.xdc]
+    } elseif {$uberddr3_supported=="1"} {
+        add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-uberddr3.xdc
+        set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-uberddr3.xdc]
+    } else {
+        add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-mig.xdc
+        set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-mig.xdc]
+        puts "DEBUG Using Xilinx MIG"
+    }
+}
+
 if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} {
 
     set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared \
@@ -127,6 +148,16 @@ if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} 
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/*.v]
     # ahb3lite_wb_bridge stuff
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/ahb3lite_wb_bridge/*.v]
+    # wb2axip stuff: only specific files for now
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/wb2axip/rtl/axlite2wbsp.v \
+        ../src/CopiedFiles_do_not_add_to_repo/wb2axip/rtl/axilwr2wbsp.v \
+        ../src/CopiedFiles_do_not_add_to_repo/wb2axip/rtl/axilrd2wbsp.v  \
+        ../src/CopiedFiles_do_not_add_to_repo/wb2axip/rtl/wbarbiter.v  \
+        ]
+    # uberddr3 stuff
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/uberddr3/rtl/*.v \
+                             ../src/CopiedFiles_do_not_add_to_repo/uberddr3/rtl/axi/*.v \
+        ]
 
     report_compile_order -constraints > reports/compile_order.rpt
 }
@@ -182,6 +213,16 @@ if {$board=="ArtyA7"} {
     #source ../constraints/small-debug.xdc
     #source ../constraints/small-debug.xdc
     source ../constraints/big-debug-spi.xdc
+}
+
+if {$board=="nexysa7soc" || $board=="genesys2soc"} {
+    if {$litedram_supported=="1"} {
+        source ../constraints/debug-boot-litedram.xdc
+    } elseif {$uberddr3_supported=="1"} {
+        source ../constraints/debug-boot-uberddr3.xdc
+    } else {
+        source ../constraints/debug-boot-mig.xdc
+    }
 }
 
 
@@ -286,6 +327,6 @@ report_timing -max_paths 10 -nworst 10 -delay_type max -sort_by slack     -file 
 report_timing -nworst 1 -delay_type max -sort_by group                    -file reports/imp_timing.rpt
 report_utilization -hierarchical                                          -file reports/imp_utilization.rpt
 
-if {$board=="nexysa7soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc"} {
     write_project_tcl -force $ipName.tcl
 }

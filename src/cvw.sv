@@ -148,6 +148,10 @@ typedef struct packed {
   logic         XILINX_AXI_BR_SUPPORTED;
   logic         XILINX_CDC_SUPPORTED;
   logic         XILINX_XBAR_SUPPORTED;
+  logic         UBERDDR3_SUPPORTED;
+  logic         LITEDRAM_SUPPORTED;
+  logic [63:0]  LITEDRAM_BASE;
+  logic [63:0]  LITEDRAM_RANGE;
   logic         WISHBONE_SUPPORTED;
   logic [63:0]  WISHBONE_BASE;
   logic [63:0]  WISHBONE_RANGE;

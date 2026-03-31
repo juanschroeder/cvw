@@ -38,14 +38,15 @@ module rom_ahb import cvw::*;  #(parameter cvw_t P,
   output logic                 HRESPRom, HREADYRom
 );
 
-  localparam ADDR_WIDTH = $clog2(RANGE/8);
-  localparam OFFSET     = $clog2(P.XLEN/8);
+  localparam ADDR_WIDTH    = $clog2(RANGE/8);
+  localparam OFFSET        = $clog2(P.XLEN/8);
+  localparam PRELOAD_START = P.BOOTROM_BASE >> 3; // boot.mem line 1 = ROM[BOOTROM_BASE/8]
 
   // Never stalls
   assign HREADYRom = 1'b1;
   assign HRESPRom  = 1'b0; // OK
 
   // single-ported ROM
-  rom1p1r #(ADDR_WIDTH, P.XLEN, PRELOAD)
+  rom1p1r #(ADDR_WIDTH, P.XLEN, PRELOAD, PRELOAD_START)
     memory(.clk(HCLK), .ce(1'b1), .addr(HADDR[ADDR_WIDTH+OFFSET-1:OFFSET]), .dout(HREADRom));
 endmodule
