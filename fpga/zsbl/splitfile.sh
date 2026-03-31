@@ -33,8 +33,9 @@
 # https:##stackoverflow.com#questions#3066948#how-to-file-split-at-a-line-number
 file_name=$1
 
+# K = (UNCORE_RAM_BASE - BOOTROM_BASE) / sizeof(word)
 # set first K lines:
-K=512
+K=15872   # UNCORE_RAM_BASE=0x20000
 
 # line count (N):
 N=$(wc -l < $file_name)

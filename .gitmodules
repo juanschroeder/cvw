@@ -70,3 +70,15 @@
   path = addins/ahb-to-axi
   url = https://github.com/juanschroeder/ahbl-to-axi4.git
   branch = main
+[submodule "wb2axip"]
+  path = addins/wb2axip
+  url = https://github.com/ZipCPU/wb2axip.git
+  branch = master
+[submodule "litex"]
+  path = addins/litex
+  url = https://github.com/enjoy-digital/litex.git
+  branch = master
+[submodule "uberddr3"]
+  path = addins/uberddr3
+  url = https://github.com/AngeloJacobo/UberDDR3
+  branch = main

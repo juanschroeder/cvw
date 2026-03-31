@@ -37,6 +37,11 @@
 #include "riscv.h"
 #include "fail.h"
 
+#if (LITEDRAM_SUPPORTED == 1)
+    #include <generated/sdram_phy.h>
+    #include <sdram.h>
+#endif
+
 
 // Maximum SD card clock frequency is either 20MHz or half of the
 // system clock
@@ -225,6 +230,14 @@ void copyFlash(QWORD address, QWORD * Dst, DWORD numBlocks) {
 
   // Initialize the SD card
   init_sd(SYSTEMCLOCK, SDCCLOCK);
+
+#if (LITEDRAM_SUPPORTED == 1)
+    print_uart("\r\n          INITIALIZING DDR....\r\n");
+    sdram_init();
+    print_uart("\r\n          DDR INIT DONE!\r\n");
+#else
+    #pragma message "NO LITEDRAM ENABLED"
+#endif
 
   ret = gpt_load_partitions();
 }

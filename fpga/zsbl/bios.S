@@ -47,8 +47,8 @@ _start:
   li x31, 0
 
 
-  # set the stack pointer to the top of memory - 8 bytes (pointer size)
-  li sp, (EXT_MEM_END - 8)
+  # set the stack pointer to the top of internal RAM - 8 bytes (pointer size)
+  li sp, (UNCORE_RAM_END - 8)
 
   li a0, 0x00000000
   li a1, EXT_MEM_BASE
@@ -89,6 +89,7 @@ delay2:
 
 jumpToLinux:
   csrrs a0, 0xF14, x0   # copy hart ID to a0
+  li sp, (EXT_MEM_END - 8) # stack now in main DDR
   li a1, FDT_ADDRESS  # This is the device tree address
   la a2, end_of_bios
   li t0, EXT_MEM_BASE  # start of code

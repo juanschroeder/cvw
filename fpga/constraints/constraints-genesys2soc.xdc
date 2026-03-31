@@ -127,10 +127,6 @@ set_output_delay -clock [get_clocks SPISDCClock] -max -add_delay 6.000 [get_port
 set_output_delay -clock [get_clocks SPISDCClock] 0.000 [get_ports SDCCLK]
 
 
-#set_multicycle_path -from [get_pins xlnx_ddr3_c0/u_xlnx_ddr3_mig/u_memc_ui_top_axi/mem_intfc0/ddr_phy_top0/u_ddr_calib_top/init_calib_complete_reg/C] -to [get_pins xlnx_proc_sys_reset_0/U0/EXT_LPF/lpf_int_reg/D] 10
-
-set_max_delay -datapath_only -from [get_pins xlnx_ddr3_c0/u_xlnx_ddr3_mig/u_memc_ui_top_axi/mem_intfc0/ddr_phy_top0/u_ddr_calib_top/init_calib_complete_reg/C] -to [get_pins xlnx_proc_sys_reset_0/U0/EXT_LPF/lpf_int_reg/D] 20.000
-
 # *********************************
 #set_property DCI_CASCADE {64} [get_iobanks 65]
 #set_property INTERNAL_VREF 0.9 [get_iobanks 65]
@@ -375,6 +371,7 @@ set_property -dict { PACKAGE_PIN AK14  IOSTANDARD LVCMOS15 } [get_ports { rgmii_
 set_property PULLUP true [get_ports { rgmii_int_n }]
 
 
-# Necessary for the IDELAYE2s instantiated in LiteEth
-set_property IODELAY_GROUP ETH_RGMII [get_cells -hier -regexp {.*liteEthAXI/u_liteeth/IDELAYE2.*}]
-set_property IODELAY_GROUP ETH_RGMII [get_cells -hier -regexp {.*liteEthAXI/u_idelayctrl_eth}]
+# Both RGMII and DDR3 are in bank 33 so they cannot be in different IODELAY groups: override anything already set
+# LiteEth
+set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {^liteEthAXI/u_liteeth/IDELAYE2(_[0-9]+)?$}]
+#set_property IODELAY_GROUP DDR3-GROUP [get_cells -hier -regexp {^liteEthAXI/u_liteeth/IDELAYE2(_[0-9]+)?$}]

@@ -102,7 +102,7 @@ ila_add_probe u_ila_spi -net HMASTLOCK
 create_debug_core u_ila_axi ila
 
 # ILA settings
-set_property C_DATA_DEPTH 8192 [get_debug_cores u_ila_axi]
+set_property C_DATA_DEPTH 4096 [get_debug_cores u_ila_axi]
 set_property C_TRIGIN_EN false [get_debug_cores u_ila_axi]
 set_property C_TRIGOUT_EN false [get_debug_cores u_ila_axi]
 set_property C_ADV_TRIGGER false [get_debug_cores u_ila_axi]
@@ -123,18 +123,18 @@ connect_debug_port u_ila_axi/clk [get_nets BUSCLK]
 
 # AXI side of AHB-AXI bridge
 # REMARK: This is wrong here, it's different clock domain. Yet, it works.
-# ila_add_probe u_ila_axi -bus m_axi_awaddr  -msb 31 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus m_axi_awlen -msb 7 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus m_axi_awsize -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus m_axi_awburst -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net m_axi_awvalid
-# ila_add_probe u_ila_axi -net m_axi_awready
-# ila_add_probe u_ila_axi -bus m_axi_wdata -msb 63 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net m_axi_wvalid
-# ila_add_probe u_ila_axi -net m_axi_wready
-# ila_add_probe u_ila_axi -net m_axi_wlast
-# ila_add_probe u_ila_axi -net m_axi_bvalid
-# ila_add_probe u_ila_axi -net m_axi_bready
+ila_add_probe u_ila_axi -bus m_axi_awaddr  -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus m_axi_awlen -msb 7 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus m_axi_awsize -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus m_axi_awburst -msb 1 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net m_axi_awvalid
+ila_add_probe u_ila_axi -net m_axi_awready
+ila_add_probe u_ila_axi -bus m_axi_wdata -msb 63 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net m_axi_wvalid
+ila_add_probe u_ila_axi -net m_axi_wready
+ila_add_probe u_ila_axi -net m_axi_wlast
+ila_add_probe u_ila_axi -net m_axi_bvalid
+ila_add_probe u_ila_axi -net m_axi_bready
 # #ila_add_probe u_ila_axi -bus m_axi_bresp -msb 1 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus m_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus m_axi_arlen -msb 7 -lsb 0 -order lsb2msb
@@ -172,7 +172,9 @@ ila_add_probe u_ila_axi -bus BUS_axi_awburst -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -net BUS_axi_awvalid
 ila_add_probe u_ila_axi -net BUS_axi_awready
 ila_add_probe u_ila_axi -net BUS_axi_wlast
-
+ila_add_probe u_ila_axi -bus BUS_axi_wdata -msb 63 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net BUS_axi_wvalid
+ila_add_probe u_ila_axi -net BUS_axi_wready
 
 # crossbar side to DDR
 # these ones repeat the DDR3 ones below
@@ -189,46 +191,29 @@ ila_add_probe u_ila_axi -net BUS_axi_wlast
 # ila_add_probe u_ila_axi -net BUS_cb_axi_rlast
 # ila_add_probe u_ila_axi -bus BUS_cb_axi_rdata -msb 63 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus BUS_cb_axi_rid -msb 3 -lsb 0 -order lsb2msb
-# crossbar side to DDR: same but in ddr3
-ila_add_probe u_ila_axi -net ddr3/s_axi_arvalid
-ila_add_probe u_ila_axi -net ddr3/s_axi_arready
-ila_add_probe u_ila_axi -bus ddr3/s_axi_araddr -msb 29 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_arid -msb 3 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_arlen -msb 7 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_arsize -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_arburst -msb 1 -lsb 0 -order lsb2msb
-# R channel
-ila_add_probe u_ila_axi -net ddr3/s_axi_rvalid
-ila_add_probe u_ila_axi -net ddr3/s_axi_rready
-# Check: is this one optimized?
-# ila_add_probe u_ila_axi -bus ddr3/s_axi_rresp -msb 1 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus BUS_cb_axi_rresp -msb 1 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -net ddr3/s_axi_rlast
-ila_add_probe u_ila_axi -bus ddr3/s_axi_rdata -msb 63 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_rid -msb 3 -lsb 0 -order lsb2msb
-# AW channel
-ila_add_probe u_ila_axi -net ddr3/s_axi_awvalid
-ila_add_probe u_ila_axi -net ddr3/s_axi_awready
-ila_add_probe u_ila_axi -bus ddr3/s_axi_awaddr -msb 29 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_awid -msb 3 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_awlen -msb 7 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_awsize -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_awburst -msb 1 -lsb 0 -order lsb2msb
 
-# W channel
-ila_add_probe u_ila_axi -net ddr3/s_axi_wvalid
-ila_add_probe u_ila_axi -net ddr3/s_axi_wready
-ila_add_probe u_ila_axi -net ddr3/s_axi_wlast
-ila_add_probe u_ila_axi -bus ddr3/s_axi_wstrb -msb 7 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_wdata -msb 63 -lsb 0 -order lsb2msb
 
-ila_add_probe u_ila_axi -net ddr3/s_axi_bvalid
-ila_add_probe u_ila_axi -net ddr3/s_axi_bready
+
+ila_add_probe u_ila_axi -net BUS_cb_axi_awvalid
+ila_add_probe u_ila_axi -net BUS_cb_axi_awready
+ila_add_probe u_ila_axi -bus BUS_cb_axi_awaddr  -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus BUS_cb_axi_awlen -msb 7 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net BUS_cb_axi_wvalid
+ila_add_probe u_ila_axi -net BUS_cb_axi_wready
+ila_add_probe u_ila_axi -net BUS_cb_axi_wlast
+ila_add_probe u_ila_axi -bus BUS_cb_axi_wdata -msb 63 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net BUS_cb_axi_bvalid
+ila_add_probe u_ila_axi -net BUS_cb_axi_bready
+
+
+
+
+#ila_add_probe u_ila_axi -net ddr3/user_port_axi_0_bready
 ila_add_probe u_ila_axi -bus BUS_cb_axi_bresp -msb 1 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/s_axi_bid -msb 3 -lsb 0 -order lsb2msb
+#ila_add_probe u_ila_axi -bus ddr3/user_port_axi_0_bid -msb 3 -lsb 0 -order lsb2msb
 
 # DDR calibration
-ila_add_probe u_ila_axi -net ddr3/u_ddr3_mig/mmcm_locked
+ila_add_probe u_ila_axi -net mmcm_locked
 ila_add_probe u_ila_axi -net c0_init_calib_complete
 
 #######################################################
