@@ -68,13 +68,15 @@ genesys2socxlnx: FPGA_GENESYS2SOCXLNX
 EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 
 EXT_MEM_RANGE = $(shell grep 'EXT_MEM_RANGE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
-LITEDRAM_SUPPORTED = $(shell grep 'LITEDRAM_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
+_LITEDRAM_SUPPORTED = $(shell grep 'LITEDRAM_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
 LITEDRAM_BASE = $(shell grep 'LITEDRAM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 UNCORE_RAM_BASE = $(shell grep 'UNCORE_RAM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 UNCORE_RAM_RANGE = $(shell grep 'UNCORE_RAM_RANGE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
-UBERDDR3_SUPPORTED = $(shell grep 'UBERDDR3_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
-genesys2soc: export LITEDRAM_SUPPORTED := $(LITEDRAM_SUPPORTED)
-genesys2soc: export UBERDDR3_SUPPORTED := $(UBERDDR3_SUPPORTED)
+_UBERDDR3_SUPPORTED = $(shell grep 'UBERDDR3_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
+genesys2soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+genesys2soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
+genesys2socdebug: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+genesys2socdebug: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
 
 
 .PHONY: FPGA_Arty FPGA_VCU
@@ -144,7 +146,7 @@ IP_NEXYSA7SOC: $(dst)/sysrst.log \
 IP_GENESYS2SOC: $(dst)/sysrst.log \
 	MEM_GENESYS2 \
 	$(dst)/mmcm-genesys2soc.log \
-	$(dst)/ahbaxibridge.log \
+    $(dst)/ahbaxibridge.log	\
 	$(dst)/axicdma.log
 
 IP_GENESYS2SOCXLNX: $(dst)/sysrst.log \

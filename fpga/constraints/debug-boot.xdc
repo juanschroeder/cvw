@@ -37,10 +37,15 @@ ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/RdE -msb 4 -lsb 0 -order lsb
 ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/RdM -msb 4 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/ieu/RdW -msb 4 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -net wallypipelinedsoc/core/ieu/RegWriteW
-#ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/ieu/dp/ResultW  -msb 63 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/ieu/dp/ResultW  -msb 63 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -net wallypipelinedsoc/core/ieu/dp/regf/we3
 ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/ieu/dp/regf/a3 -msb 4 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/ieu/dp/regf/wd3 -msb 4 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/lsu/IEUAdrM -msb 63 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/WriteDataM -msb 63 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/MemRWM  -msb 1 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/lsu/ReadDataM  -msb 63 -lsb 0 -order lsb2msb
+
 
 ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCCLK
 ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCIn
@@ -50,7 +55,7 @@ ila_add_probe u_ila_spi -bus wallypipelinedsoc/uncoregen.uncore/sdc.sdc/controll
 ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/sdc.sdc/ReceiveFIFOReadInc
 ##########################################
 
-
+###########################
 ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/ebu.ebu/HADDR -msb 31 -lsb 0 -order lsb2msb
 #ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/ebu.ebu/HTRANS -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus HSIZE -msb 2 -lsb 0 -order lsb2msb
@@ -77,26 +82,11 @@ ila_add_probe u_ila_spi -net HRESPEXT
 ila_add_probe u_ila_spi -net HMASTLOCK
 #ila_add_probe u_ila_spi -bus HWSTRB -msb 7 -lsb 0 -order lsb2msb
 
-# BRIDGE DEBUGGING
-#ahbaxibridge/rd_buf_valid_i_1_n_0
-#ila_add_probe u_ila_spi -bus ahbaxibridge/state -msb 3 -lsb 0 -order lsb2msb
-#ila_add_probe u_ila_spi -net ahbaxibridge/rd_buf_valid
-#ila_add_probe u_ila_spi -bus ahbaxibridge/rd_buf_data -msb 63 -lsb 0 -order lsb2msb
-#ila_add_probe u_ila_spi -net ahbaxibridge/ar_done
-#ila_add_probe u_ila_spi -net ahbaxibridge/rd_d_entry
-#ila_add_probe u_ila_spi -net ahbaxibridge/rd_fence_seen_idle
-#ila_add_probe u_ila_spi -net ahbaxibridge/pnd_valid
-#ila_add_probe u_ila_spi -net ahbaxibridge/incr_rd
-#ila_add_probe u_ila_spi -bus ahbaxibridge/beat_cnt -msb 7 -lsb 0 -order lsb2msb
-#ila_add_probe u_ila_spi -net ahbaxibridge/raw_r_capture
-#ila_add_probe u_ila_spi -net ahbaxibridge/raw_r_accept
-
 
 #######################################################
 #######################################################
 #######################################################
 #######################################################
-
 
 
 create_debug_core u_ila_axi ila
@@ -171,10 +161,16 @@ ila_add_probe u_ila_axi -bus BUS_axi_awsize -msb 2 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -bus BUS_axi_awburst -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -net BUS_axi_awvalid
 ila_add_probe u_ila_axi -net BUS_axi_awready
-ila_add_probe u_ila_axi -net BUS_axi_wlast
 ila_add_probe u_ila_axi -bus BUS_axi_wdata -msb 63 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus BUS_axi_wstrb -msb 7 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -net BUS_axi_wvalid
 ila_add_probe u_ila_axi -net BUS_axi_wready
+ila_add_probe u_ila_axi -net BUS_axi_wlast
+ila_add_probe u_ila_axi -bus BUS_axi_bid -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus BUS_axi_bresp -msb 1 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net BUS_axi_bvalid
+ila_add_probe u_ila_axi -net BUS_axi_bready
+
 
 # crossbar side to DDR
 # these ones repeat the DDR3 ones below
@@ -215,6 +211,28 @@ ila_add_probe u_ila_axi -bus BUS_cb_axi_bresp -msb 1 -lsb 0 -order lsb2msb
 # DDR calibration
 ila_add_probe u_ila_axi -net mmcm_locked
 ila_add_probe u_ila_axi -net c0_init_calib_complete
+
+## REMOVE THIS!!!!!!!
+## REMOVE THIS!!!!!!!
+## REMOVE THIS!!!!!!!
+## REMOVE THIS!!!!!!!
+## REMOVE THIS!!!!!!!
+## REMOVE THIS!!!!!!!
+ila_add_probe u_ila_axi -bus wallypipelinedsoc/core/InstrM -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus wallypipelinedsoc/core/PCM -msb 63 -lsb 0 -order lsb2msb
+##################################################################
+##################################################################
+##################################################################
+# for extra debugging
+ila_add_probe u_ila_axi -bus BUS_axi_arprot -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus BUS_axi_awprot -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus BUS_axi_arcache -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus BUS_axi_awcache -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus BUS_cb_axi_arprot -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus BUS_cb_axi_awprot -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus BUS_cb_axi_arcache -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus BUS_cb_axi_awcache -msb 3 -lsb 0 -order lsb2msb
+
 
 #######################################################
 # This is a GLOBAL setting (not ILA instance specific)

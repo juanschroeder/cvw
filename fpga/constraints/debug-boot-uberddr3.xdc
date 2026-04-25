@@ -19,7 +19,8 @@ ila_add_probe u_ila_axi -bus BUS_cb_axi_rresp -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -net ddr3/i_s_axi_awvalid
 ila_add_probe u_ila_axi -net ddr3/o_s_axi_awready
 ila_add_probe u_ila_axi -bus ddr3/i_s_axi_awaddr -msb 29 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/i_s_axi_awid -msb 3 -lsb 0 -order lsb2msb
+#ila_add_probe u_ila_axi -bus ddr3/i_s_axi_awid -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/i_s_axi_awid -msb 3 -lsb 2 -order lsb2msb
 ila_add_probe u_ila_axi -bus ddr3/i_s_axi_awlen -msb 7 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -bus ddr3/i_s_axi_awsize -msb 2 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -bus ddr3/i_s_axi_awburst -msb 1 -lsb 0 -order lsb2msb

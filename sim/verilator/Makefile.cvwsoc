@@ -1,0 +1,560 @@
+# Verilator Makefile for the cvwsoc whole-system simulation
+
+SHELL := /bin/bash
+.PHONY: \
+	all linux uboot run-cvwsoc qemu qemu-preload runcmd-cvwsoc clean \
+	gen-cvwsoc-linux-preload gen-cvwsoc-uboot-preload \
+	qemu-linux-preload qemu-uboot-preload qemu-linux qemu-uboot \
+	run-cvwsoc-linux run-cvwsoc-uboot runcmd-cvwsoc-linux runcmd-cvwsoc-uboot \
+	FORCE
+.DELETE_ON_ERROR:
+
+WALLY ?= $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
+export WALLY
+VERILATOR ?= $(or $(shell command -v verilator),verilator)
+VERILATOR_DIR := $(WALLY)/sim/verilator
+COPIED_ROOT := $(WALLY)/fpga/src/CopiedFiles_do_not_add_to_repo
+PULP_ROOT := $(COPIED_ROOT)/pulp
+PULP_AXI_ROOT := $(PULP_ROOT)/axi
+PULP_COMMON_CELLS_ROOT := $(PULP_ROOT)/common_cells
+
+CVWSOC_DEPLOY_ROOT ?= /yocto/fpga/kas-cvwsoc/build/tmp/deploy/images
+CVWSOC_MACHINE := cvwsoc-virt
+CVWSOC_DEPLOY_DIR ?= $(CVWSOC_DEPLOY_ROOT)/$(CVWSOC_MACHINE)
+CVWSOC_PRELOAD_DIR ?= $(VERILATOR_DIR)/preload/cvwsoc
+CVWSOC_DTS_SRC ?= $(WALLY)/linux/devicetree/wally-virtsoc.dts
+CVWSOC_ORIG_DTB ?= $(CVWSOC_DEPLOY_DIR)/wally-virtsoc.dtb
+CVWSOC_FW_JUMP_BIN ?= $(CVWSOC_DEPLOY_DIR)/fw_jump.bin
+CVWSOC_UBOOT_BIN ?= $(CVWSOC_DEPLOY_DIR)/u-boot.bin
+
+BOOL_TRUE := 1 yes YES true TRUE
+IMAGE_KIND ?= tiny
+INITRD_EXT2 ?= 0
+CVWSOC_USE_EXT2 := $(filter $(BOOL_TRUE),$(INITRD_EXT2))
+CVWSOC_IMAGE_NAME := $(if $(filter full FULL doom DOOM,$(IMAGE_KIND)),doom,tiny)
+CVWSOC_INITRD_EXT := $(if $(CVWSOC_USE_EXT2),ext2,cpio)
+
+CVWSOC_LINUX_BOOTROM_BIN ?= $(CVWSOC_PRELOAD_DIR)/bootmem-cvwsoc-linux.bin
+CVWSOC_LINUX_EXT_RAM_BIN ?= $(CVWSOC_PRELOAD_DIR)/ram-cvwsoc-linux.bin
+CVWSOC_UBOOT_BOOTROM_BIN ?= $(CVWSOC_PRELOAD_DIR)/bootmem-cvwsoc-uboot.bin
+CVWSOC_UBOOT_EXT_RAM_BIN ?= $(CVWSOC_PRELOAD_DIR)/ram-cvwsoc-uboot.bin
+CVWSOC_LINUX_RAW_BOOTROM_BIN ?= $(CVWSOC_PRELOAD_DIR)/bootmemGDB-cvwsoc-linux.bin
+CVWSOC_LINUX_RAW_EXT_RAM_BIN ?= $(CVWSOC_PRELOAD_DIR)/ramGDB-cvwsoc-linux.bin
+CVWSOC_UBOOT_RAW_BOOTROM_BIN ?= $(CVWSOC_PRELOAD_DIR)/bootmemGDB-cvwsoc-uboot.bin
+CVWSOC_UBOOT_RAW_EXT_RAM_BIN ?= $(CVWSOC_PRELOAD_DIR)/ramGDB-cvwsoc-uboot.bin
+
+CVWSOC_LINUX_QEMU_KERNEL ?= $(CVWSOC_PRELOAD_DIR)/linux-qemu-cvwsoc-linux.bin
+CVWSOC_UBOOT_QEMU_KERNEL ?= $(CVWSOC_PRELOAD_DIR)/linux-qemu-cvwsoc-uboot.bin
+CVWSOC_LINUX_QEMU_INITRD ?= $(CVWSOC_PRELOAD_DIR)/initrd-qemu-cvwsoc-linux.$(CVWSOC_INITRD_EXT)
+CVWSOC_UBOOT_QEMU_INITRD ?= $(CVWSOC_PRELOAD_DIR)/initrd-qemu-cvwsoc-uboot.$(CVWSOC_INITRD_EXT)
+CVWSOC_LINUX_QEMU_DTS ?= $(CVWSOC_PRELOAD_DIR)/wally-virtsoc-linux.dts
+CVWSOC_UBOOT_QEMU_DTS ?= $(CVWSOC_PRELOAD_DIR)/wally-virtsoc-uboot.dts
+CVWSOC_LINUX_QEMU_DTB ?= $(CVWSOC_PRELOAD_DIR)/wally-virtsoc-linux.dtb
+CVWSOC_UBOOT_QEMU_DTB ?= $(CVWSOC_PRELOAD_DIR)/wally-virtsoc-uboot.dtb
+CVWSOC_LINUX_QEMU_ASSETS := $(CVWSOC_LINUX_QEMU_KERNEL) $(CVWSOC_LINUX_QEMU_INITRD) $(CVWSOC_LINUX_QEMU_DTS) $(CVWSOC_LINUX_QEMU_DTB)
+CVWSOC_UBOOT_QEMU_ASSETS := $(CVWSOC_UBOOT_QEMU_KERNEL) $(CVWSOC_UBOOT_QEMU_INITRD) $(CVWSOC_UBOOT_QEMU_DTS) $(CVWSOC_UBOOT_QEMU_DTB)
+CVWSOC_LINUX_PRELOAD_BINS := $(CVWSOC_LINUX_BOOTROM_BIN) $(CVWSOC_LINUX_EXT_RAM_BIN)
+CVWSOC_UBOOT_PRELOAD_BINS := $(CVWSOC_UBOOT_BOOTROM_BIN) $(CVWSOC_UBOOT_EXT_RAM_BIN)
+CVWSOC_LINUX_QEMU_CFG := $(CVWSOC_PRELOAD_DIR)/.cvwsoc-linux-qemu.cfg
+CVWSOC_UBOOT_QEMU_CFG := $(CVWSOC_PRELOAD_DIR)/.cvwsoc-uboot-qemu.cfg
+CVWSOC_LINUX_PRELOAD_CFG := $(CVWSOC_PRELOAD_DIR)/.cvwsoc-linux-preload.cfg
+CVWSOC_UBOOT_PRELOAD_CFG := $(CVWSOC_PRELOAD_DIR)/.cvwsoc-uboot-preload.cfg
+
+CVWSOC_LINUX_INITRD_EXT2 ?= $(shell ls -1t $(CVWSOC_DEPLOY_DIR)/cvwsoc-image-$(CVWSOC_IMAGE_NAME)-*.rootfs.ext2 2>/dev/null | head -n1)
+CVWSOC_LINUX_INITRD_CPIO_GZ ?= $(shell ls -1t $(CVWSOC_DEPLOY_DIR)/cvwsoc-image-$(CVWSOC_IMAGE_NAME)-*.rootfs.cpio.gz 2>/dev/null | head -n1)
+CVWSOC_LINUX_INITRD_CPIO ?= $(shell ls -1t $(CVWSOC_DEPLOY_DIR)/cvwsoc-image-$(CVWSOC_IMAGE_NAME)-*.rootfs.cpio 2>/dev/null | head -n1)
+CVWSOC_LINUX_INITRD_SRC ?= $(if $(CVWSOC_USE_EXT2),$(CVWSOC_LINUX_INITRD_EXT2),$(or $(CVWSOC_LINUX_INITRD_CPIO),$(CVWSOC_LINUX_INITRD_CPIO_GZ)))
+CVWSOC_LINUX_KERNEL_SRC ?= $(if $(wildcard $(CVWSOC_DEPLOY_DIR)/Image.lz4.orig),$(CVWSOC_DEPLOY_DIR)/Image.lz4.orig,$(if $(wildcard $(CVWSOC_DEPLOY_DIR)/Image.lz4),$(CVWSOC_DEPLOY_DIR)/Image.lz4,$(CVWSOC_DEPLOY_DIR)/linux.bin))
+
+CVWSOC_LINUX_BOOTARGS_BASE ?= earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 ignore_loglevel loglevel=8 rdinit=/bin/busybox.nosuid -- sh
+CVWSOC_LINUX_BOOTARGS_EXT2 ?= earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 ignore_loglevel loglevel=8 root=/dev/ram0 rootfstype=ext2 init=/bin/busybox.nosuid -- sh
+CVWSOC_LINUX_BOOTARGS ?= $(if $(CVWSOC_USE_EXT2),$(CVWSOC_LINUX_BOOTARGS_EXT2),$(CVWSOC_LINUX_BOOTARGS_BASE))
+
+RUNCMD ?= mount -t proc proc /proc
+
+QEMU_BIN ?= qemu-system-riscv64
+QEMU_RAM_MB ?= 1024
+CPU_ARGS ?= rva22s64,zicond=true,zfa=true,zfh=true,zcb=true,zbc=true,zkn=true,sstc=true,svadu=true,svnapot=true,pmp=on,debug=off
+GDB_BIN ?= riscv64-unknown-elf-gdb
+OBJCOPY_BIN ?= objcopy
+DTC_BIN ?= dtc
+UNLZ4_BIN ?= unlz4
+
+# Keep the address map aligned with Makefile.bridge for now.
+OPENSBI_DTB_ADDR ?= 0x87000000
+KERNEL_DTB_ADDR ?= 0x87000000
+CVWSOC_LINUX_KERNEL_ADDR ?= 0x80200000
+CVWSOC_UBOOT_KERNEL_ADDR ?= 0x80400000
+KERNEL_ADDR ?= $(CVWSOC_UBOOT_KERNEL_ADDR)
+UBOOT_DTB_ADDR ?= 0x80350000
+UBOOT_ADDR ?= 0x80200000
+INITRD_ADDR ?= 0x84200000
+
+# QEMU cannot boot the compressed kernel artifacts directly, so the "original"
+# QEMU targets fall back to the generated decompressed helper when Image is not
+# available in deploy/.
+CVWSOC_QEMU_ORIG_KERNEL ?= $(if $(wildcard $(CVWSOC_DEPLOY_DIR)/Image),$(CVWSOC_DEPLOY_DIR)/Image,$(CVWSOC_LINUX_QEMU_KERNEL))
+CVWSOC_QEMU_ORIG_INITRD ?= $(if $(CVWSOC_USE_EXT2),$(CVWSOC_LINUX_INITRD_EXT2),$(or $(CVWSOC_LINUX_INITRD_CPIO),$(CVWSOC_LINUX_QEMU_INITRD)))
+CVWSOC_QEMU_ORIG_DTB ?= $(if $(wildcard $(CVWSOC_ORIG_DTB)),$(CVWSOC_ORIG_DTB),$(CVWSOC_LINUX_QEMU_DTB))
+CVWSOC_QEMU_ORIG_UBOOT_DTB ?= $(CVWSOC_QEMU_ORIG_DTB)
+CVWSOC_QEMU_LINUX_HELPERS := $(filter $(CVWSOC_PRELOAD_DIR)%,$(CVWSOC_QEMU_ORIG_KERNEL) $(CVWSOC_QEMU_ORIG_INITRD) $(CVWSOC_QEMU_ORIG_DTB))
+CVWSOC_QEMU_UBOOT_HELPERS := $(filter $(CVWSOC_PRELOAD_DIR)%,$(CVWSOC_QEMU_ORIG_KERNEL) $(CVWSOC_QEMU_ORIG_INITRD) $(CVWSOC_QEMU_ORIG_DTB) $(CVWSOC_QEMU_ORIG_UBOOT_DTB))
+
+# --timing is needed
+VLT_FLAGS ?= --assert --timing
+# REMARK: using bigger value of THREADS seems to make simulation slower!
+THREADS ?= 1
+TRACE_DEPTH ?= 1
+PARAMS ?= --trace-depth $(TRACE_DEPTH) --threads $(THREADS)
+EXTRA_PARAMS ?=
+NONPROF ?= --stats
+WARN_ARGS ?= -Wno-fatal
+PLUS_ARGS ?=
+EXTRA_PLUS_ARGS ?=
+PARAM_ARGS ?=
+DEFINE_ARGS ?=
+BOOTROM_BIN ?=
+EXT_RAM_BIN ?=
+UART_LOG ?=
+TRACE ?= 0
+TRACE_MODE ?= runtime
+TRACE_ENABLED := $(filter $(BOOL_TRUE),$(TRACE))
+TRACE_BUILD_ARGS := $(if $(TRACE_ENABLED),--trace-fst,)
+TRACE_PARAM_ARG := $(if $(TRACE_ENABLED),$(if $(filter sv,$(TRACE_MODE)),MAKE_VCD=1,MAKE_VCD=0),MAKE_VCD=0)
+ALL_PARAM_ARGS := $(strip $(PARAM_ARGS) $(TRACE_PARAM_ARG))
+EXPANDED_PARAM_ARGS := $(patsubst %,-G%,$(ALL_PARAM_ARGS))
+UART_STDOUT ?= 0
+UART_TIMESTAMP ?= 1
+HEARTBEAT_SPEED_INTERVAL_CYCLES ?= 10000000
+UART_PTY_TX ?= 1
+UART_SHELL_TAGS ?= 0
+
+WALLYCONF ?= fpgagenesys2soc
+TESTBENCH ?= testbench_cvwsoc
+TESTBENCH_MODULENAME ?= testbench_cvwsoc
+BRIDGE_RTL_NEW := $(WALLY)/addins/ahb-axi-bridge/rtl/ahb_to_axi4_burst.sv
+BRIDGE_RTL_OLD := $(WALLY)/addins/ahb-to-axi/rtl/ahb_to_axi4_burst.sv
+BRIDGE_RTL ?= $(if $(wildcard $(BRIDGE_RTL_NEW)),$(BRIDGE_RTL_NEW),$(BRIDGE_RTL_OLD))
+WRAPPER ?= $(WALLY)/sim/verilator/wrapper_cvwsoc.cpp
+WORKDIR := $(VERILATOR_DIR)/wkdir/$(WALLYCONF)_cvwsoc$(if $(TRACE_ENABLED),_trace,)
+RUNCMD_FILE ?= $(VERILATOR_DIR)/logs/testbench_cvwsoc_runcmd.txt
+
+export CCACHE_DISABLE ?= 1
+
+# Use the curated PULP sources from CopiedFiles_do_not_add_to_repo.  The copied
+# tree already carries local naming adjustments such as `lzc_pulp`, which avoids
+# colliding with Wally's own generic modules during Verilator elaboration.
+COMMON_CELLS_SOURCES := \
+	$(PULP_COMMON_CELLS_ROOT)/src/cf_math_pkg.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/binary_to_gray.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/gray_to_binary.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/sync.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/delta_counter.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/counter.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/lzc.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/fifo_v3.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/spill_register_flushable.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/spill_register.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_register.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/addr_decode_dync.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/addr_decode.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/cdc_fifo_gray.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/rr_arb_tree.sv
+
+AXI_SOURCES := \
+	$(PULP_AXI_ROOT)/src/axi_pkg.sv \
+	$(PULP_AXI_ROOT)/src/axi_intf.sv \
+	$(PULP_AXI_ROOT)/src/axi_atop_filter.sv \
+	$(PULP_AXI_ROOT)/src/axi_cdc_dst.sv \
+	$(PULP_AXI_ROOT)/src/axi_cdc_src.sv \
+	$(PULP_AXI_ROOT)/src/axi_cut.sv \
+	$(PULP_AXI_ROOT)/src/axi_demux_simple.sv \
+	$(PULP_AXI_ROOT)/src/axi_id_prepend.sv \
+	$(PULP_AXI_ROOT)/src/axi_multicut.sv \
+	$(PULP_AXI_ROOT)/src/axi_mux.sv \
+	$(PULP_AXI_ROOT)/src/axi_err_slv.sv \
+	$(PULP_AXI_ROOT)/src/axi_cdc.sv \
+	$(PULP_AXI_ROOT)/src/axi_demux.sv \
+	$(PULP_AXI_ROOT)/src/axi_xbar_unmuxed.sv \
+	$(PULP_AXI_ROOT)/src/axi_xbar.sv
+
+CORE_SOURCES := $(filter-out \
+	$(wildcard $(COPIED_ROOT)/ahb-to-axi/*/*.sv) \
+	$(wildcard $(COPIED_ROOT)/cvwsoc/*.sv) \
+	$(wildcard $(COPIED_ROOT)/cvwsoc/*/*.sv) \
+	$(wildcard $(COPIED_ROOT)/rvvi/*.sv) \
+	$(wildcard $(COPIED_ROOT)/uberddr3/*/*.sv), \
+	$(wildcard $(COPIED_ROOT)/*/*.sv) \
+	$(wildcard $(COPIED_ROOT)/*/*/*.sv))
+
+INCLUDE_PATH := \
+	-I$(COPIED_ROOT)/config \
+	-I$(WALLY)/config/shared \
+	-I$(PULP_AXI_ROOT)/include \
+	-I$(PULP_COMMON_CELLS_ROOT)/include
+
+SOURCES := \
+	$(COMMON_CELLS_SOURCES) \
+	$(AXI_SOURCES) \
+	$(COPIED_ROOT)/cvw.sv \
+	$(WALLY)/testbench/$(TESTBENCH).sv \
+	$(CORE_SOURCES) \
+	$(BRIDGE_RTL) \
+	$(wildcard $(COPIED_ROOT)/verilog-axi/rtl/*.v)
+
+DEPENDENCIES := \
+	$(WALLY)/config/shared/*.vh \
+	$(COPIED_ROOT)/config/config.vh \
+	$(SOURCES)
+
+# this is for GCC
+OPT_GEN ?= VM_PARALLEL_BUILDS=1 OPT_FAST="-O4 -march=native" OPT_GLOBAL="-O3 -march=native" OPT_SLOW="-O0"
+OPT_COMP ?= -O3
+
+define RUN_VERILATOR
+	mkdir -p $(VERILATOR_DIR)/logs
+	args='$(PLUS_ARGS) $(EXTRA_PLUS_ARGS) +VERILATOR_THREADS=$(THREADS) +UART_STDOUT=$(UART_STDOUT) +UART_TIMESTAMP=$(UART_TIMESTAMP) +UART_SHELL_TAGS=$(UART_SHELL_TAGS) +HEARTBEAT_SPEED_INTERVAL_CYCLES=$(HEARTBEAT_SPEED_INTERVAL_CYCLES) +UART_PTY_TX=$(UART_PTY_TX)'; \
+	if [[ -n "$(BOOTROM_BIN)" ]]; then args="$$args +BOOTROM_BIN=$(BOOTROM_BIN)"; fi; \
+	if [[ -n "$(EXT_RAM_BIN)" ]]; then args="$$args +EXT_RAM_BIN=$(EXT_RAM_BIN)"; fi; \
+	if [[ -n "$(UART_LOG)" ]]; then args="$$args +UART_LOG=$(UART_LOG)"; fi; \
+	$(WORKDIR)/V$(TESTBENCH) $$args
+endef
+
+define CVWSOC_PRELOAD_COMMON_ENV
+CVWSOC_DEPLOY_DIR=$(CVWSOC_DEPLOY_DIR) \
+CVWSOC_PRELOAD_DIR=$(CVWSOC_PRELOAD_DIR) \
+IMAGE_KIND=$(CVWSOC_IMAGE_NAME) \
+INITRD_EXT2=$(if $(CVWSOC_USE_EXT2),1,0) \
+FW_JUMP_BIN=$(CVWSOC_FW_JUMP_BIN) \
+KERNEL_SRC=$(CVWSOC_LINUX_KERNEL_SRC) \
+INITRD_SRC=$(CVWSOC_LINUX_INITRD_SRC) \
+DTS_SRC=$(CVWSOC_DTS_SRC) \
+BOOTARGS='$(CVWSOC_LINUX_BOOTARGS)' \
+QEMU_BIN=$(QEMU_BIN) \
+QEMU_RAM_MB=$(QEMU_RAM_MB) \
+CPU_ARGS='$(CPU_ARGS)' \
+GDB_BIN=$(GDB_BIN) \
+OBJCOPY_BIN=$(OBJCOPY_BIN) \
+DTC_BIN=$(DTC_BIN) \
+UNLZ4_BIN=$(UNLZ4_BIN) \
+OPENSBI_DTB_ADDR=$(OPENSBI_DTB_ADDR) \
+KERNEL_DTB_ADDR=$(KERNEL_DTB_ADDR) \
+UBOOT_DTB_ADDR=$(UBOOT_DTB_ADDR) \
+UBOOT_ADDR=$(UBOOT_ADDR) \
+INITRD_ADDR=$(INITRD_ADDR)
+endef
+
+all: run-cvwsoc-linux
+linux: run-cvwsoc-linux
+uboot: run-cvwsoc-uboot
+run-cvwsoc: run-cvwsoc-linux
+qemu: qemu-linux
+qemu-preload: qemu-linux-preload
+runcmd-cvwsoc: runcmd-cvwsoc-linux
+
+$(CVWSOC_PRELOAD_DIR):
+	mkdir -p $@
+
+FORCE:
+
+$(CVWSOC_LINUX_QEMU_CFG): FORCE | $(CVWSOC_PRELOAD_DIR)
+	@tmp="$@.tmp"; \
+	{ \
+		printf 'MODE=linux\n'; \
+		printf 'IMAGE_KIND=%s\n' '$(CVWSOC_IMAGE_NAME)'; \
+		printf 'INITRD_EXT2=%s\n' '$(if $(CVWSOC_USE_EXT2),1,0)'; \
+		printf 'FW_JUMP_BIN=%s\n' '$(CVWSOC_FW_JUMP_BIN)'; \
+		printf 'KERNEL_SRC=%s\n' '$(CVWSOC_LINUX_KERNEL_SRC)'; \
+		printf 'INITRD_SRC=%s\n' '$(CVWSOC_LINUX_INITRD_SRC)'; \
+		printf 'DTS_SRC=%s\n' '$(CVWSOC_DTS_SRC)'; \
+		printf 'BOOTARGS=%s\n' '$(CVWSOC_LINUX_BOOTARGS)'; \
+		printf 'QEMU_RAM_MB=%s\n' '$(QEMU_RAM_MB)'; \
+		printf 'CPU_ARGS=%s\n' '$(CPU_ARGS)'; \
+		printf 'DTC_BIN=%s\n' '$(DTC_BIN)'; \
+		printf 'UNLZ4_BIN=%s\n' '$(UNLZ4_BIN)'; \
+		printf 'KERNEL_ADDR=%s\n' '$(CVWSOC_LINUX_KERNEL_ADDR)'; \
+		printf 'KERNEL_DTB_ADDR=%s\n' '$(KERNEL_DTB_ADDR)'; \
+		printf 'INITRD_ADDR=%s\n' '$(INITRD_ADDR)'; \
+		printf 'QEMU_KERNEL=%s\n' '$(CVWSOC_LINUX_QEMU_KERNEL)'; \
+		printf 'QEMU_INITRD=%s\n' '$(CVWSOC_LINUX_QEMU_INITRD)'; \
+		printf 'GENERATED_DTS=%s\n' '$(CVWSOC_LINUX_QEMU_DTS)'; \
+		printf 'GENERATED_DTB=%s\n' '$(CVWSOC_LINUX_QEMU_DTB)'; \
+	} > "$$tmp"; \
+	if ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
+
+$(CVWSOC_UBOOT_QEMU_CFG): FORCE | $(CVWSOC_PRELOAD_DIR)
+	@tmp="$@.tmp"; \
+	{ \
+		printf 'MODE=uboot\n'; \
+		printf 'IMAGE_KIND=%s\n' '$(CVWSOC_IMAGE_NAME)'; \
+		printf 'INITRD_EXT2=%s\n' '$(if $(CVWSOC_USE_EXT2),1,0)'; \
+		printf 'FW_JUMP_BIN=%s\n' '$(CVWSOC_FW_JUMP_BIN)'; \
+		printf 'UBOOT_BIN=%s\n' '$(CVWSOC_UBOOT_BIN)'; \
+		printf 'KERNEL_SRC=%s\n' '$(CVWSOC_LINUX_KERNEL_SRC)'; \
+		printf 'INITRD_SRC=%s\n' '$(CVWSOC_LINUX_INITRD_SRC)'; \
+		printf 'DTS_SRC=%s\n' '$(CVWSOC_DTS_SRC)'; \
+		printf 'BOOTARGS=%s\n' '$(CVWSOC_LINUX_BOOTARGS)'; \
+		printf 'QEMU_RAM_MB=%s\n' '$(QEMU_RAM_MB)'; \
+		printf 'CPU_ARGS=%s\n' '$(CPU_ARGS)'; \
+		printf 'DTC_BIN=%s\n' '$(DTC_BIN)'; \
+		printf 'UNLZ4_BIN=%s\n' '$(UNLZ4_BIN)'; \
+		printf 'KERNEL_ADDR=%s\n' '$(CVWSOC_UBOOT_KERNEL_ADDR)'; \
+		printf 'UBOOT_DTB_ADDR=%s\n' '$(UBOOT_DTB_ADDR)'; \
+		printf 'KERNEL_DTB_ADDR=%s\n' '$(KERNEL_DTB_ADDR)'; \
+		printf 'INITRD_ADDR=%s\n' '$(INITRD_ADDR)'; \
+		printf 'QEMU_KERNEL=%s\n' '$(CVWSOC_UBOOT_QEMU_KERNEL)'; \
+		printf 'QEMU_INITRD=%s\n' '$(CVWSOC_UBOOT_QEMU_INITRD)'; \
+		printf 'GENERATED_DTS=%s\n' '$(CVWSOC_UBOOT_QEMU_DTS)'; \
+		printf 'GENERATED_DTB=%s\n' '$(CVWSOC_UBOOT_QEMU_DTB)'; \
+	} > "$$tmp"; \
+	if ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
+
+$(CVWSOC_LINUX_PRELOAD_CFG): FORCE | $(CVWSOC_PRELOAD_DIR)
+	@tmp="$@.tmp"; \
+	{ \
+		printf 'MODE=linux\n'; \
+		printf 'IMAGE_KIND=%s\n' '$(CVWSOC_IMAGE_NAME)'; \
+		printf 'INITRD_EXT2=%s\n' '$(if $(CVWSOC_USE_EXT2),1,0)'; \
+		printf 'FW_JUMP_BIN=%s\n' '$(CVWSOC_FW_JUMP_BIN)'; \
+		printf 'KERNEL_SRC=%s\n' '$(CVWSOC_LINUX_KERNEL_SRC)'; \
+		printf 'INITRD_SRC=%s\n' '$(CVWSOC_LINUX_INITRD_SRC)'; \
+		printf 'DTS_SRC=%s\n' '$(CVWSOC_DTS_SRC)'; \
+		printf 'BOOTARGS=%s\n' '$(CVWSOC_LINUX_BOOTARGS)'; \
+		printf 'QEMU_BIN=%s\n' '$(QEMU_BIN)'; \
+		printf 'QEMU_RAM_MB=%s\n' '$(QEMU_RAM_MB)'; \
+		printf 'CPU_ARGS=%s\n' '$(CPU_ARGS)'; \
+		printf 'GDB_BIN=%s\n' '$(GDB_BIN)'; \
+		printf 'OBJCOPY_BIN=%s\n' '$(OBJCOPY_BIN)'; \
+		printf 'DTC_BIN=%s\n' '$(DTC_BIN)'; \
+		printf 'UNLZ4_BIN=%s\n' '$(UNLZ4_BIN)'; \
+		printf 'KERNEL_ADDR=%s\n' '$(CVWSOC_LINUX_KERNEL_ADDR)'; \
+		printf 'KERNEL_DTB_ADDR=%s\n' '$(KERNEL_DTB_ADDR)'; \
+		printf 'INITRD_ADDR=%s\n' '$(INITRD_ADDR)'; \
+		printf 'RAW_BOOTMEM_FILE=%s\n' '$(CVWSOC_LINUX_RAW_BOOTROM_BIN)'; \
+		printf 'BOOTMEM_FILE=%s\n' '$(CVWSOC_LINUX_BOOTROM_BIN)'; \
+		printf 'RAW_RAM_FILE=%s\n' '$(CVWSOC_LINUX_RAW_EXT_RAM_BIN)'; \
+		printf 'RAM_FILE=%s\n' '$(CVWSOC_LINUX_EXT_RAM_BIN)'; \
+		printf 'QEMU_KERNEL=%s\n' '$(CVWSOC_LINUX_QEMU_KERNEL)'; \
+		printf 'QEMU_INITRD=%s\n' '$(CVWSOC_LINUX_QEMU_INITRD)'; \
+		printf 'GENERATED_DTS=%s\n' '$(CVWSOC_LINUX_QEMU_DTS)'; \
+		printf 'GENERATED_DTB=%s\n' '$(CVWSOC_LINUX_QEMU_DTB)'; \
+	} > "$$tmp"; \
+	if ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
+
+$(CVWSOC_UBOOT_PRELOAD_CFG): FORCE | $(CVWSOC_PRELOAD_DIR)
+	@tmp="$@.tmp"; \
+	{ \
+		printf 'MODE=uboot\n'; \
+		printf 'IMAGE_KIND=%s\n' '$(CVWSOC_IMAGE_NAME)'; \
+		printf 'INITRD_EXT2=%s\n' '$(if $(CVWSOC_USE_EXT2),1,0)'; \
+		printf 'FW_JUMP_BIN=%s\n' '$(CVWSOC_FW_JUMP_BIN)'; \
+		printf 'UBOOT_BIN=%s\n' '$(CVWSOC_UBOOT_BIN)'; \
+		printf 'KERNEL_SRC=%s\n' '$(CVWSOC_LINUX_KERNEL_SRC)'; \
+		printf 'INITRD_SRC=%s\n' '$(CVWSOC_LINUX_INITRD_SRC)'; \
+		printf 'DTS_SRC=%s\n' '$(CVWSOC_DTS_SRC)'; \
+		printf 'BOOTARGS=%s\n' '$(CVWSOC_LINUX_BOOTARGS)'; \
+		printf 'QEMU_BIN=%s\n' '$(QEMU_BIN)'; \
+		printf 'QEMU_RAM_MB=%s\n' '$(QEMU_RAM_MB)'; \
+		printf 'CPU_ARGS=%s\n' '$(CPU_ARGS)'; \
+		printf 'GDB_BIN=%s\n' '$(GDB_BIN)'; \
+		printf 'OBJCOPY_BIN=%s\n' '$(OBJCOPY_BIN)'; \
+		printf 'DTC_BIN=%s\n' '$(DTC_BIN)'; \
+		printf 'UNLZ4_BIN=%s\n' '$(UNLZ4_BIN)'; \
+		printf 'KERNEL_ADDR=%s\n' '$(CVWSOC_UBOOT_KERNEL_ADDR)'; \
+		printf 'UBOOT_DTB_ADDR=%s\n' '$(UBOOT_DTB_ADDR)'; \
+		printf 'KERNEL_DTB_ADDR=%s\n' '$(KERNEL_DTB_ADDR)'; \
+		printf 'INITRD_ADDR=%s\n' '$(INITRD_ADDR)'; \
+		printf 'RAW_BOOTMEM_FILE=%s\n' '$(CVWSOC_UBOOT_RAW_BOOTROM_BIN)'; \
+		printf 'BOOTMEM_FILE=%s\n' '$(CVWSOC_UBOOT_BOOTROM_BIN)'; \
+		printf 'RAW_RAM_FILE=%s\n' '$(CVWSOC_UBOOT_RAW_EXT_RAM_BIN)'; \
+		printf 'RAM_FILE=%s\n' '$(CVWSOC_UBOOT_EXT_RAM_BIN)'; \
+		printf 'QEMU_KERNEL=%s\n' '$(CVWSOC_UBOOT_QEMU_KERNEL)'; \
+		printf 'QEMU_INITRD=%s\n' '$(CVWSOC_UBOOT_QEMU_INITRD)'; \
+		printf 'GENERATED_DTS=%s\n' '$(CVWSOC_UBOOT_QEMU_DTS)'; \
+		printf 'GENERATED_DTB=%s\n' '$(CVWSOC_UBOOT_QEMU_DTB)'; \
+	} > "$$tmp"; \
+	if ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
+
+$(CVWSOC_LINUX_QEMU_ASSETS) &: $(CVWSOC_LINUX_QEMU_CFG) $(WALLY)/linux/genCvwsocPreload.sh $(CVWSOC_DTS_SRC) $(CVWSOC_FW_JUMP_BIN) $(CVWSOC_LINUX_KERNEL_SRC) $(CVWSOC_LINUX_INITRD_SRC) | $(CVWSOC_PRELOAD_DIR)
+	SNAPSHOT_AT_HANDOFF=0 \
+	SKIP_GDB_DUMPS=1 \
+	$(CVWSOC_PRELOAD_COMMON_ENV) \
+	UBOOT_INCLUDE=0 \
+	KERNEL_ADDR=$(CVWSOC_LINUX_KERNEL_ADDR) \
+	RAW_BOOTMEM_FILE=$(CVWSOC_LINUX_RAW_BOOTROM_BIN) \
+	BOOTMEM_FILE=$(CVWSOC_LINUX_BOOTROM_BIN) \
+	RAW_RAM_FILE=$(CVWSOC_LINUX_RAW_EXT_RAM_BIN) \
+	RAM_FILE=$(CVWSOC_LINUX_EXT_RAM_BIN) \
+	QEMU_KERNEL=$(CVWSOC_LINUX_QEMU_KERNEL) \
+	QEMU_INITRD=$(CVWSOC_LINUX_QEMU_INITRD) \
+	GENERATED_DTS=$(CVWSOC_LINUX_QEMU_DTS) \
+	GENERATED_DTB=$(CVWSOC_LINUX_QEMU_DTB) \
+	bash $(WALLY)/linux/genCvwsocPreload.sh
+
+$(CVWSOC_UBOOT_QEMU_ASSETS) &: $(CVWSOC_UBOOT_QEMU_CFG) $(WALLY)/linux/genCvwsocPreload.sh $(CVWSOC_DTS_SRC) $(CVWSOC_FW_JUMP_BIN) $(CVWSOC_LINUX_KERNEL_SRC) $(CVWSOC_LINUX_INITRD_SRC) $(CVWSOC_UBOOT_BIN) | $(CVWSOC_PRELOAD_DIR)
+	SNAPSHOT_AT_HANDOFF=0 \
+	SKIP_GDB_DUMPS=1 \
+	$(CVWSOC_PRELOAD_COMMON_ENV) \
+	UBOOT_INCLUDE=1 \
+	KERNEL_ADDR=$(CVWSOC_UBOOT_KERNEL_ADDR) \
+	UBOOT_BIN=$(CVWSOC_UBOOT_BIN) \
+	RAW_BOOTMEM_FILE=$(CVWSOC_UBOOT_RAW_BOOTROM_BIN) \
+	BOOTMEM_FILE=$(CVWSOC_UBOOT_BOOTROM_BIN) \
+	RAW_RAM_FILE=$(CVWSOC_UBOOT_RAW_EXT_RAM_BIN) \
+	RAM_FILE=$(CVWSOC_UBOOT_EXT_RAM_BIN) \
+	QEMU_KERNEL=$(CVWSOC_UBOOT_QEMU_KERNEL) \
+	QEMU_INITRD=$(CVWSOC_UBOOT_QEMU_INITRD) \
+	GENERATED_DTS=$(CVWSOC_UBOOT_QEMU_DTS) \
+	GENERATED_DTB=$(CVWSOC_UBOOT_QEMU_DTB) \
+	bash $(WALLY)/linux/genCvwsocPreload.sh
+
+$(CVWSOC_LINUX_PRELOAD_BINS) &: $(CVWSOC_LINUX_PRELOAD_CFG) $(WALLY)/linux/genCvwsocPreload.sh $(CVWSOC_DTS_SRC) $(CVWSOC_FW_JUMP_BIN) $(CVWSOC_LINUX_KERNEL_SRC) $(CVWSOC_LINUX_INITRD_SRC) | $(CVWSOC_PRELOAD_DIR)
+	SNAPSHOT_AT_HANDOFF=0 \
+	SKIP_GDB_DUMPS=0 \
+	$(CVWSOC_PRELOAD_COMMON_ENV) \
+	UBOOT_INCLUDE=0 \
+	KERNEL_ADDR=$(CVWSOC_LINUX_KERNEL_ADDR) \
+	RAW_BOOTMEM_FILE=$(CVWSOC_LINUX_RAW_BOOTROM_BIN) \
+	BOOTMEM_FILE=$(CVWSOC_LINUX_BOOTROM_BIN) \
+	RAW_RAM_FILE=$(CVWSOC_LINUX_RAW_EXT_RAM_BIN) \
+	RAM_FILE=$(CVWSOC_LINUX_EXT_RAM_BIN) \
+	QEMU_KERNEL=$(CVWSOC_LINUX_QEMU_KERNEL) \
+	QEMU_INITRD=$(CVWSOC_LINUX_QEMU_INITRD) \
+	GENERATED_DTS=$(CVWSOC_LINUX_QEMU_DTS) \
+	GENERATED_DTB=$(CVWSOC_LINUX_QEMU_DTB) \
+	bash $(WALLY)/linux/genCvwsocPreload.sh
+
+$(CVWSOC_UBOOT_PRELOAD_BINS) &: $(CVWSOC_UBOOT_PRELOAD_CFG) $(WALLY)/linux/genCvwsocPreload.sh $(CVWSOC_DTS_SRC) $(CVWSOC_FW_JUMP_BIN) $(CVWSOC_LINUX_KERNEL_SRC) $(CVWSOC_LINUX_INITRD_SRC) $(CVWSOC_UBOOT_BIN) | $(CVWSOC_PRELOAD_DIR)
+	SNAPSHOT_AT_HANDOFF=0 \
+	SKIP_GDB_DUMPS=0 \
+	$(CVWSOC_PRELOAD_COMMON_ENV) \
+	UBOOT_INCLUDE=1 \
+	KERNEL_ADDR=$(CVWSOC_UBOOT_KERNEL_ADDR) \
+	UBOOT_BIN=$(CVWSOC_UBOOT_BIN) \
+	RAW_BOOTMEM_FILE=$(CVWSOC_UBOOT_RAW_BOOTROM_BIN) \
+	BOOTMEM_FILE=$(CVWSOC_UBOOT_BOOTROM_BIN) \
+	RAW_RAM_FILE=$(CVWSOC_UBOOT_RAW_EXT_RAM_BIN) \
+	RAM_FILE=$(CVWSOC_UBOOT_EXT_RAM_BIN) \
+	QEMU_KERNEL=$(CVWSOC_UBOOT_QEMU_KERNEL) \
+	QEMU_INITRD=$(CVWSOC_UBOOT_QEMU_INITRD) \
+	GENERATED_DTS=$(CVWSOC_UBOOT_QEMU_DTS) \
+	GENERATED_DTB=$(CVWSOC_UBOOT_QEMU_DTB) \
+	bash $(WALLY)/linux/genCvwsocPreload.sh
+
+gen-cvwsoc-linux-preload: $(CVWSOC_LINUX_PRELOAD_BINS)
+
+gen-cvwsoc-uboot-preload: $(CVWSOC_UBOOT_PRELOAD_BINS)
+
+############################################################################################
+# qemu-{linux,u-boot}-preload: boot QEMU image with generated RAM contents (for validating generated RAM)
+############################################################################################
+# Remark: QEMU generates a DTB and passes parameters to OpenSBI accordingly if no -dtb is provided
+QEMU_TMP_LINUX_RAM := $(CVWSOC_PRELOAD_DIR)/ram-cvwsoc-linux-qemu.bin
+qemu-linux-preload: $(CVWSOC_LINUX_EXT_RAM_BIN)
+	$(OBJCOPY_BIN) -I binary -O binary --reverse-bytes=8 \
+		$(CVWSOC_LINUX_EXT_RAM_BIN) $(QEMU_TMP_LINUX_RAM)
+	$(QEMU_BIN) \
+		-M virt -m $(QEMU_RAM_MB)M -nographic \
+		-bios none \
+		-cpu "$(CPU_ARGS)" \
+		-device loader,file=$(QEMU_TMP_LINUX_RAM),addr=0x80000000,force-raw=on
+	rm -f $(QEMU_TMP_LINUX_RAM)
+
+
+QEMU_TMP_UBOOT_RAM := $(CVWSOC_PRELOAD_DIR)/ram-cvwsoc-uboot-qemu.bin
+qemu-uboot-preload: $(CVWSOC_UBOOT_EXT_RAM_BIN)
+	$(OBJCOPY_BIN) -I binary -O binary --reverse-bytes=8 \
+		$(CVWSOC_UBOOT_EXT_RAM_BIN) $(QEMU_TMP_UBOOT_RAM)
+	$(QEMU_BIN) \
+		-M virt -m $(QEMU_RAM_MB)M -nographic \
+		-bios none \
+		-cpu "$(CPU_ARGS)" \
+		-device loader,file=$(QEMU_TMP_UBOOT_RAM),addr=0x80000000,force-raw=on
+	rm -f $(QEMU_TMP_UBOOT_RAM)
+
+
+qemu-linux: $(CVWSOC_QEMU_LINUX_HELPERS)
+	$(QEMU_BIN) \
+		-M virt -m $(QEMU_RAM_MB)M -nographic \
+		-bios $(CVWSOC_FW_JUMP_BIN) \
+		-kernel $(CVWSOC_QEMU_ORIG_KERNEL) \
+		-dtb $(CVWSOC_QEMU_ORIG_DTB) \
+		-append "$(CVWSOC_LINUX_BOOTARGS)" \
+		-device loader,file=$(CVWSOC_QEMU_ORIG_INITRD),addr=$(INITRD_ADDR) \
+		-cpu "$(CPU_ARGS)"
+
+#		-initrd $(CVWSOC_QEMU_ORIG_INITRD)
+
+qemu-uboot: $(CVWSOC_QEMU_UBOOT_HELPERS)
+	$(QEMU_BIN) \
+		-M virt -m $(QEMU_RAM_MB)M -nographic \
+		-bios $(CVWSOC_FW_JUMP_BIN) \
+		-dtb $(CVWSOC_QEMU_ORIG_DTB) \
+		-kernel $(CVWSOC_UBOOT_BIN) \
+		-device loader,file=$(CVWSOC_QEMU_ORIG_UBOOT_DTB),addr=$(UBOOT_DTB_ADDR) \
+		-device loader,file=$(CVWSOC_QEMU_ORIG_KERNEL),addr=$(CVWSOC_UBOOT_KERNEL_ADDR) \
+		-device loader,file=$(CVWSOC_QEMU_ORIG_DTB),addr=$(KERNEL_DTB_ADDR) \
+		-device loader,file=$(CVWSOC_QEMU_ORIG_INITRD),addr=$(INITRD_ADDR) \
+		-cpu "$(CPU_ARGS)"
+
+run-cvwsoc-linux: BOOTROM_BIN := $(CVWSOC_LINUX_BOOTROM_BIN)
+run-cvwsoc-linux: EXT_RAM_BIN := $(CVWSOC_LINUX_EXT_RAM_BIN)
+run-cvwsoc-linux: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_linux_uart.out
+run-cvwsoc-linux: $(CVWSOC_LINUX_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH)
+	$(RUN_VERILATOR)
+
+run-cvwsoc-uboot: BOOTROM_BIN := $(CVWSOC_UBOOT_BOOTROM_BIN)
+run-cvwsoc-uboot: EXT_RAM_BIN := $(CVWSOC_UBOOT_EXT_RAM_BIN)
+run-cvwsoc-uboot: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_uboot_uart.out
+run-cvwsoc-uboot: $(CVWSOC_UBOOT_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH)
+	$(RUN_VERILATOR)
+
+# FIXME: this serial autorun path was copied forward conceptually from the old
+# bridge bench but has not been revalidated end-to-end on the new cvwsoc setup.
+runcmd-cvwsoc-linux: BOOTROM_BIN := $(CVWSOC_LINUX_BOOTROM_BIN)
+runcmd-cvwsoc-linux: EXT_RAM_BIN := $(CVWSOC_LINUX_EXT_RAM_BIN)
+runcmd-cvwsoc-linux: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_linux_uart.out
+runcmd-cvwsoc-linux: EXTRA_PLUS_ARGS += +UART_AUTORUNCMD=1 +UART_RUNCMD_FILE=$(RUNCMD_FILE)
+runcmd-cvwsoc-linux: $(CVWSOC_LINUX_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH)
+	test -n "$(RUNCMD)"
+	mkdir -p $(VERILATOR_DIR)/logs
+	printf '%s\r' "$(RUNCMD)" > $(RUNCMD_FILE)
+	$(RUN_VERILATOR)
+
+runcmd-cvwsoc-uboot: BOOTROM_BIN := $(CVWSOC_UBOOT_BOOTROM_BIN)
+runcmd-cvwsoc-uboot: EXT_RAM_BIN := $(CVWSOC_UBOOT_EXT_RAM_BIN)
+runcmd-cvwsoc-uboot: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_uboot_uart.out
+runcmd-cvwsoc-uboot: EXTRA_PLUS_ARGS += +UART_AUTORUNCMD=1 +UART_RUNCMD_FILE=$(RUNCMD_FILE)
+runcmd-cvwsoc-uboot: $(CVWSOC_UBOOT_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH)
+	test -n "$(RUNCMD)"
+	mkdir -p $(VERILATOR_DIR)/logs
+	printf '%s\r' "$(RUNCMD)" > $(RUNCMD_FILE)
+	$(RUN_VERILATOR)
+
+$(WORKDIR)/V$(TESTBENCH): $(WORKDIR)/V$(TESTBENCH).mk
+	$(MAKE) -C $(WORKDIR) -f V$(TESTBENCH).mk \
+		OBJCACHE=ccache $(OPT_GEN) CXX=/usr/bin/g++ LINK=/usr/bin/g++ V$(TESTBENCH)
+
+$(WORKDIR)/V$(TESTBENCH).mk: $(DEPENDENCIES)
+	mkdir -p $(WORKDIR)
+	@echo "Using Verilator: $(VERILATOR)"
+	@$(VERILATOR) --version
+	$(VERILATOR) \
+	--Mdir $(WORKDIR) -o V$(TESTBENCH) \
+	--cc --exe $(TRACE_BUILD_ARGS) \
+	$(VLT_FLAGS) $(OPT_COMP) $(PARAMS) $(EXTRA_PARAMS) $(NONPROF) $(WARN_ARGS) \
+	--top-module $(TESTBENCH_MODULENAME) --relative-includes \
+	$(INCLUDE_PATH) \
+	$(WRAPPER) \
+	$(DEFINE_ARGS) \
+	$(EXPANDED_PARAM_ARGS) \
+	$(SOURCES)
+
+clean:
+	rm -rf \
+		$(VERILATOR_DIR)/wkdir/$(WALLYCONF)_cvwsoc \
+		$(VERILATOR_DIR)/wkdir/$(WALLYCONF)_cvwsoc_trace \
+		$(VERILATOR_DIR)/logs/testbench_cvwsoc*.out \
+		$(VERILATOR_DIR)/logs/testbench_cvwsoc*.pid \
+		$(RUNCMD_FILE) \
+		dump.fst
