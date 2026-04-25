@@ -64,7 +64,7 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
     # import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
     # FIXME: remove later
-    import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
+    #import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
     import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
 } elseif {$board=="genesys2socxlnx" } {
     import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
@@ -215,6 +215,11 @@ if {$board=="ArtyA7"} {
     source ../constraints/big-debug-spi.xdc
 }
 
+# WIP: bridge debugging
+#if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socdebug"} {
+#        source ../constraints/debug-ahb-axi-bridge.xdc
+#}
+
 if {$board=="nexysa7soc" || $board=="genesys2soc"} {
     if {$litedram_supported=="1"} {
         source ../constraints/debug-boot-litedram.xdc
@@ -255,7 +260,7 @@ if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} 
     # Quick already implies non-timing-driven, but if not using Quick:
     # set_property STEPS.ROUTE_DESIGN.ARGS.NO_TIMING_DRIVEN true [get_runs impl_1]
 
-    set_param general.maxThreads 16
+    set_param general.maxThreads 8
 
     # ---- FAST/INCR knobs (put before launch_runs impl_1) ----
     # set prev_routed_dcp [file normalize "./WallyFPGA.runs/impl_1/fpgaTop_routed.dcp"]
@@ -277,7 +282,8 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"} {
     #set_property strategy Performance_ExplorePostRoutePhysOpt [get_runs impl_1]
 
     # Strategy targets high fanout (AXI VGA) => Better than Performance_ExplorePostRoutePhysOpt
-    set_property strategy Performance_WLBlockPlacementFanoutOpt [get_runs impl_1]
+    # REMOVED FOR NOW
+    # set_property strategy Performance_WLBlockPlacementFanoutOpt [get_runs impl_1]
 }
 
 if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} {

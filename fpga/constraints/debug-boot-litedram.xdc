@@ -20,7 +20,8 @@ ila_add_probe u_ila_axi -bus ddr3/user_port_axi_0_rid -msb 3 -lsb 0 -order lsb2m
 ila_add_probe u_ila_axi -net ddr3/user_port_axi_0_awvalid
 ila_add_probe u_ila_axi -net ddr3/user_port_axi_0_awready
 ila_add_probe u_ila_axi -bus ddr3/user_port_axi_0_awaddr -msb 29 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus ddr3/user_port_axi_0_awid -msb 3 -lsb 0 -order lsb2msb
+#ila_add_probe u_ila_axi -bus ddr3/user_port_axi_0_awid -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/user_port_axi_0_awid -msb 3 -lsb 2 -order lsb2msb
 ila_add_probe u_ila_axi -bus ddr3/user_port_axi_0_awlen -msb 7 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -bus ddr3/user_port_axi_0_awsize -msb 2 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -bus ddr3/user_port_axi_0_awburst -msb 1 -lsb 0 -order lsb2msb
