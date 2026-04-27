@@ -57,6 +57,7 @@ module testbench_cvwsoc #(
       tmp.LITEDRAM_SUPPORTED = 1'b0;
       tmp.UBERDDR3_SUPPORTED = 1'b0;
       tmp.BOOTROM_RANGE = 64'h3FFFF; // 256 KB
+      tmp.AXI_DUMMY_SUPPORTED = 1'b1;
       cvwsoc_sim_cfg = tmp;
     end
   endfunction

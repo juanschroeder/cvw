@@ -231,8 +231,9 @@ PreProcessFilesSoC: PreProcessFiles
 	#mkdir -p ../src/CopiedFiles_do_not_add_to_repo/ahb_to_axi4/
 	#cp ../../addins/veer-el2/design/lib/ahb_to_axi4.sv ../src/CopiedFiles_do_not_add_to_repo/ahb_to_axi4/
 	#cp ../../addins/veer-el2/design/lib/beh_lib.sv ../src/CopiedFiles_do_not_add_to_repo/ahb_to_axi4/
-	# copy AHB-Lite-to-AXI4 bridge
-	cp -r ../../addins/ahb-to-axi ../src/CopiedFiles_do_not_add_to_repo/
+	# copy AHB-Lite-to-AXI4 bridge (only what's needed)
+	mkdir -p ../src/CopiedFiles_do_not_add_to_repo/ahb-to-axi/rtl
+	cp -r ../../addins/ahb-to-axi/rtl/* ../src/CopiedFiles_do_not_add_to_repo/ahb-to-axi/rtl
 	# copy Wb2axi
 	cp -r ../../addins/wb2axip ../src/CopiedFiles_do_not_add_to_repo/
 	# copy uberddr3

@@ -220,6 +220,9 @@ localparam logic [63:0] AXI_USB_RANGE   = 64'h00000FFF;
 localparam logic AXI_ETH_SUPPORTED = 0;
 localparam logic [63:0] AXI_ETH_BASE    = 64'h100D0000;
 localparam logic [63:0] AXI_ETH_RANGE   = 64'h0001FFFF;
+localparam logic AXI_DUMMY_SUPPORTED = 0;
+localparam logic [63:0] AXI_DUMMY_BASE    = 64'h20000000;
+localparam logic [63:0] AXI_DUMMY_RANGE   = 64'h0003FFFF;
 
 // Bus Interface width
 localparam AHBW = (XLEN);

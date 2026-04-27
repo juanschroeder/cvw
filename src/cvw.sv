@@ -176,6 +176,9 @@ typedef struct packed {
   logic         AXI_ETH_SUPPORTED;
   logic [63:0]  AXI_ETH_BASE;
   logic [63:0]  AXI_ETH_RANGE;
+  logic         AXI_DUMMY_SUPPORTED;
+  logic [63:0]  AXI_DUMMY_BASE;
+  logic [63:0]  AXI_DUMMY_RANGE;
 
 // Test modes
 
