@@ -17,6 +17,8 @@ COPIED_ROOT := $(WALLY)/fpga/src/CopiedFiles_do_not_add_to_repo
 PULP_ROOT := $(COPIED_ROOT)/pulp
 PULP_AXI_ROOT := $(PULP_ROOT)/axi
 PULP_COMMON_CELLS_ROOT := $(PULP_ROOT)/common_cells
+PULP_REGISTER_INTERFACE_ROOT := $(PULP_ROOT)/register_interface
+SDHCI_ROOT := $(COPIED_ROOT)/sdhci/hw
 
 CVWSOC_DEPLOY_ROOT ?= /yocto/fpga/kas-cvwsoc/build/tmp/deploy/images
 CVWSOC_MACHINE := cvwsoc-virt
@@ -66,6 +68,11 @@ CVWSOC_LINUX_INITRD_CPIO_GZ ?= $(shell ls -1t $(CVWSOC_DEPLOY_DIR)/cvwsoc-image-
 CVWSOC_LINUX_INITRD_CPIO ?= $(shell ls -1t $(CVWSOC_DEPLOY_DIR)/cvwsoc-image-$(CVWSOC_IMAGE_NAME)-*.rootfs.cpio 2>/dev/null | head -n1)
 CVWSOC_LINUX_INITRD_SRC ?= $(if $(CVWSOC_USE_EXT2),$(CVWSOC_LINUX_INITRD_EXT2),$(or $(CVWSOC_LINUX_INITRD_CPIO),$(CVWSOC_LINUX_INITRD_CPIO_GZ)))
 CVWSOC_LINUX_KERNEL_SRC ?= $(if $(wildcard $(CVWSOC_DEPLOY_DIR)/Image.lz4.orig),$(CVWSOC_DEPLOY_DIR)/Image.lz4.orig,$(if $(wildcard $(CVWSOC_DEPLOY_DIR)/Image.lz4),$(CVWSOC_DEPLOY_DIR)/Image.lz4,$(CVWSOC_DEPLOY_DIR)/linux.bin))
+
+# FIXME: for the moment the image is stored and not generated from Yocto output
+CVWSOC_SD_IMAGE_FOLDER ?= addins/cvwsoc/sdhci/image
+CVWSOC_SD_IMAGE ?= $(CVWSOC_SD_IMAGE_FOLDER)/imagesd.bin
+SD_IMAGE := $(CVWSOC_SD_IMAGE)
 
 CVWSOC_LINUX_BOOTARGS_BASE ?= earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 ignore_loglevel loglevel=8 rdinit=/bin/busybox.nosuid -- sh
 CVWSOC_LINUX_BOOTARGS_EXT2 ?= earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 ignore_loglevel loglevel=8 root=/dev/ram0 rootfstype=ext2 init=/bin/busybox.nosuid -- sh
@@ -160,7 +167,17 @@ COMMON_CELLS_SOURCES := \
 	$(PULP_COMMON_CELLS_ROOT)/src/addr_decode_dync.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/addr_decode.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/cdc_fifo_gray.sv \
-	$(PULP_COMMON_CELLS_ROOT)/src/rr_arb_tree.sv
+	$(PULP_COMMON_CELLS_ROOT)/src/rr_arb_tree.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_arbiter.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_arbiter_flushable.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_fifo.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_fork.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_fork_dynamic.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_join.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_join_dynamic.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_mux.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/clk_int_div.sv
+
 
 AXI_SOURCES := \
 	$(PULP_AXI_ROOT)/src/axi_pkg.sv \
@@ -177,22 +194,52 @@ AXI_SOURCES := \
 	$(PULP_AXI_ROOT)/src/axi_cdc.sv \
 	$(PULP_AXI_ROOT)/src/axi_demux.sv \
 	$(PULP_AXI_ROOT)/src/axi_xbar_unmuxed.sv \
-	$(PULP_AXI_ROOT)/src/axi_xbar.sv
+	$(PULP_AXI_ROOT)/src/axi_xbar.sv \
+	$(PULP_AXI_ROOT)/src/axi_to_detailed_mem.sv
+
+
+PULP_REGISTER_INTERFACE_SOURCES := \
+	$(PULP_ROOT)/register_interface/vendor/lowrisc_opentitan/src/*.sv \
+	$(PULP_ROOT)/register_interface/src/*.sv
+
 
 CORE_SOURCES := $(filter-out \
+	$(wildcard $(COPIED_ROOT)/testbench/sdc/*.sv) \
 	$(wildcard $(COPIED_ROOT)/ahb-to-axi/*/*.sv) \
 	$(wildcard $(COPIED_ROOT)/cvwsoc/*.sv) \
 	$(wildcard $(COPIED_ROOT)/cvwsoc/*/*.sv) \
 	$(wildcard $(COPIED_ROOT)/rvvi/*.sv) \
-	$(wildcard $(COPIED_ROOT)/uberddr3/*/*.sv), \
+	$(wildcard $(COPIED_ROOT)/uberddr3/*/*.sv) \
+	$(wildcard $(COPIED_ROOT)/sdhci/hw/*.sv) \
+	$(wildcard $(COPIED_ROOT)/sdhci/hw/*/*.sv), \
 	$(wildcard $(COPIED_ROOT)/*/*.sv) \
 	$(wildcard $(COPIED_ROOT)/*/*/*.sv))
+
+#	$(wildcard $(COPIED_ROOT)/testbench/sdc/*.sv)
+
+# FIXME: separate this into groups?
+PERIPH_SOURCES := \
+	$(wildcard $(COPIED_ROOT)/pulp/tech_cells/src/rtl/*.sv) \
+	$(wildcard $(COPIED_ROOT)/sdhci/hw/*/*.sv) \
+	$(wildcard $(COPIED_ROOT)/sdhci/hw/*.sv) \
+	$(wildcard $(COPIED_ROOT)/sdhci/target/sim/model/*.sv) \
+	$(wildcard $(COPIED_ROOT)/cvwsoc/axi64_mmio_to_axilite32_v2.sv) \
+	$(wildcard $(COPIED_ROOT)/cvwsoc/sdhci/sdhci_regbus_pkg.sv) \
+	$(wildcard $(COPIED_ROOT)/cvwsoc/sdhci/sdhci_regbus_pkg.sv) \
+	$(wildcard $(COPIED_ROOT)/cvwsoc/sdhci/sd*.v) \
+	$(wildcard $(COPIED_ROOT)/cvwsoc/sdhci/*.sv)
+
+# CVW already has an sdModel probably also coming from OpenCores (using that one for now)
+#	$(wildcard $(COPIED_ROOT)/cvwsoc/sdhci/sdModel.v)
+
 
 INCLUDE_PATH := \
 	-I$(COPIED_ROOT)/config \
 	-I$(WALLY)/config/shared \
 	-I$(PULP_AXI_ROOT)/include \
-	-I$(PULP_COMMON_CELLS_ROOT)/include
+	-I$(PULP_COMMON_CELLS_ROOT)/include \
+	-I$(PULP_REGISTER_INTERFACE_ROOT)/include \
+	-I$(SDHCI_ROOT)/include
 
 SOURCES := \
 	$(COMMON_CELLS_SOURCES) \
@@ -201,7 +248,9 @@ SOURCES := \
 	$(WALLY)/testbench/$(TESTBENCH).sv \
 	$(CORE_SOURCES) \
 	$(BRIDGE_RTL) \
-	$(wildcard $(COPIED_ROOT)/verilog-axi/rtl/*.v)
+	$(wildcard $(COPIED_ROOT)/verilog-axi/rtl/*.v) \
+	$(PULP_REGISTER_INTERFACE_SOURCES) \
+	$(PERIPH_SOURCES)
 
 DEPENDENCIES := \
 	$(WALLY)/config/shared/*.vh \
@@ -217,6 +266,7 @@ define RUN_VERILATOR
 	args='$(PLUS_ARGS) $(EXTRA_PLUS_ARGS) +VERILATOR_THREADS=$(THREADS) +UART_STDOUT=$(UART_STDOUT) +UART_TIMESTAMP=$(UART_TIMESTAMP) +UART_SHELL_TAGS=$(UART_SHELL_TAGS) +HEARTBEAT_SPEED_INTERVAL_CYCLES=$(HEARTBEAT_SPEED_INTERVAL_CYCLES) +UART_PTY_TX=$(UART_PTY_TX)'; \
 	if [[ -n "$(BOOTROM_BIN)" ]]; then args="$$args +BOOTROM_BIN=$(BOOTROM_BIN)"; fi; \
 	if [[ -n "$(EXT_RAM_BIN)" ]]; then args="$$args +EXT_RAM_BIN=$(EXT_RAM_BIN)"; fi; \
+	if [[ -n "$(CVWSOC_SD_IMAGE)" ]]; then args="$$args +SD_IMAGE=$(CVWSOC_SD_IMAGE)"; fi; \
 	if [[ -n "$(UART_LOG)" ]]; then args="$$args +UART_LOG=$(UART_LOG)"; fi; \
 	$(WORKDIR)/V$(TESTBENCH) $$args
 endef
@@ -255,6 +305,16 @@ runcmd-cvwsoc: runcmd-cvwsoc-linux
 
 $(CVWSOC_PRELOAD_DIR):
 	mkdir -p $@
+
+$(CVWSOC_SD_IMAGE): $(CVWSOC_SD_IMAGE).gz
+	mkdir -p $(dir $@)
+	if tar -tzf $< >/dev/null 2>&1; then \
+		member=$$(tar -tzf $< | head -n1); \
+		tar -xOzf $< "$$member" > $@.tmp; \
+	else \
+		gzip -dc $< > $@.tmp; \
+	fi
+	mv $@.tmp $@
 
 FORCE:
 
@@ -511,7 +571,7 @@ run-cvwsoc-linux: $(CVWSOC_LINUX_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH)
 run-cvwsoc-uboot: BOOTROM_BIN := $(CVWSOC_UBOOT_BOOTROM_BIN)
 run-cvwsoc-uboot: EXT_RAM_BIN := $(CVWSOC_UBOOT_EXT_RAM_BIN)
 run-cvwsoc-uboot: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_uboot_uart.out
-run-cvwsoc-uboot: $(CVWSOC_UBOOT_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH)
+run-cvwsoc-uboot: $(CVWSOC_UBOOT_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE)
 	$(RUN_VERILATOR)
 
 # FIXME: this serial autorun path was copied forward conceptually from the old

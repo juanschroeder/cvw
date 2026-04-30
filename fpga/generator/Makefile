@@ -238,6 +238,8 @@ PreProcessFilesSoC: PreProcessFiles
 	cp -r ../../addins/wb2axip ../src/CopiedFiles_do_not_add_to_repo/
 	# copy uberddr3
 	cp -r ../../addins/uberddr3 ../src/CopiedFiles_do_not_add_to_repo/
+	# copy sdhci
+	cp -r ../../addins/sdhci ../src/CopiedFiles_do_not_add_to_repo/
 
 	# LITTLE_ENDIAN for UART core
 	grep -q 'define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v || sed -i '1i`define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v

@@ -84,8 +84,8 @@
   branch = main
 [submodule "axi"]
   path = addins/sdhci
-  url = https://github.com/Freakness109/sdhci
-  branch = main
+  url = https://github.com/juanschroeder/sdhci
+  branch = cvwsoc_dev
 [submodule "tech_cells"]
   path = addins/pulp/tech_cells
   url = https://github.com/pulp-platform/tech_cells_generic.git
