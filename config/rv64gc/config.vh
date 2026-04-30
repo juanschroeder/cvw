@@ -253,6 +253,7 @@ localparam PLIC_WB_ETH_ID = 32'd12;
 localparam PLIC_AXI_DMA_ID = 32'd13;
 localparam PLIC_AXI_USB_ID = 32'd14;
 localparam PLIC_AXI_ETH_ID = 32'd15;
+localparam PLIC_AXI_DUMMY_ID = 32'd16;
 
 // Branch prediction
 localparam logic BPRED_SUPPORTED = 1;

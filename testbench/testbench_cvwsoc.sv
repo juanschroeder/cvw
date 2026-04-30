@@ -206,6 +206,7 @@ module testbench_cvwsoc #(
   logic AXI_DMAIntr = 1'b0;
   logic AXI_USBIntr = 1'b0;
   logic AXI_EthIntr = 1'b0;
+  logic AXI_DummyIntr;
   logic ExternalStall = 1'b0;
 
   // ---------------------------------------------------------------------------
@@ -338,7 +339,8 @@ module testbench_cvwsoc #(
     .WB_RMII_PHY_IRQ(WB_RMII_PHY_IRQ),
     .AXI_DMAIntr(AXI_DMAIntr),
     .AXI_USBIntr(AXI_USBIntr),
-    .AXI_EthIntr(AXI_EthIntr)
+    .AXI_EthIntr(AXI_EthIntr),
+    .AXI_DummyIntr(AXI_DummyIntr)
   );
 
   ahb_to_axi4_burst #(

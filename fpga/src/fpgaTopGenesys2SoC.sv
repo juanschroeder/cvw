@@ -1004,6 +1004,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
                     //, .AXI_USBIntr(usb_irq)
                     , .AXI_USBIntr(usb_irq_ff2)
                     , .AXI_EthIntr(liteeth_irq_ff2)
+                    // Dummy device disabled for now
+                    , .AXI_DummyIntr(1'b0)
                     );
 
   if (P.XILINX_AXI_BR_SUPPORTED) begin

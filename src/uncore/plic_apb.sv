@@ -55,6 +55,7 @@ module plic_apb import cvw::*;  #(parameter cvw_t P) (
   input logic                 DMAIntr, // DMA interrupt input
   input logic                 USBIntr, // USB interrupt input
   input logic                 AXIEthIntr, // AXI Ethernet interrupt input
+  input logic                 AXIDummyIntr, // AXI Dummy peripheral interrupt input
   output logic                MExtInt, SExtInt
 );
 
@@ -182,6 +183,7 @@ module plic_apb import cvw::*;  #(parameter cvw_t P) (
     if(P.PLIC_AXI_DMA_ID !=0)   requests[P.PLIC_AXI_DMA_ID]  = DMAIntr;
     if(P.PLIC_AXI_USB_ID !=0)   requests[P.PLIC_AXI_USB_ID]  = USBIntr;
     if(P.PLIC_AXI_ETH_ID !=0)   requests[P.PLIC_AXI_ETH_ID]  = AXIEthIntr;
+    if(P.PLIC_AXI_DUMMY_ID !=0)   requests[P.PLIC_AXI_DUMMY_ID]  = AXIDummyIntr;
   end
 
   // pending interrupt request

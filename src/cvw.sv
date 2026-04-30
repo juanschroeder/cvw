@@ -201,6 +201,7 @@ typedef struct packed {
   int           PLIC_AXI_DMA_ID;
   int           PLIC_AXI_USB_ID;
   int           PLIC_AXI_ETH_ID;
+  int           PLIC_AXI_DUMMY_ID;
 
   logic                BPRED_SUPPORTED;
   logic [31:0]         BPRED_TYPE;

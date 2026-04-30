@@ -77,7 +77,8 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   input logic        WB_RMII_PHY_IRQ, //coming from the PHY! (unused)
   input logic AXI_DMAIntr,
   input logic AXI_USBIntr,
-  input logic AXI_EthIntr
+  input logic AXI_EthIntr,
+  input logic AXI_DummyIntr
 );
 
   logic [P.XLEN-1:0]           HREADRam, HREADSDC;
@@ -147,6 +148,8 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   assign USBIntr = AXI_USBIntr;
   logic                       AXIEthIntr;
   assign AXIEthIntr = AXI_EthIntr;
+  logic                       AXIDummyIntr;
+  assign AXIDummyIntr = AXI_DummyIntr;
 
 
   // Determine which region of physical memory (if any) is being accessed
@@ -188,7 +191,7 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
 
   if (P.PLIC_SUPPORTED == 1) begin : plic
     plic_apb #(P) plic(.PCLK, .PRESETn, .PSEL(PSEL[2]), .PADDR(PADDR[27:0]), .PWDATA, .PSTRB, .PWRITE, .PENABLE,
-      .PRDATA(PRDATA[2]), .PREADY(PREADY[2]), .UARTIntr, .GPIOIntr, .SDCIntr, .SPIIntr, .WBUartIntr, .WBEthIntr, .DMAIntr, .USBIntr, .AXIEthIntr, .MExtInt, .SExtInt);
+      .PRDATA(PRDATA[2]), .PREADY(PREADY[2]), .UARTIntr, .GPIOIntr, .SDCIntr, .SPIIntr, .WBUartIntr, .WBEthIntr, .DMAIntr, .USBIntr, .AXIEthIntr,  .AXIDummyIntr, .MExtInt, .SExtInt);
   end else begin : plic
     assign MExtInt = 1'b0;
     assign SExtInt = 1'b0;
