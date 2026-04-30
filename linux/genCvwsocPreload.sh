@@ -26,6 +26,7 @@ FW_JUMP_BIN="${FW_JUMP_BIN:-$CVWSOC_DEPLOY_DIR/fw_jump.bin}"
 KERNEL_SRC="${KERNEL_SRC:-}"
 INITRD_SRC="${INITRD_SRC:-}"
 UBOOT_BIN="${UBOOT_BIN:-$CVWSOC_DEPLOY_DIR/u-boot.bin}"
+UBOOT_DTB="${UBOOT_DTB:-$CVWSOC_DEPLOY_DIR/cvwsoc-virt.dtb}"
 DTS_SRC="${DTS_SRC:-$WALLY/linux/devicetree/wally-virtsoc.dts}"
 
 CPU_ARGS="${CPU_ARGS:-rva22s64,zicond=true,zfa=true,zfh=true,zcb=true,zbc=true,zkn=true,sstc=true,svadu=true,svnapot=true,pmp=on,debug=off}"
@@ -130,6 +131,7 @@ require_file "$INITRD_SRC" "initrd image"
 
 if [[ "$MODE_TAG" == "uboot" ]]; then
   require_file "$UBOOT_BIN" "u-boot image"
+  require_file "$UBOOT_DTB" "u-boot DTB"
 fi
 
 KERNEL_SRC_REAL="$(readlink -f "$KERNEL_SRC")"
@@ -242,7 +244,7 @@ else
     -dtb "$GENERATED_DTB" \
     -kernel "$UBOOT_BIN" \
     -cpu "$CPU_ARGS" \
-    -device loader,file="${GENERATED_DTB}",addr="${UBOOT_DTB_ADDR}" \
+    -device loader,file="${UBOOT_DTB}",addr="${UBOOT_DTB_ADDR}" \
     -device loader,file="${QEMU_KERNEL}",addr="${KERNEL_ADDR}" \
     -device loader,file="${GENERATED_DTB}",addr="${KERNEL_DTB_ADDR}" \
     -device loader,file="${QEMU_INITRD}",addr="${INITRD_ADDR}" \
