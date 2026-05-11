@@ -64,7 +64,7 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
     # import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
     # FIXME: remove later
-    #import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
+    # import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
     import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
 } elseif {$board=="genesys2socxlnx" } {
     import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
@@ -133,6 +133,7 @@ if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} 
     set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared \
         ../src/CopiedFiles_do_not_add_to_repo/cvwsoc \
         ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550 \
+        ../src/CopiedFiles_do_not_add_to_repo/sdhci/hw/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/axi/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/common_cells/include} [current_fileset]
@@ -157,6 +158,12 @@ if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} 
     # uberddr3 stuff
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/uberddr3/rtl/*.v \
                              ../src/CopiedFiles_do_not_add_to_repo/uberddr3/rtl/axi/*.v \
+        ]
+    # SDHCI stuff
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/tech_cells/src/rtl/*.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/tech_cells/src/fpga/*.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/sdhci/hw/*.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/sdhci/hw/*/*.sv \
         ]
 
     report_compile_order -constraints > reports/compile_order.rpt

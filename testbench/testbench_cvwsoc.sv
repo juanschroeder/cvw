@@ -55,6 +55,7 @@ module testbench_cvwsoc #(
       tmp.WISHBONE_UART_SUPPORTED = 1'b0;
       tmp.WISHBONE_ETH_SUPPORTED = 1'b0;
       tmp.WISHBONE_STUB_SUPPORTED = 1'b0;
+      tmp.AXI_SDHCI_SUPPORTED = 1'b0;
       tmp.AXI_DMA_SUPPORTED = 1'b0;
       tmp.AXI_VGA_SUPPORTED = 1'b0;
       tmp.AXI_USB_SUPPORTED = 1'b0;
@@ -766,6 +767,24 @@ module testbench_cvwsoc #(
   assign dbg_sdhci_mmio_bufport_write_fire =
       mst_req[1].aw_valid && mst_resp[1].aw_ready &&
       (mst_req[1].aw.addr[15:0] == 16'h0020);
+
+  logic dbg_sdhci_mmio_intstat_read_fire;
+  logic dbg_sdhci_mmio_intstat_aw_fire;
+  logic dbg_sdhci_mmio_w_fire;
+  logic [63:0] dbg_sdhci_mmio_wdata;
+
+  assign dbg_sdhci_mmio_intstat_read_fire =
+    mst_req[1].ar_valid && mst_resp[1].ar_ready &&
+    (mst_req[1].ar.addr[15:0] == 16'h0030);
+
+  assign dbg_sdhci_mmio_intstat_aw_fire =
+    mst_req[1].aw_valid && mst_resp[1].aw_ready &&
+    (mst_req[1].aw.addr[15:0] == 16'h0030);
+
+  assign dbg_sdhci_mmio_w_fire =
+    mst_req[1].w_valid && mst_resp[1].w_ready;
+
+  assign dbg_sdhci_mmio_wdata = mst_req[1].w.data;
   //-------------------------------------------------------------------------
 
   logic       sd_clk_o;
@@ -777,6 +796,7 @@ module testbench_cvwsoc #(
   logic [3:0] sd_dat_o;
   logic [3:0] sd_dat_i;
 
+  logic AXI_DummyIntr_orig;
   axi_sdhci_wrap sdhci_i(
       // For simplicity we use same clock as the bus
       .aclk(bus_clk),
@@ -830,8 +850,19 @@ module testbench_cvwsoc #(
     .sd_dat_o(sd_dat_o),
     .sd_dat_en_o(sd_dat_en),
 
-    .interrupt_o(AXI_DummyIntr)
+    //.interrupt_o(AXI_DummyIntr)
+    .interrupt_o(AXI_DummyIntr_orig)
   );
+
+    // This might not be necessary on simulation
+    sync #(
+        .STAGES ( 2 ) // 2-flip flop
+    ) i_sync (
+        .clk_i    ( clk ),
+        .rst_ni   ( ~reset ),
+        .serial_i ( AXI_DummyIntr_orig ),
+        .serial_o ( AXI_DummyIntr )
+    );
 
   ////////////////////
   //  SD card model //
@@ -850,6 +881,58 @@ module testbench_cvwsoc #(
   assign sd_cd_ni = '0;
 
 `endif
+
+  // ---------------------------------------------------------------------------
+  // PLIC debug for SDHCI interrupt routed as PLIC_AXI_DUMMY_ID / AXIDummyIntr
+  // Expected hierarchy: soc.uncore.plic.plic
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // PLIC debug exported by bind from plic_apb_dbg_bind
+  // ---------------------------------------------------------------------------
+  wire [5:0]  dbg_plic_axi_dummy_id;
+
+  wire        dbg_plic_src_irq;
+  wire        dbg_plic_req;
+  wire        dbg_plic_pending;
+  wire        dbg_plic_next_pending;
+  wire        dbg_plic_in_progress;
+
+  wire [2:0]  dbg_plic_priority;
+  wire        dbg_plic_en_ctx0;
+  wire        dbg_plic_en_ctx1;
+  wire [2:0]  dbg_plic_threshold_ctx0;
+  wire [2:0]  dbg_plic_threshold_ctx1;
+
+  wire [5:0]  dbg_plic_claim_ctx0;
+  wire [5:0]  dbg_plic_claim_ctx1;
+
+  wire [6:0]  dbg_plic_priorities_with_irqs_ctx0;
+  wire [6:0]  dbg_plic_priorities_with_irqs_ctx1;
+  wire [6:0]  dbg_plic_threshmask_ctx0;
+  wire [6:0]  dbg_plic_threshmask_ctx1;
+
+  wire        dbg_plic_irq_at_max_ctx0;
+  wire        dbg_plic_irq_at_max_ctx1;
+
+  wire        dbg_plic_mextint;
+  wire        dbg_plic_sextint;
+
+  wire        dbg_plic_memread;
+  wire        dbg_plic_memwrite;
+  wire [23:0] dbg_plic_entry;
+  wire [31:0] dbg_plic_din;
+  wire [31:0] dbg_plic_dout;
+
+  wire        dbg_plic_claim0_read;
+  wire        dbg_plic_claim1_read;
+  wire        dbg_plic_claim0_write;
+  wire        dbg_plic_claim1_write;
+
+  //-----------------------------------------------
+  //-----------------------------------------------
+  //-----------------------------------------------
+  //-----------------------------------------------
+  //-----------------------------------------------
 
   assign mst_resp[0].b.user = '0;
   assign mst_resp[0].r.user = '0;
@@ -1510,4 +1593,249 @@ module testbench_cvwsoc #(
     end
   end
 
+
+//------------------------------------------------------------------------
+// Stuff for SDHCI and PLIC debugging. Will be removed later
+//------------------------------------------------------------------------
+`ifdef SIM_AXI_SDHCI
+    logic        dbg_axi_dummyintr_sync_q;
+    logic        dbg_axi_dummyintr_waiting_for_trap;
+    logic [31:0] dbg_axi_dummyintr_wait_cycles;
+    logic        dbg_axi_dummyintr_no_trap_sticky;
+
+    always_ff @(posedge clk or posedge reset_ext) begin
+        if (reset_ext) begin
+            dbg_axi_dummyintr_sync_q         <= 1'b0;
+            dbg_axi_dummyintr_waiting_for_trap <= 1'b0;
+            dbg_axi_dummyintr_wait_cycles    <= 32'd0;
+            dbg_axi_dummyintr_no_trap_sticky <= 1'b0;
+        end else begin
+            dbg_axi_dummyintr_sync_q <= AXI_DummyIntr;
+
+            if (AXI_DummyIntr && !dbg_axi_dummyintr_sync_q) begin
+                dbg_axi_dummyintr_waiting_for_trap <= 1'b1;
+                dbg_axi_dummyintr_wait_cycles      <= 32'd0;
+                dbg_axi_dummyintr_no_trap_sticky   <= 1'b0;
+            end else if (!AXI_DummyIntr) begin
+                dbg_axi_dummyintr_waiting_for_trap <= 1'b0;
+                dbg_axi_dummyintr_wait_cycles      <= 32'd0;
+            end else if (TrapM) begin
+                dbg_axi_dummyintr_waiting_for_trap <= 1'b0;
+                dbg_axi_dummyintr_wait_cycles      <= 32'd0;
+            end else if (dbg_axi_dummyintr_waiting_for_trap) begin
+                dbg_axi_dummyintr_wait_cycles <= dbg_axi_dummyintr_wait_cycles + 1;
+
+                if ((dbg_axi_dummyintr_wait_cycles == 32'd100000) &&
+                    !dbg_axi_dummyintr_no_trap_sticky) begin
+                    dbg_axi_dummyintr_no_trap_sticky <= 1'b1;
+                    $display("[irq-watch] t=%0t cycle=%0d AXI_DummyIntr high for 100000 clk cycles without TrapM raw=%0b sync=%0b pc=%h",
+                            $time, cycle_count, AXI_DummyIntr_orig, AXI_DummyIntr, PCM);
+                end
+            end
+        end
+    end
+`endif
+
 endmodule
+
+
+// -----------------------------------------------------------------------------
+// Bound PLIC debug exporter.
+// No plic_apb port-list changes.
+// No instance hierarchy needed.
+// Drives only top-level testbench wires, so they appear in your trace.
+// -----------------------------------------------------------------------------
+
+module plic_apb_dbg_bind import cvw::*; #(
+  parameter cvw_t P
+) (
+  input  logic                              AXIDummyIntr,
+  input  logic                              MExtInt,
+  input  logic                              SExtInt,
+
+  input  logic [P.PLIC_NUM_SRC:1]           requests,
+  input  logic [P.PLIC_NUM_SRC:1]           intPending,
+  input  logic [P.PLIC_NUM_SRC:1]           nextIntPending,
+  input  logic [P.PLIC_NUM_SRC:1]           intInProgress,
+  input  logic [P.PLIC_NUM_SRC:1][2:0]      intPriority,
+
+  input  logic [1:0][P.PLIC_NUM_SRC:1]      intEn,
+  input  logic [1:0][2:0]                   intThreshold,
+  input  logic [1:0][5:0]                   intClaim,
+
+  input  logic [1:0][7:1]                   priorities_with_irqs,
+  input  logic [1:0][7:1]                   threshMask,
+  input  logic [1:0][P.PLIC_NUM_SRC:1]      irqs_at_max_priority,
+
+  input  logic                              memread,
+  input  logic                              memwrite,
+  input  logic [23:0]                       entry,
+  input  logic [31:0]                       Din,
+  input  logic [31:0]                       Dout,
+
+  output logic [5:0]                        dbg_plic_axi_dummy_id,
+
+  output logic                              dbg_plic_src_irq,
+  output logic                              dbg_plic_req,
+  output logic                              dbg_plic_pending,
+  output logic                              dbg_plic_next_pending,
+  output logic                              dbg_plic_in_progress,
+
+  output logic [2:0]                        dbg_plic_priority,
+  output logic                              dbg_plic_en_ctx0,
+  output logic                              dbg_plic_en_ctx1,
+  output logic [2:0]                        dbg_plic_threshold_ctx0,
+  output logic [2:0]                        dbg_plic_threshold_ctx1,
+
+  output logic [5:0]                        dbg_plic_claim_ctx0,
+  output logic [5:0]                        dbg_plic_claim_ctx1,
+
+  output logic [6:0]                        dbg_plic_priorities_with_irqs_ctx0,
+  output logic [6:0]                        dbg_plic_priorities_with_irqs_ctx1,
+  output logic [6:0]                        dbg_plic_threshmask_ctx0,
+  output logic [6:0]                        dbg_plic_threshmask_ctx1,
+
+  output logic                              dbg_plic_irq_at_max_ctx0,
+  output logic                              dbg_plic_irq_at_max_ctx1,
+
+  output logic                              dbg_plic_mextint,
+  output logic                              dbg_plic_sextint,
+
+  output logic                              dbg_plic_memread,
+  output logic                              dbg_plic_memwrite,
+  output logic [23:0]                       dbg_plic_entry,
+  output logic [31:0]                       dbg_plic_din,
+  output logic [31:0]                       dbg_plic_dout,
+
+  output logic                              dbg_plic_claim0_read,
+  output logic                              dbg_plic_claim1_read,
+  output logic                              dbg_plic_claim0_write,
+  output logic                              dbg_plic_claim1_write
+);
+
+  localparam int DBG_ID = P.PLIC_AXI_DUMMY_ID;
+
+  assign dbg_plic_axi_dummy_id = DBG_ID[5:0];
+
+  if ((DBG_ID >= 1) && (DBG_ID <= P.PLIC_NUM_SRC)) begin : valid_dbg_id
+    assign dbg_plic_src_irq          = AXIDummyIntr;
+    assign dbg_plic_req              = requests[DBG_ID];
+    assign dbg_plic_pending          = intPending[DBG_ID];
+    assign dbg_plic_next_pending     = nextIntPending[DBG_ID];
+    assign dbg_plic_in_progress      = intInProgress[DBG_ID];
+
+    assign dbg_plic_priority         = intPriority[DBG_ID];
+    assign dbg_plic_en_ctx0          = intEn[0][DBG_ID];
+    assign dbg_plic_en_ctx1          = intEn[1][DBG_ID];
+
+    assign dbg_plic_irq_at_max_ctx0  = irqs_at_max_priority[0][DBG_ID];
+    assign dbg_plic_irq_at_max_ctx1  = irqs_at_max_priority[1][DBG_ID];
+  end else begin : invalid_dbg_id
+    assign dbg_plic_src_irq          = 1'b0;
+    assign dbg_plic_req              = 1'b0;
+    assign dbg_plic_pending          = 1'b0;
+    assign dbg_plic_next_pending     = 1'b0;
+    assign dbg_plic_in_progress      = 1'b0;
+
+    assign dbg_plic_priority         = 3'b0;
+    assign dbg_plic_en_ctx0          = 1'b0;
+    assign dbg_plic_en_ctx1          = 1'b0;
+
+    assign dbg_plic_irq_at_max_ctx0  = 1'b0;
+    assign dbg_plic_irq_at_max_ctx1  = 1'b0;
+  end
+
+  assign dbg_plic_threshold_ctx0           = intThreshold[0];
+  assign dbg_plic_threshold_ctx1           = intThreshold[1];
+
+  assign dbg_plic_claim_ctx0               = intClaim[0];
+  assign dbg_plic_claim_ctx1               = intClaim[1];
+
+  assign dbg_plic_priorities_with_irqs_ctx0 = priorities_with_irqs[0][7:1];
+  assign dbg_plic_priorities_with_irqs_ctx1 = priorities_with_irqs[1][7:1];
+  assign dbg_plic_threshmask_ctx0           = threshMask[0][7:1];
+  assign dbg_plic_threshmask_ctx1           = threshMask[1][7:1];
+
+  assign dbg_plic_mextint = MExtInt;
+  assign dbg_plic_sextint = SExtInt;
+
+  assign dbg_plic_memread  = memread;
+  assign dbg_plic_memwrite = memwrite;
+  assign dbg_plic_entry    = entry;
+  assign dbg_plic_din      = Din;
+  assign dbg_plic_dout     = Dout;
+
+  assign dbg_plic_claim0_read  = memread  && (entry == 24'h200004);
+  assign dbg_plic_claim1_read  = memread  && (entry == 24'h201004);
+  assign dbg_plic_claim0_write = memwrite && (entry == 24'h200004);
+  assign dbg_plic_claim1_write = memwrite && (entry == 24'h201004);
+
+endmodule
+
+
+bind plic_apb plic_apb_dbg_bind #(
+  .P(P)
+) i_plic_apb_dbg_bind (
+  .AXIDummyIntr(AXIDummyIntr),
+  .MExtInt(MExtInt),
+  .SExtInt(SExtInt),
+
+  .requests(requests),
+  .intPending(intPending),
+  .nextIntPending(nextIntPending),
+  .intInProgress(intInProgress),
+  .intPriority(intPriority),
+
+  .intEn(intEn),
+  .intThreshold(intThreshold),
+  .intClaim(intClaim),
+
+  .priorities_with_irqs(priorities_with_irqs),
+  .threshMask(threshMask),
+  .irqs_at_max_priority(irqs_at_max_priority),
+
+  .memread(memread),
+  .memwrite(memwrite),
+  .entry(entry),
+  .Din(Din),
+  .Dout(Dout),
+
+  .dbg_plic_axi_dummy_id($root.testbench_cvwsoc.dbg_plic_axi_dummy_id),
+
+  .dbg_plic_src_irq($root.testbench_cvwsoc.dbg_plic_src_irq),
+  .dbg_plic_req($root.testbench_cvwsoc.dbg_plic_req),
+  .dbg_plic_pending($root.testbench_cvwsoc.dbg_plic_pending),
+  .dbg_plic_next_pending($root.testbench_cvwsoc.dbg_plic_next_pending),
+  .dbg_plic_in_progress($root.testbench_cvwsoc.dbg_plic_in_progress),
+
+  .dbg_plic_priority($root.testbench_cvwsoc.dbg_plic_priority),
+  .dbg_plic_en_ctx0($root.testbench_cvwsoc.dbg_plic_en_ctx0),
+  .dbg_plic_en_ctx1($root.testbench_cvwsoc.dbg_plic_en_ctx1),
+  .dbg_plic_threshold_ctx0($root.testbench_cvwsoc.dbg_plic_threshold_ctx0),
+  .dbg_plic_threshold_ctx1($root.testbench_cvwsoc.dbg_plic_threshold_ctx1),
+
+  .dbg_plic_claim_ctx0($root.testbench_cvwsoc.dbg_plic_claim_ctx0),
+  .dbg_plic_claim_ctx1($root.testbench_cvwsoc.dbg_plic_claim_ctx1),
+
+  .dbg_plic_priorities_with_irqs_ctx0($root.testbench_cvwsoc.dbg_plic_priorities_with_irqs_ctx0),
+  .dbg_plic_priorities_with_irqs_ctx1($root.testbench_cvwsoc.dbg_plic_priorities_with_irqs_ctx1),
+  .dbg_plic_threshmask_ctx0($root.testbench_cvwsoc.dbg_plic_threshmask_ctx0),
+  .dbg_plic_threshmask_ctx1($root.testbench_cvwsoc.dbg_plic_threshmask_ctx1),
+
+  .dbg_plic_irq_at_max_ctx0($root.testbench_cvwsoc.dbg_plic_irq_at_max_ctx0),
+  .dbg_plic_irq_at_max_ctx1($root.testbench_cvwsoc.dbg_plic_irq_at_max_ctx1),
+
+  .dbg_plic_mextint($root.testbench_cvwsoc.dbg_plic_mextint),
+  .dbg_plic_sextint($root.testbench_cvwsoc.dbg_plic_sextint),
+
+  .dbg_plic_memread($root.testbench_cvwsoc.dbg_plic_memread),
+  .dbg_plic_memwrite($root.testbench_cvwsoc.dbg_plic_memwrite),
+  .dbg_plic_entry($root.testbench_cvwsoc.dbg_plic_entry),
+  .dbg_plic_din($root.testbench_cvwsoc.dbg_plic_din),
+  .dbg_plic_dout($root.testbench_cvwsoc.dbg_plic_dout),
+
+  .dbg_plic_claim0_read($root.testbench_cvwsoc.dbg_plic_claim0_read),
+  .dbg_plic_claim1_read($root.testbench_cvwsoc.dbg_plic_claim1_read),
+  .dbg_plic_claim0_write($root.testbench_cvwsoc.dbg_plic_claim0_write),
+  .dbg_plic_claim1_write($root.testbench_cvwsoc.dbg_plic_claim1_write)
+);

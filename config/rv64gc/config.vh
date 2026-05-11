@@ -208,6 +208,9 @@ localparam logic [63:0] WISHBONE_ETH_RANGE   = 64'h00003FFF;
 localparam logic WISHBONE_STUB_SUPPORTED = 0;
 localparam logic [63:0] WISHBONE_STUB_BASE    = 64'h11005000;
 localparam logic [63:0] WISHBONE_STUB_RANGE   = 64'h00000FFF;
+localparam logic AXI_SDHCI_SUPPORTED = 0;
+localparam logic [63:0] AXI_SDHCI_BASE    = 64'h10090000;
+localparam logic [63:0] AXI_SDHCI_RANGE   = 64'h00000FFF;
 localparam logic AXI_DMA_SUPPORTED = 0;
 localparam logic [63:0] AXI_DMA_BASE    = 64'h100A0000;
 localparam logic [63:0] AXI_DMA_RANGE   = 64'h0000FFFF;
@@ -254,6 +257,7 @@ localparam PLIC_AXI_DMA_ID = 32'd13;
 localparam PLIC_AXI_USB_ID = 32'd14;
 localparam PLIC_AXI_ETH_ID = 32'd15;
 localparam PLIC_AXI_DUMMY_ID = 32'd16;
+localparam PLIC_AXI_SDHCI_ID = 32'd17;
 
 // Branch prediction
 localparam logic BPRED_SUPPORTED = 1;

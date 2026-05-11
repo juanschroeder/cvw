@@ -164,6 +164,9 @@ typedef struct packed {
   logic         WISHBONE_STUB_SUPPORTED;
   logic [63:0]  WISHBONE_STUB_BASE;
   logic [63:0]  WISHBONE_STUB_RANGE;
+  logic         AXI_SDHCI_SUPPORTED;
+  logic [63:0]  AXI_SDHCI_BASE;
+  logic [63:0]  AXI_SDHCI_RANGE;
   logic         AXI_DMA_SUPPORTED;
   logic [63:0]  AXI_DMA_BASE;
   logic [63:0]  AXI_DMA_RANGE;
@@ -202,6 +205,7 @@ typedef struct packed {
   int           PLIC_AXI_USB_ID;
   int           PLIC_AXI_ETH_ID;
   int           PLIC_AXI_DUMMY_ID;
+  int           PLIC_AXI_SDHCI_ID;
 
   logic                BPRED_SUPPORTED;
   logic [31:0]         BPRED_TYPE;

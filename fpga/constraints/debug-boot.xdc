@@ -107,6 +107,112 @@ set_property ALL_PROBE_SAME_MU_CNT 1 [get_debug_cores u_ila_axi]
 set_property port_width 1 [get_debug_ports u_ila_axi/clk]
 connect_debug_port u_ila_axi/clk [get_nets BUSCLK]
 
+# SDHCI probes
+ila_add_probe u_ila_axi -net sd_clk_o
+ila_add_probe u_ila_axi -net sd_cd_ni
+ila_add_probe u_ila_axi -net sd_cmd_en
+ila_add_probe u_ila_axi -net sd_cmd_o
+ila_add_probe u_ila_axi -net sd_cmd_i
+ila_add_probe u_ila_axi -net sd_dat_en
+ila_add_probe u_ila_axi -bus sd_dat_o -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus sd_dat_i -msb 3 -lsb 0 -order lsb2msb
+
+# # SDHCI debug taps: command path
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_current_cmd -msb 5 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_current_arg -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_cmd_started
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_cmd_data_present
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_cmd_xfer_dir
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_cmd_needs_busy
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_sd_cmd_done
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_sd_rsp_done
+
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_cmd_result_valid
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_cmd_timeout_error
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_cmd_crc_error
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_cmd_index_error
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_cmd_end_bit_error
+
+# # SDHCI debug taps: mode / register-derived state
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_bus_width_4
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_block_size -msb 9 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_block_count -msb 15 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_read_transfer_active
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_write_transfer_active
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_buffer_read_enable
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_buffer_write_enable
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_pause_sd_clk
+
+# # SDHCI debug taps: data FSM
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_dat_state -msb 1 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_read_state -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_write_state -msb 2 -lsb 0 -order lsb2msb
+
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_start_read
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_read_valid
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_read_done
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_read_crc_err
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_read_end_bit_err
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_timeout_elapsed
+
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_buffer_write_valid
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_buffer_write_ready
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_buffer_write_data -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_buffer_read_valid
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_buffer_read_ready
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_buffer_read_data -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_buffer_empty
+
+# # SDHCI debug taps: dat_buffer / SRAM shift register
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_reg_push
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_reg_push_data -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_reg_pop
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_reg_pop_data -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_reg_empty
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_reg_length -msb 8 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_has_block
+# # Newer SDHCI RTL no longer has the source signal for this debug tap.
+# # ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_has_space
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_current_word_counter -msb 9 -lsb 0 -order lsb2msb
+
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_sram_en
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_sram_pop_front_i
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_sram_pop_front_q
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_sram_push_back_i
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_sram_back_data_i -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_sram_front_data_o -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_sram_empty_o
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_sram_length_o -msb 8 -lsb 0 -order lsb2msb
+
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_cmd_state -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_cmd_cycles_waiting -msb 6 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_accepted_rsp_type -msb 1 -lsb 0 -order lsb2msb
+
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_rsp_rx_state -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_rsp_bit_cnt -msb 7 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp_long
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp_receiving
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp_start_bit_observed
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp_all_bits_received
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp_capture_bit
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp_capture_word_bit
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp_crc_start
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp_crc_end_output
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_rsp_crc7_calc -msb 6 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp_crc_corr
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_rsp0 -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_rsp1 -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_rsp2 -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_rsp3 -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp0_de
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp1_de
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp2_de
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_rsp3_de
+
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_cmd_resp_shift -msb 159 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_cmd_resp_shift_count -msb 7 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_cmd_resp_shift_active
+# ila_add_probe u_ila_axi -net gen_axi_sdhci.dbg_sdhci_sd_clk_en_p
 
 # AXI side of AHB-AXI bridge
 # REMARK: This is wrong here, it's different clock domain. Yet, it works.

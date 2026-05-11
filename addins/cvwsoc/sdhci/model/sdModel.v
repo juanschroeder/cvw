@@ -45,7 +45,7 @@
 `define DLY_TO_OUTP 0
 
 //`define MEMSIZE 24643590 // 2mb block
-`define MEMSIZE 33554432 // 32mb block
+`define MEMSIZE 134217728 // 128 MiB backing store
 `define TIME_BUSY 63
 
 `define PRG 7   // 111
@@ -151,8 +151,14 @@ module sdModel (
 `endif
   `define OCRSTART 32'h40ff8000 //high capacity card, support 2.7-3.6V
   `define CIDSTART 120'h1b534d534d49202010025166450082  //Just some random data not really usefull anyway
-  `define CSDSTART 120'h4000003200090000003f0000000000  // CSD v2, 32MiB, TRAN_SPEED=0x32 / 25MHz, READ_BL_LEN=9 / 512-byte blocks
-  `define SCRSTART 64'h0000000000000400 // Buswidth = 4
+  // CSD v2 metadata returned by CMD9.  The command advertises
+  // block-read and block-write support so Linux does not force mmcblk read-only;
+  // READ_BL_LEN remains 9 for 512-byte blocks.  C_SIZE=0xff reports 128 MiB,
+  // matching the image size used.
+  `define CSDSTART 120'h400000320059000000ff0000000000
+  // SCR metadata returned by ACMD51. Linux (and the standard?) requires SD cards to advertise both
+  // 1-bit and 4-bit bus-width support in the SCR bus-width nibble.
+  `define SCRSTART 64'h0000000000000500
 
   `define outDelay 4
 

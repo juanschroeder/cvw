@@ -5,7 +5,6 @@
 
 // axi_shdci_wrap.sv
 import sdhci_regbus_pkg::*;
-//import axi_sdhci_reg_pkg::*;
 import sdhci_reg_pkg::*;
 import axi_sdhci_wrap_pkg::*;
 
@@ -61,55 +60,6 @@ module axi_sdhci_wrap (
   output logic        s_axi_rvalid,
   input  logic        s_axi_rready,
 
-  // ----------------------------
-  // NO AXI MASTER FOR SDHCI
-  // ----------------------------
-//   output logic [3:0]  m_axi_awid,
-//   output logic [31:0] m_axi_awaddr,
-//   output logic [7:0]  m_axi_awlen,
-//   output logic [2:0]  m_axi_awsize,
-//   output logic [1:0]  m_axi_awburst,
-//   output logic        m_axi_awlock,
-//   output logic [3:0]  m_axi_awcache,
-//   output logic [2:0]  m_axi_awprot,
-//   output logic        m_axi_awvalid,
-//   input  logic        m_axi_awready,
-
-//   output logic [63:0] m_axi_wdata,
-//   output logic [7:0]  m_axi_wstrb,
-//   output logic        m_axi_wlast,
-//   output logic        m_axi_wvalid,
-//   input  logic        m_axi_wready,
-
-//   input  logic [3:0]  m_axi_bid,
-//   input  logic [1:0]  m_axi_bresp,
-//   input  logic        m_axi_bvalid,
-//   output logic        m_axi_bready,
-
-//   output logic [3:0]  m_axi_arid,
-//   output logic [31:0] m_axi_araddr,
-//   output logic [7:0]  m_axi_arlen,
-//   output logic [2:0]  m_axi_arsize,
-//   output logic [1:0]  m_axi_arburst,
-//   output logic        m_axi_arlock,
-//   output logic [3:0]  m_axi_arcache,
-//   output logic [2:0]  m_axi_arprot,
-//   output logic        m_axi_arvalid,
-//   input  logic        m_axi_arready,
-
-//   input  logic [3:0]  m_axi_rid,
-//   input  logic [63:0] m_axi_rdata,
-//   input  logic [1:0]  m_axi_rresp,
-//   input  logic        m_axi_rlast,
-//   input  logic        m_axi_rvalid,
-//   output logic        m_axi_rready,
-
-//   // VGA pins
-//   output logic        vga_hsync_o,
-//   output logic        vga_vsync_o,
-//   output logic [4:0]  vga_r_o,
-//   output logic [5:0]  vga_g_o,
-//   output logic [4:0]  vga_b_o
   // SDHCI pins
   output logic       sd_clk_o,
   input  logic       sd_cd_ni,
@@ -272,94 +222,13 @@ module axi_sdhci_wrap (
     .reg_rsp_i      ( reg_rsp  )
   );
 
-  // ----------------------------
-  // axi_vga core (includes regfile internally)
-  // ----------------------------
-//   axi_vga #(
-//     // just use default 5-6-5 and truncate later for 4-4-4 output
-//     //.RedWidth(4),
-//     //.GreenWidth(4),
-//     //.BlueWidth(4),
-//     .AXIAddrWidth ( AXI_ADDR_W ),
-//     .AXIDataWidth ( AXI_DATA_W ),
-//     .AXIIdWidth   ( AXI_ID_W   ),
-//     .AXIUserWidth ( AXI_USER_W ),
-//     .AXIStrbWidth ( AXI_DATA_W/8 ),
-//     .axi_req_t    ( axi_req_t  ),
-//     .axi_resp_t   ( axi_resp_t ),   // correct name (NOT axi_rsp_t)
-//     .axi_r_chan_t ( r_chan_t   ),
-//     .reg_req_t    ( reg_req_t  ),
-//     .reg_resp_t   ( reg_resp_t ),
-//     // Default: 16 and 24
-//     // Using BufferDepth=4 and MaxReadTxns=4 was tested at least once be good for timing requirements and not have black stripes
-//     .BufferDepth  ( 4 ),
-//     .MaxReadTxns  ( 4 ) 
-//   ) i_axi_vga (
-//     .clk_i         ( aclk     ),
-//     .rst_ni        ( aresetn  ),
-//     .test_mode_en_i( 1'b0     ),
-
-//     .reg_req_i     ( reg_req  ),
-//     .reg_rsp_o     ( reg_rsp  ),
-
-//     .axi_req_o     ( sdhci_axi_req  ),
-//     .axi_resp_i    ( sdhci_axi_resp ),
-
-//     .hsync_o       ( vga_hsync_o ),
-//     .vsync_o       ( vga_vsync_o ),
-//     .red_o         ( vga_r_o     ),
-//     .green_o       ( vga_g_o     ),
-//     .blue_o        ( vga_b_o     )
-//   );
-
-
-    // module sdhci_top #(
-    //     parameter int unsigned AddrWidth = 32'd32,
-    //     parameter type               reg_req_t   = logic,
-    //     parameter type               reg_rsp_t   = logic,
-
-    //     //sw handles clock division. However, largest base freq. accepted is 63MHz!
-    //     //-> internal clock predivider to get below 63MHz
-    //     //only power of 2 dividers allowed :(
-    //     //input log2 of divider i.e div by 4 ->  ClkPreDivLog = 2
-    //     parameter int unsigned       ClkPreDivLog   = 1,
-    //     //also change base_clock_frequency_for_sd_clock resval in reg/sdhci_regs.hjson and regenerate registers
-
-    //     parameter int unsigned TimeoutDivider = 1, // by how much to divide clk_i to get the timeout count frequency,
-    //                                         // see dat_timeout for details
-
-    //     // clock runs at 50MHz, so 1ms is 50_000 cycles
-    //     parameter int unsigned       NumDebounceCycles = 500_000 // 10ms
-    // ) (
-    //     input  logic clk_i,
-    //     input  logic rst_ni,
-
-    //     input  reg_req_t reg_req_i,
-    //     output reg_rsp_t reg_rsp_o,
-
-    //     output logic       sd_clk_o,
-    //     input  logic       sd_cd_ni,
-    //     output logic       sd_cmd_en_o,
-    //     output logic       sd_cmd_o,
-    //     input  logic       sd_cmd_i,
-
-    //     input  logic [3:0] sd_dat_i,
-    //     output logic [3:0] sd_dat_o,
-    //     output logic       sd_dat_en_o,
-
-    //     output logic interrupt_o
-    // );
-
     sdhci_top #(
         .AddrWidth(AXI_ADDR_W),
-        // parameter type               reg_req_t   = logic,
-        // parameter type               reg_rsp_t   = logic,
         .reg_req_t    ( reg_req_t  ),
         .reg_rsp_t   ( reg_resp_t ),
         // The CVW SoC testbench drives the peripheral bus at 7 ns (~143 MHz).
         // Pre-divide by 4 here so the SDHCI core sees ~35.7 MHz instead of
         // an out-of-spec >63 MHz source clock.
-        //.ClkPreDivLog(2),
         .ClkPreDiv(2),
         .TimeoutDivider(1),
         // Keep the existing debounce setting for now; this only affects
@@ -383,65 +252,6 @@ module axi_sdhci_wrap (
         .sd_dat_en_o(sd_dat_en_o),
         .interrupt_o(interrupt_o)
     ) ;
-
-
-    // // split out AR handshake
-    // ar_chan_t ar_i, ar_o;
-    // logic         ar_valid_i, ar_ready_i;
-    // logic         ar_valid_o, ar_ready_o;
-
-    // assign ar_i       = sdhci_axi_req.ar;
-    // assign ar_valid_i = sdhci_axi_req.ar_valid;
-
-    // // 1-deep cut (registered)
-    // spill_register #(
-    // //.T ( axi_ar_chan_t )
-    // .T ( ar_chan_t )
-    // ) i_vga_ar_cut (
-    // .clk_i( aclk     ),
-    // .rst_ni( aresetn  ),
-    // .data_i  ( ar_i       ),
-    // .valid_i ( ar_valid_i ),
-    // .ready_o ( ar_ready_i ),
-    // .data_o  ( ar_o       ),
-    // .valid_o ( ar_valid_o ),
-    // .ready_i ( ar_ready_o )
-    // );
-
-    // //assign cross_axi_req.ar_valid = ar_valid_o;
-    // assign m_axi_arvalid = ar_valid_o;
-    // assign m_axi_araddr  = ar_o.addr;
-    // assign m_axi_arid    = ar_o.id;
-    // assign m_axi_arlen   = ar_o.len;
-    // assign m_axi_arsize  = ar_o.size;
-    // assign m_axi_arburst = ar_o.burst;
-    // assign m_axi_arlock  = ar_o.lock;
-    // assign m_axi_arcache = ar_o.cache;
-    // assign m_axi_arprot  = ar_o.prot;
-
-    // // AXI MASTER (scanout) discrete -> struct
-    // always_comb begin
-    //     sdhci_axi_resp = '0;
-
-    //     sdhci_axi_resp.aw_ready = m_axi_awready;
-    //     sdhci_axi_resp.w_ready  = m_axi_wready;
-
-    //     sdhci_axi_resp.b_valid  = m_axi_bvalid;
-    //     sdhci_axi_resp.b.id     = m_axi_bid;
-    //     sdhci_axi_resp.b.resp   = m_axi_bresp;
-    //     sdhci_axi_resp.b.user   = '0;
-
-    //     sdhci_axi_resp.ar_ready = ar_ready_i;
-
-    //     sdhci_axi_resp.r_valid  = m_axi_rvalid;
-    //     sdhci_axi_resp.r.id     = m_axi_rid;
-    //     sdhci_axi_resp.r.data   = m_axi_rdata;
-    //     sdhci_axi_resp.r.resp   = m_axi_rresp;
-    //     sdhci_axi_resp.r.last   = m_axi_rlast;
-    //     sdhci_axi_resp.r.user   = '0;
-    // end
-
-    // assign ar_ready_o             = m_axi_arready;
 
 
 endmodule

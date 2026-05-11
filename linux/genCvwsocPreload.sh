@@ -85,6 +85,7 @@ fi
 QEMU_INITRD="${QEMU_INITRD:-$CVWSOC_PRELOAD_DIR/initrd-qemu-cvwsoc-${MODE_TAG}.${QEMU_INITRD_EXT}}"
 GENERATED_DTS="${GENERATED_DTS:-$CVWSOC_PRELOAD_DIR/wally-virtsoc-${MODE_TAG}.dts}"
 GENERATED_DTB="${GENERATED_DTB:-$CVWSOC_PRELOAD_DIR/wally-virtsoc-${MODE_TAG}.dtb}"
+EXTERNAL_DTB="${EXTERNAL_DTB:-}"
 
 RAW_BOOTMEM_FILE="${RAW_BOOTMEM_FILE:-$CVWSOC_PRELOAD_DIR/bootmemGDB-cvwsoc-${MODE_TAG}.bin}"
 BOOTMEM_FILE="${BOOTMEM_FILE:-$CVWSOC_PRELOAD_DIR/bootmem-cvwsoc-${MODE_TAG}.bin}"
@@ -118,6 +119,9 @@ mkdir -p "$CVWSOC_PRELOAD_DIR"
 require_file "$FW_JUMP_BIN" "OpenSBI fw_jump"
 require_file "$KERNEL_SRC" "kernel image"
 require_file "$DTS_SRC" "simulation DTS"
+if [[ -n "$EXTERNAL_DTB" ]]; then
+  require_file "$EXTERNAL_DTB" "external DTB"
+fi
 require_cmd file "file tool"
 require_cmd readlink "readlink tool"
 require_cmd "$DTC_BIN" "dtc tool"
@@ -190,6 +194,9 @@ dst.write_text(src)
 PY
 
 "$DTC_BIN" -I dts -O dtb "$GENERATED_DTS" -o "$GENERATED_DTB"
+if [[ -n "$EXTERNAL_DTB" ]]; then
+  cp "$EXTERNAL_DTB" "$GENERATED_DTB"
+fi
 
 if [[ "$SKIP_GDB_DUMPS" != "0" ]]; then
   echo "Prepared cvwsoc QEMU assets (${MODE_TAG}):"
@@ -217,14 +224,6 @@ cleanup() {
 trap cleanup EXIT
 
 if [[ "$MODE_TAG" == "linux" ]]; then
-#   "$QEMU_BIN" \
-#     -M virt -m "${QEMU_RAM_MB}M" -nographic \
-#     -bios "$FW_JUMP_BIN" \
-#     -kernel "$QEMU_KERNEL" \
-#     -initrd "$QEMU_INITRD" \
-#     -dtb "$GENERATED_DTB" \
-#     -cpu "$CPU_ARGS" \
-#     -gdb "tcp::${QEMU_GDB_PORT}" -S &
   "$QEMU_BIN" \
     -M virt -m "${QEMU_RAM_MB}M" -nographic \
     -bios "$FW_JUMP_BIN" \
@@ -234,8 +233,6 @@ if [[ "$MODE_TAG" == "linux" ]]; then
     -device loader,file="${GENERATED_DTB}",addr="${KERNEL_DTB_ADDR}" \
     -device loader,file="${QEMU_INITRD}",addr="${INITRD_ADDR}" \
     -gdb "tcp::${QEMU_GDB_PORT}" -S &
-
-#    -initrd "$QEMU_INITRD"
 
 else
   "$QEMU_BIN" \
