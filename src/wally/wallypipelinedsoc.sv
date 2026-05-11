@@ -78,7 +78,9 @@ module wallypipelinedsoc import cvw::*; #(parameter cvw_t P)  (
   input logic        WB_RMII_PHY_IRQ,
   input logic AXI_DMAIntr,
   input logic AXI_USBIntr,
-  input logic AXI_EthIntr
+  input logic AXI_EthIntr,
+  input logic AXI_DummyIntr,
+  input logic AXI_SDHCIIntr
 );
 
   // Uncore signals
@@ -117,7 +119,9 @@ module wallypipelinedsoc import cvw::*; #(parameter cvw_t P)  (
         .WB_RMII_PHY_IRQ,
         .AXI_DMAIntr(AXI_DMAIntr),
         .AXI_USBIntr(AXI_USBIntr),
-        .AXI_EthIntr(AXI_EthIntr)
+        .AXI_EthIntr(AXI_EthIntr),
+        .AXI_DummyIntr(AXI_DummyIntr),
+        .AXI_SDHCIIntr(AXI_SDHCIIntr)
       );
   end else begin
     assign {HRDATA, HREADY, HRESP, HSELEXT, MTimerInt, MSwInt, MExtInt, SExtInt,

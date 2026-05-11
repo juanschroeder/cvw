@@ -144,3 +144,15 @@ set_property ASYNC_REG TRUE [get_cells -hier -regexp {.*usb_phy_resetn_ff_reg\[[
 set_property ASYNC_REG TRUE [get_cells -hier -regexp {.*input_lowSpeed_buffercc/buffers_[01]_reg$}]
 # OHCI CDC synchronizer: outHitSignal_buffercc
 set_property ASYNC_REG TRUE [get_cells -hier -regexp {.*outHitSignal_buffercc/buffers_[01]_reg$}]
+
+# Temporary debug ILAs from debug-boot.xdc.
+foreach ila {u_ila_axi u_ila_spi} {
+  set ila_cells [get_cells -hier -quiet -regexp ".*${ila}.*"]
+  set ila_pins  [get_pins -quiet -of_objects $ila_cells]
+  if {[llength $ila_pins]} {
+    puts "INFO: false-pathing timing through temporary debug core ${ila} ([llength $ila_pins] pins)"
+    set_false_path -through $ila_pins
+  } else {
+    puts "WARNING: temporary debug core ${ila} not found; no ILA false path applied"
+  }
+}

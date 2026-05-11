@@ -15,6 +15,11 @@
 
 import cvw::*;
 
+
+// Enable what to simulate
+//`define SIM_AXI_RAM 1
+`define SIM_AXI_SDHCI 1
+
 module testbench_cvwsoc #(
   parameter int unsigned CLK_PERIOD_NS       = 10,
   parameter int unsigned BUS_CLK_PERIOD_NS   = 7,
@@ -50,6 +55,7 @@ module testbench_cvwsoc #(
       tmp.WISHBONE_UART_SUPPORTED = 1'b0;
       tmp.WISHBONE_ETH_SUPPORTED = 1'b0;
       tmp.WISHBONE_STUB_SUPPORTED = 1'b0;
+      tmp.AXI_SDHCI_SUPPORTED = 1'b0;
       tmp.AXI_DMA_SUPPORTED = 1'b0;
       tmp.AXI_VGA_SUPPORTED = 1'b0;
       tmp.AXI_USB_SUPPORTED = 1'b0;
@@ -206,6 +212,7 @@ module testbench_cvwsoc #(
   logic AXI_DMAIntr = 1'b0;
   logic AXI_USBIntr = 1'b0;
   logic AXI_EthIntr = 1'b0;
+  logic AXI_DummyIntr;
   logic ExternalStall = 1'b0;
 
   // ---------------------------------------------------------------------------
@@ -272,19 +279,19 @@ module testbench_cvwsoc #(
   //--------------------------------
   // EXTRA DEBUG STUFF (REMOVE)
   //--------------------------------
-    wire [$bits(bridge.state)-1:0]             bridge_state             = bridge.state;
-    wire [$bits(bridge.beat_cnt)-1:0]          bridge_beat_cnt          = bridge.beat_cnt;
-    wire                                       bridge_ar_done           = bridge.ar_done;
-    wire                                       bridge_pnd_valid         = bridge.pnd_valid;
-    wire [$bits(bridge.pnd_addr)-1:0]          bridge_pnd_addr          = bridge.pnd_addr;
-    wire                                       bridge_rd_buf_valid      = bridge.rd_buf_valid;
-    wire [$bits(bridge.haddr_q)-1:0]           bridge_haddr_q           = bridge.haddr_q;
-    wire [$bits(bridge.htrans_q)-1:0]          bridge_htrans_q          = bridge.htrans_q;
-    wire                                       bridge_hreadyin_q        = bridge.hreadyin_q;
-    wire [$bits(bridge.dbg_last_ar_addr)-1:0]  bridge_dbg_last_ar_addr  = bridge.dbg_last_ar_addr;
-    wire [$bits(bridge.dbg_last_r_data)-1:0]   bridge_dbg_last_r_data   = bridge.dbg_last_r_data;
-    wire                                       bridge_dbg_trip_sticky   = bridge.dbg_trip_sticky;
-    wire [$bits(bridge.dbg_trip_cause)-1:0]    bridge_dbg_trip_cause    = bridge.dbg_trip_cause;
+    // wire [$bits(bridge.state)-1:0]             bridge_state             = bridge.state;
+    // wire [$bits(bridge.beat_cnt)-1:0]          bridge_beat_cnt          = bridge.beat_cnt;
+    // wire                                       bridge_ar_done           = bridge.ar_done;
+    // wire                                       bridge_pnd_valid         = bridge.pnd_valid;
+    // wire [$bits(bridge.pnd_addr)-1:0]          bridge_pnd_addr          = bridge.pnd_addr;
+    // wire                                       bridge_rd_buf_valid      = bridge.rd_buf_valid;
+    // wire [$bits(bridge.haddr_q)-1:0]           bridge_haddr_q           = bridge.haddr_q;
+    // wire [$bits(bridge.htrans_q)-1:0]          bridge_htrans_q          = bridge.htrans_q;
+    // wire                                       bridge_hreadyin_q        = bridge.hreadyin_q;
+    // wire [$bits(bridge.dbg_last_ar_addr)-1:0]  bridge_dbg_last_ar_addr  = bridge.dbg_last_ar_addr;
+    // wire [$bits(bridge.dbg_last_r_data)-1:0]   bridge_dbg_last_r_data   = bridge.dbg_last_r_data;
+    // wire                                       bridge_dbg_trip_sticky   = bridge.dbg_trip_sticky;
+    // wire [$bits(bridge.dbg_trip_cause)-1:0]    bridge_dbg_trip_cause    = bridge.dbg_trip_cause;
   //----------------------------------
 
   // ---------------------------------------------------------------------------
@@ -338,7 +345,8 @@ module testbench_cvwsoc #(
     .WB_RMII_PHY_IRQ(WB_RMII_PHY_IRQ),
     .AXI_DMAIntr(AXI_DMAIntr),
     .AXI_USBIntr(AXI_USBIntr),
-    .AXI_EthIntr(AXI_EthIntr)
+    .AXI_EthIntr(AXI_EthIntr),
+    .AXI_DummyIntr(AXI_DummyIntr)
   );
 
   ahb_to_axi4_burst #(
@@ -556,6 +564,7 @@ module testbench_cvwsoc #(
     .s_axi_rready  (mst_req[0].r_ready)
   );
 
+`ifdef SIM_AXI_RAM
   axi_ram #(
     .DATA_WIDTH(P.XLEN),
     .ADDR_WIDTH(PERIPH_ADDR_WIDTH),
@@ -601,6 +610,329 @@ module testbench_cvwsoc #(
     .s_axi_rvalid  (mst_resp[1].r_valid),
     .s_axi_rready  (mst_req[1].r_ready)
   );
+
+  assign AXI_DummyIntr = 1'b0;
+
+`elsif SIM_AXI_SDHCI
+
+  //-------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // SDHCI debug taps: command path
+  // ---------------------------------------------------------------------------
+  logic [5:0]  dbg_sdhci_current_cmd;
+  logic [31:0] dbg_sdhci_current_arg;
+  logic        dbg_sdhci_cmd_started;
+  logic        dbg_sdhci_cmd_data_present;
+  logic        dbg_sdhci_cmd_xfer_dir;
+  logic        dbg_sdhci_cmd_needs_busy;
+  logic        dbg_sdhci_sd_cmd_done;
+  logic        dbg_sdhci_sd_rsp_done;
+
+  logic        dbg_sdhci_cmd_result_valid;
+  logic        dbg_sdhci_cmd_timeout_error;
+  logic        dbg_sdhci_cmd_crc_error;
+  logic        dbg_sdhci_cmd_index_error;
+  logic        dbg_sdhci_cmd_end_bit_error;
+
+  assign dbg_sdhci_current_cmd       = sdhci_i.i_axi_sdhci.i_autocmd_wrap.current_cmd;
+  assign dbg_sdhci_current_arg       = sdhci_i.i_axi_sdhci.i_autocmd_wrap.current_arg;
+  assign dbg_sdhci_cmd_started       = sdhci_i.i_axi_sdhci.cmd_started;
+  assign dbg_sdhci_cmd_data_present  = sdhci_i.i_axi_sdhci.cmd_data_present;
+  assign dbg_sdhci_cmd_xfer_dir      = sdhci_i.i_axi_sdhci.cmd_transfer_direction;
+  assign dbg_sdhci_cmd_needs_busy    = sdhci_i.i_axi_sdhci.cmd_needs_busy;
+  assign dbg_sdhci_sd_cmd_done       = sdhci_i.i_axi_sdhci.sd_cmd_done;
+  assign dbg_sdhci_sd_rsp_done       = sdhci_i.i_axi_sdhci.sd_rsp_done;
+
+  assign dbg_sdhci_cmd_result_valid  = sdhci_i.i_axi_sdhci.i_autocmd_wrap.cmd_result_valid;
+  assign dbg_sdhci_cmd_timeout_error = sdhci_i.i_axi_sdhci.i_autocmd_wrap.timeout_error;
+  assign dbg_sdhci_cmd_crc_error     = sdhci_i.i_axi_sdhci.i_autocmd_wrap.crc_error;
+  assign dbg_sdhci_cmd_index_error   = sdhci_i.i_axi_sdhci.i_autocmd_wrap.index_error;
+  assign dbg_sdhci_cmd_end_bit_error = sdhci_i.i_axi_sdhci.i_autocmd_wrap.end_bit_error;
+
+  // ---------------------------------------------------------------------------
+  // SDHCI debug taps: mode / register-derived state
+  // ---------------------------------------------------------------------------
+  logic        dbg_sdhci_bus_width_4;
+  logic [9:0]  dbg_sdhci_block_size;
+  logic [15:0] dbg_sdhci_block_count;
+  logic        dbg_sdhci_read_transfer_active;
+  logic        dbg_sdhci_write_transfer_active;
+  logic        dbg_sdhci_buffer_read_enable;
+  logic        dbg_sdhci_buffer_write_enable;
+  logic        dbg_sdhci_pause_sd_clk;
+
+  assign dbg_sdhci_bus_width_4          = sdhci_i.i_axi_sdhci.reg2hw.host_control.data_transfer_width.q;
+  assign dbg_sdhci_block_size           = sdhci_i.i_axi_sdhci.reg2hw.block_size.transfer_block_size.q;
+  assign dbg_sdhci_block_count          = sdhci_i.i_axi_sdhci.reg2hw.block_count.q;
+  assign dbg_sdhci_read_transfer_active = sdhci_i.i_axi_sdhci.reg2hw.present_state.read_transfer_active.q;
+  assign dbg_sdhci_write_transfer_active= sdhci_i.i_axi_sdhci.reg2hw.present_state.write_transfer_active.q;
+  assign dbg_sdhci_buffer_read_enable   = sdhci_i.i_axi_sdhci.hw2reg.present_state.buffer_read_enable.d;
+  assign dbg_sdhci_buffer_write_enable  = sdhci_i.i_axi_sdhci.hw2reg.present_state.buffer_write_enable.d;
+  assign dbg_sdhci_pause_sd_clk         = sdhci_i.i_axi_sdhci.pause_sd_clk;
+
+  // ---------------------------------------------------------------------------
+  // SDHCI debug taps: data FSM
+  // ---------------------------------------------------------------------------
+  logic [1:0]  dbg_sdhci_dat_state;
+  logic [2:0]  dbg_sdhci_read_state;
+  logic [2:0]  dbg_sdhci_write_state;
+
+  logic        dbg_sdhci_start_read;
+  logic        dbg_sdhci_read_valid;
+  logic        dbg_sdhci_read_done;
+  logic        dbg_sdhci_read_crc_err;
+  logic        dbg_sdhci_read_end_bit_err;
+  logic        dbg_sdhci_timeout_elapsed;
+
+  logic        dbg_sdhci_buffer_write_valid;
+  logic        dbg_sdhci_buffer_write_ready;
+  logic [31:0] dbg_sdhci_buffer_write_data;
+  logic        dbg_sdhci_buffer_read_valid;
+  logic        dbg_sdhci_buffer_read_ready;
+  logic [31:0] dbg_sdhci_buffer_read_data;
+  logic        dbg_sdhci_buffer_empty;
+
+  assign dbg_sdhci_dat_state           = sdhci_i.i_axi_sdhci.i_dat_wrap.dat_state_q;
+  assign dbg_sdhci_read_state          = sdhci_i.i_axi_sdhci.i_dat_wrap.read_state_q;
+  assign dbg_sdhci_write_state         = sdhci_i.i_axi_sdhci.i_dat_wrap.write_state_q;
+
+  assign dbg_sdhci_start_read          = sdhci_i.i_axi_sdhci.i_dat_wrap.start_read;
+  assign dbg_sdhci_read_valid          = sdhci_i.i_axi_sdhci.i_dat_wrap.read_valid;
+  assign dbg_sdhci_read_done           = sdhci_i.i_axi_sdhci.i_dat_wrap.read_done;
+  assign dbg_sdhci_read_crc_err        = sdhci_i.i_axi_sdhci.i_dat_wrap.read_crc_err;
+  assign dbg_sdhci_read_end_bit_err    = sdhci_i.i_axi_sdhci.i_dat_wrap.read_end_bit_err;
+  assign dbg_sdhci_timeout_elapsed     = sdhci_i.i_axi_sdhci.i_dat_wrap.timeout_elapsed;
+
+  assign dbg_sdhci_buffer_write_valid  = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_write_valid;
+  assign dbg_sdhci_buffer_write_ready  = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_write_ready;
+  assign dbg_sdhci_buffer_write_data   = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_write_data;
+  assign dbg_sdhci_buffer_read_valid   = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_read_valid;
+  assign dbg_sdhci_buffer_read_ready   = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_read_ready;
+  assign dbg_sdhci_buffer_read_data    = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_read_data;
+  assign dbg_sdhci_buffer_empty        = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_empty;
+
+  // ---------------------------------------------------------------------------
+  // SDHCI debug taps: dat_buffer / SRAM shift register
+  // ---------------------------------------------------------------------------
+  logic        dbg_sdhci_reg_push;
+  logic [31:0] dbg_sdhci_reg_push_data;
+  logic        dbg_sdhci_reg_pop;
+  logic [31:0] dbg_sdhci_reg_pop_data;
+  logic        dbg_sdhci_reg_empty;
+  logic [8:0]  dbg_sdhci_reg_length;
+  logic        dbg_sdhci_has_block;
+  logic        dbg_sdhci_has_space;
+  logic [9:0]  dbg_sdhci_current_word_counter;
+
+  logic        dbg_sdhci_sram_en;
+  logic        dbg_sdhci_sram_pop_front_i;
+  logic        dbg_sdhci_sram_pop_front_q;
+  logic        dbg_sdhci_sram_push_back_i;
+  logic [31:0] dbg_sdhci_sram_back_data_i;
+  logic [31:0] dbg_sdhci_sram_front_data_o;
+  logic        dbg_sdhci_sram_empty_o;
+  logic [8:0]  dbg_sdhci_sram_length_o;
+
+  assign dbg_sdhci_reg_push            = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_push;
+  assign dbg_sdhci_reg_push_data       = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_push_data;
+  assign dbg_sdhci_reg_pop             = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_pop;
+  assign dbg_sdhci_reg_pop_data        = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_pop_data;
+  assign dbg_sdhci_reg_empty           = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_empty;
+  assign dbg_sdhci_reg_length          = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_length;
+  assign dbg_sdhci_has_block           = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.has_block;
+  // not in newer version of the RTL
+  //assign dbg_sdhci_has_space           = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.has_space;
+  assign dbg_sdhci_current_word_counter= sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.current_word_counter_q;
+
+  assign dbg_sdhci_sram_en             = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.en_i;
+  assign dbg_sdhci_sram_pop_front_i    = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.pop_front_i;
+  assign dbg_sdhci_sram_pop_front_q    = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.pop_front_q;
+  assign dbg_sdhci_sram_push_back_i    = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.push_back_i;
+  assign dbg_sdhci_sram_back_data_i    = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.back_data_i;
+  assign dbg_sdhci_sram_front_data_o   = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.front_data_o;
+  assign dbg_sdhci_sram_empty_o        = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.empty_o;
+  assign dbg_sdhci_sram_length_o       = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.length_o;
+
+  // ---------------------------------------------------------------------------
+  // Optional but very useful: correlate SW reads of SDHCI buffer port 0x20
+  // ---------------------------------------------------------------------------
+  logic dbg_sdhci_mmio_bufport_read_fire;
+  logic dbg_sdhci_mmio_bufport_write_fire;
+
+  assign dbg_sdhci_mmio_bufport_read_fire =
+      mst_req[1].ar_valid && mst_resp[1].ar_ready &&
+      (mst_req[1].ar.addr[15:0] == 16'h0020);
+
+  assign dbg_sdhci_mmio_bufport_write_fire =
+      mst_req[1].aw_valid && mst_resp[1].aw_ready &&
+      (mst_req[1].aw.addr[15:0] == 16'h0020);
+
+  logic dbg_sdhci_mmio_intstat_read_fire;
+  logic dbg_sdhci_mmio_intstat_aw_fire;
+  logic dbg_sdhci_mmio_w_fire;
+  logic [63:0] dbg_sdhci_mmio_wdata;
+
+  assign dbg_sdhci_mmio_intstat_read_fire =
+    mst_req[1].ar_valid && mst_resp[1].ar_ready &&
+    (mst_req[1].ar.addr[15:0] == 16'h0030);
+
+  assign dbg_sdhci_mmio_intstat_aw_fire =
+    mst_req[1].aw_valid && mst_resp[1].aw_ready &&
+    (mst_req[1].aw.addr[15:0] == 16'h0030);
+
+  assign dbg_sdhci_mmio_w_fire =
+    mst_req[1].w_valid && mst_resp[1].w_ready;
+
+  assign dbg_sdhci_mmio_wdata = mst_req[1].w.data;
+  //-------------------------------------------------------------------------
+
+  logic       sd_clk_o;
+  logic       sd_cd_ni;
+  logic       sd_cmd_en;
+  logic       sd_cmd_o;
+  logic       sd_cmd_i;
+  logic       sd_dat_en;
+  logic [3:0] sd_dat_o;
+  logic [3:0] sd_dat_i;
+
+  logic AXI_DummyIntr_orig;
+  axi_sdhci_wrap sdhci_i(
+      // For simplicity we use same clock as the bus
+      .aclk(bus_clk),
+      //.aclk(sdhci_clk),
+      .aresetn(~bus_reset),
+
+    .s_axi_awid    (mst_req[1].aw.id),
+    .s_axi_awaddr  (mst_req[1].aw.addr[PERIPH_ADDR_WIDTH-1:0]),
+    .s_axi_awlen   (mst_req[1].aw.len),
+    .s_axi_awsize  (mst_req[1].aw.size),
+    .s_axi_awburst (mst_req[1].aw.burst),
+    .s_axi_awlock  (mst_req[1].aw.lock),
+    .s_axi_awcache (mst_req[1].aw.cache),
+    .s_axi_awprot  (mst_req[1].aw.prot),
+    .s_axi_awvalid (mst_req[1].aw_valid),
+    .s_axi_awready (mst_resp[1].aw_ready),
+    .s_axi_wdata   (mst_req[1].w.data),
+    .s_axi_wstrb   (mst_req[1].w.strb),
+    .s_axi_wlast   (mst_req[1].w.last),
+    .s_axi_wvalid  (mst_req[1].w_valid),
+    .s_axi_wready  (mst_resp[1].w_ready),
+    .s_axi_bid     (mst_resp[1].b.id),
+    .s_axi_bresp   (mst_resp[1].b.resp),
+    .s_axi_bvalid  (mst_resp[1].b_valid),
+    .s_axi_bready  (mst_req[1].b_ready),
+    .s_axi_arid    (mst_req[1].ar.id),
+    .s_axi_araddr  (mst_req[1].ar.addr[PERIPH_ADDR_WIDTH-1:0]),
+    .s_axi_arlen   (mst_req[1].ar.len),
+    .s_axi_arsize  (mst_req[1].ar.size),
+    .s_axi_arburst (mst_req[1].ar.burst),
+    .s_axi_arlock  (mst_req[1].ar.lock),
+    .s_axi_arcache (mst_req[1].ar.cache),
+    .s_axi_arprot  (mst_req[1].ar.prot),
+    .s_axi_arvalid (mst_req[1].ar_valid),
+    .s_axi_arready (mst_resp[1].ar_ready),
+    .s_axi_rid     (mst_resp[1].r.id),
+    .s_axi_rdata   (mst_resp[1].r.data),
+    .s_axi_rresp   (mst_resp[1].r.resp),
+    .s_axi_rlast   (mst_resp[1].r.last),
+    .s_axi_rvalid  (mst_resp[1].r_valid),
+    .s_axi_rready  (mst_req[1].r_ready),
+
+    // SDHCI pins
+    .sd_clk_o(sd_clk_o),
+    .sd_cd_ni(sd_cd_ni),
+    .sd_cmd_en_o(sd_cmd_en),
+    .sd_cmd_o(sd_cmd_o),
+    .sd_cmd_i(sd_cmd_i),
+
+    .sd_dat_i(sd_dat_i),
+    .sd_dat_o(sd_dat_o),
+    .sd_dat_en_o(sd_dat_en),
+
+    //.interrupt_o(AXI_DummyIntr)
+    .interrupt_o(AXI_DummyIntr_orig)
+  );
+
+    // This might not be necessary on simulation
+    sync #(
+        .STAGES ( 2 ) // 2-flip flop
+    ) i_sync (
+        .clk_i    ( clk ),
+        .rst_ni   ( ~reset ),
+        .serial_i ( AXI_DummyIntr_orig ),
+        .serial_o ( AXI_DummyIntr )
+    );
+
+  ////////////////////
+  //  SD card model //
+  ////////////////////
+
+  sd_card i_sd_card (
+    .sd_clk_i ( sd_clk_o  ),
+    .cmd_en_i ( sd_cmd_en ),
+    .cmd_i    ( sd_cmd_o  ),
+    .cmd_o    ( sd_cmd_i  ),
+    .dat_en_i ( sd_dat_en ),
+    .dat_i    ( sd_dat_o  ),
+    .dat_o    ( sd_dat_i  )
+  );
+
+  assign sd_cd_ni = '0;
+
+`endif
+
+  // ---------------------------------------------------------------------------
+  // PLIC debug for SDHCI interrupt routed as PLIC_AXI_DUMMY_ID / AXIDummyIntr
+  // Expected hierarchy: soc.uncore.plic.plic
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // PLIC debug exported by bind from plic_apb_dbg_bind
+  // ---------------------------------------------------------------------------
+  wire [5:0]  dbg_plic_axi_dummy_id;
+
+  wire        dbg_plic_src_irq;
+  wire        dbg_plic_req;
+  wire        dbg_plic_pending;
+  wire        dbg_plic_next_pending;
+  wire        dbg_plic_in_progress;
+
+  wire [2:0]  dbg_plic_priority;
+  wire        dbg_plic_en_ctx0;
+  wire        dbg_plic_en_ctx1;
+  wire [2:0]  dbg_plic_threshold_ctx0;
+  wire [2:0]  dbg_plic_threshold_ctx1;
+
+  wire [5:0]  dbg_plic_claim_ctx0;
+  wire [5:0]  dbg_plic_claim_ctx1;
+
+  wire [6:0]  dbg_plic_priorities_with_irqs_ctx0;
+  wire [6:0]  dbg_plic_priorities_with_irqs_ctx1;
+  wire [6:0]  dbg_plic_threshmask_ctx0;
+  wire [6:0]  dbg_plic_threshmask_ctx1;
+
+  wire        dbg_plic_irq_at_max_ctx0;
+  wire        dbg_plic_irq_at_max_ctx1;
+
+  wire        dbg_plic_mextint;
+  wire        dbg_plic_sextint;
+
+  wire        dbg_plic_memread;
+  wire        dbg_plic_memwrite;
+  wire [23:0] dbg_plic_entry;
+  wire [31:0] dbg_plic_din;
+  wire [31:0] dbg_plic_dout;
+
+  wire        dbg_plic_claim0_read;
+  wire        dbg_plic_claim1_read;
+  wire        dbg_plic_claim0_write;
+  wire        dbg_plic_claim1_write;
+
+  //-----------------------------------------------
+  //-----------------------------------------------
+  //-----------------------------------------------
+  //-----------------------------------------------
+  //-----------------------------------------------
 
   assign mst_resp[0].b.user = '0;
   assign mst_resp[0].r.user = '0;
@@ -889,20 +1221,6 @@ module testbench_cvwsoc #(
       $dumpvars(0, testbench_cvwsoc.mst_req[1].aw_valid);
       $dumpvars(0, testbench_cvwsoc.mst_req[1].ar.addr);
       $dumpvars(0, testbench_cvwsoc.mst_req[1].ar_valid);
-
-      $dumpvars(0, testbench_cvwsoc.bridge_state);
-      $dumpvars(0, testbench_cvwsoc.bridge_beat_cnt);
-      $dumpvars(0, testbench_cvwsoc.bridge_ar_done);
-      $dumpvars(0, testbench_cvwsoc.bridge_pnd_valid);
-      $dumpvars(0, testbench_cvwsoc.bridge_pnd_addr);
-      $dumpvars(0, testbench_cvwsoc.bridge_rd_buf_valid);
-      $dumpvars(0, testbench_cvwsoc.bridge_haddr_q);
-      $dumpvars(0, testbench_cvwsoc.bridge_htrans_q);
-      $dumpvars(0, testbench_cvwsoc.bridge_hreadyin_q);
-      $dumpvars(0, testbench_cvwsoc.bridge_dbg_last_ar_addr);
-      $dumpvars(0, testbench_cvwsoc.bridge_dbg_last_r_data);
-      $dumpvars(0, testbench_cvwsoc.bridge_dbg_trip_sticky);
-      $dumpvars(0, testbench_cvwsoc.bridge_dbg_trip_cause);
     end
   endtask
 
@@ -1275,4 +1593,249 @@ module testbench_cvwsoc #(
     end
   end
 
+
+//------------------------------------------------------------------------
+// Stuff for SDHCI and PLIC debugging. Will be removed later
+//------------------------------------------------------------------------
+`ifdef SIM_AXI_SDHCI
+    logic        dbg_axi_dummyintr_sync_q;
+    logic        dbg_axi_dummyintr_waiting_for_trap;
+    logic [31:0] dbg_axi_dummyintr_wait_cycles;
+    logic        dbg_axi_dummyintr_no_trap_sticky;
+
+    always_ff @(posedge clk or posedge reset_ext) begin
+        if (reset_ext) begin
+            dbg_axi_dummyintr_sync_q         <= 1'b0;
+            dbg_axi_dummyintr_waiting_for_trap <= 1'b0;
+            dbg_axi_dummyintr_wait_cycles    <= 32'd0;
+            dbg_axi_dummyintr_no_trap_sticky <= 1'b0;
+        end else begin
+            dbg_axi_dummyintr_sync_q <= AXI_DummyIntr;
+
+            if (AXI_DummyIntr && !dbg_axi_dummyintr_sync_q) begin
+                dbg_axi_dummyintr_waiting_for_trap <= 1'b1;
+                dbg_axi_dummyintr_wait_cycles      <= 32'd0;
+                dbg_axi_dummyintr_no_trap_sticky   <= 1'b0;
+            end else if (!AXI_DummyIntr) begin
+                dbg_axi_dummyintr_waiting_for_trap <= 1'b0;
+                dbg_axi_dummyintr_wait_cycles      <= 32'd0;
+            end else if (TrapM) begin
+                dbg_axi_dummyintr_waiting_for_trap <= 1'b0;
+                dbg_axi_dummyintr_wait_cycles      <= 32'd0;
+            end else if (dbg_axi_dummyintr_waiting_for_trap) begin
+                dbg_axi_dummyintr_wait_cycles <= dbg_axi_dummyintr_wait_cycles + 1;
+
+                if ((dbg_axi_dummyintr_wait_cycles == 32'd100000) &&
+                    !dbg_axi_dummyintr_no_trap_sticky) begin
+                    dbg_axi_dummyintr_no_trap_sticky <= 1'b1;
+                    $display("[irq-watch] t=%0t cycle=%0d AXI_DummyIntr high for 100000 clk cycles without TrapM raw=%0b sync=%0b pc=%h",
+                            $time, cycle_count, AXI_DummyIntr_orig, AXI_DummyIntr, PCM);
+                end
+            end
+        end
+    end
+`endif
+
 endmodule
+
+
+// -----------------------------------------------------------------------------
+// Bound PLIC debug exporter.
+// No plic_apb port-list changes.
+// No instance hierarchy needed.
+// Drives only top-level testbench wires, so they appear in your trace.
+// -----------------------------------------------------------------------------
+
+module plic_apb_dbg_bind import cvw::*; #(
+  parameter cvw_t P
+) (
+  input  logic                              AXIDummyIntr,
+  input  logic                              MExtInt,
+  input  logic                              SExtInt,
+
+  input  logic [P.PLIC_NUM_SRC:1]           requests,
+  input  logic [P.PLIC_NUM_SRC:1]           intPending,
+  input  logic [P.PLIC_NUM_SRC:1]           nextIntPending,
+  input  logic [P.PLIC_NUM_SRC:1]           intInProgress,
+  input  logic [P.PLIC_NUM_SRC:1][2:0]      intPriority,
+
+  input  logic [1:0][P.PLIC_NUM_SRC:1]      intEn,
+  input  logic [1:0][2:0]                   intThreshold,
+  input  logic [1:0][5:0]                   intClaim,
+
+  input  logic [1:0][7:1]                   priorities_with_irqs,
+  input  logic [1:0][7:1]                   threshMask,
+  input  logic [1:0][P.PLIC_NUM_SRC:1]      irqs_at_max_priority,
+
+  input  logic                              memread,
+  input  logic                              memwrite,
+  input  logic [23:0]                       entry,
+  input  logic [31:0]                       Din,
+  input  logic [31:0]                       Dout,
+
+  output logic [5:0]                        dbg_plic_axi_dummy_id,
+
+  output logic                              dbg_plic_src_irq,
+  output logic                              dbg_plic_req,
+  output logic                              dbg_plic_pending,
+  output logic                              dbg_plic_next_pending,
+  output logic                              dbg_plic_in_progress,
+
+  output logic [2:0]                        dbg_plic_priority,
+  output logic                              dbg_plic_en_ctx0,
+  output logic                              dbg_plic_en_ctx1,
+  output logic [2:0]                        dbg_plic_threshold_ctx0,
+  output logic [2:0]                        dbg_plic_threshold_ctx1,
+
+  output logic [5:0]                        dbg_plic_claim_ctx0,
+  output logic [5:0]                        dbg_plic_claim_ctx1,
+
+  output logic [6:0]                        dbg_plic_priorities_with_irqs_ctx0,
+  output logic [6:0]                        dbg_plic_priorities_with_irqs_ctx1,
+  output logic [6:0]                        dbg_plic_threshmask_ctx0,
+  output logic [6:0]                        dbg_plic_threshmask_ctx1,
+
+  output logic                              dbg_plic_irq_at_max_ctx0,
+  output logic                              dbg_plic_irq_at_max_ctx1,
+
+  output logic                              dbg_plic_mextint,
+  output logic                              dbg_plic_sextint,
+
+  output logic                              dbg_plic_memread,
+  output logic                              dbg_plic_memwrite,
+  output logic [23:0]                       dbg_plic_entry,
+  output logic [31:0]                       dbg_plic_din,
+  output logic [31:0]                       dbg_plic_dout,
+
+  output logic                              dbg_plic_claim0_read,
+  output logic                              dbg_plic_claim1_read,
+  output logic                              dbg_plic_claim0_write,
+  output logic                              dbg_plic_claim1_write
+);
+
+  localparam int DBG_ID = P.PLIC_AXI_DUMMY_ID;
+
+  assign dbg_plic_axi_dummy_id = DBG_ID[5:0];
+
+  if ((DBG_ID >= 1) && (DBG_ID <= P.PLIC_NUM_SRC)) begin : valid_dbg_id
+    assign dbg_plic_src_irq          = AXIDummyIntr;
+    assign dbg_plic_req              = requests[DBG_ID];
+    assign dbg_plic_pending          = intPending[DBG_ID];
+    assign dbg_plic_next_pending     = nextIntPending[DBG_ID];
+    assign dbg_plic_in_progress      = intInProgress[DBG_ID];
+
+    assign dbg_plic_priority         = intPriority[DBG_ID];
+    assign dbg_plic_en_ctx0          = intEn[0][DBG_ID];
+    assign dbg_plic_en_ctx1          = intEn[1][DBG_ID];
+
+    assign dbg_plic_irq_at_max_ctx0  = irqs_at_max_priority[0][DBG_ID];
+    assign dbg_plic_irq_at_max_ctx1  = irqs_at_max_priority[1][DBG_ID];
+  end else begin : invalid_dbg_id
+    assign dbg_plic_src_irq          = 1'b0;
+    assign dbg_plic_req              = 1'b0;
+    assign dbg_plic_pending          = 1'b0;
+    assign dbg_plic_next_pending     = 1'b0;
+    assign dbg_plic_in_progress      = 1'b0;
+
+    assign dbg_plic_priority         = 3'b0;
+    assign dbg_plic_en_ctx0          = 1'b0;
+    assign dbg_plic_en_ctx1          = 1'b0;
+
+    assign dbg_plic_irq_at_max_ctx0  = 1'b0;
+    assign dbg_plic_irq_at_max_ctx1  = 1'b0;
+  end
+
+  assign dbg_plic_threshold_ctx0           = intThreshold[0];
+  assign dbg_plic_threshold_ctx1           = intThreshold[1];
+
+  assign dbg_plic_claim_ctx0               = intClaim[0];
+  assign dbg_plic_claim_ctx1               = intClaim[1];
+
+  assign dbg_plic_priorities_with_irqs_ctx0 = priorities_with_irqs[0][7:1];
+  assign dbg_plic_priorities_with_irqs_ctx1 = priorities_with_irqs[1][7:1];
+  assign dbg_plic_threshmask_ctx0           = threshMask[0][7:1];
+  assign dbg_plic_threshmask_ctx1           = threshMask[1][7:1];
+
+  assign dbg_plic_mextint = MExtInt;
+  assign dbg_plic_sextint = SExtInt;
+
+  assign dbg_plic_memread  = memread;
+  assign dbg_plic_memwrite = memwrite;
+  assign dbg_plic_entry    = entry;
+  assign dbg_plic_din      = Din;
+  assign dbg_plic_dout     = Dout;
+
+  assign dbg_plic_claim0_read  = memread  && (entry == 24'h200004);
+  assign dbg_plic_claim1_read  = memread  && (entry == 24'h201004);
+  assign dbg_plic_claim0_write = memwrite && (entry == 24'h200004);
+  assign dbg_plic_claim1_write = memwrite && (entry == 24'h201004);
+
+endmodule
+
+
+bind plic_apb plic_apb_dbg_bind #(
+  .P(P)
+) i_plic_apb_dbg_bind (
+  .AXIDummyIntr(AXIDummyIntr),
+  .MExtInt(MExtInt),
+  .SExtInt(SExtInt),
+
+  .requests(requests),
+  .intPending(intPending),
+  .nextIntPending(nextIntPending),
+  .intInProgress(intInProgress),
+  .intPriority(intPriority),
+
+  .intEn(intEn),
+  .intThreshold(intThreshold),
+  .intClaim(intClaim),
+
+  .priorities_with_irqs(priorities_with_irqs),
+  .threshMask(threshMask),
+  .irqs_at_max_priority(irqs_at_max_priority),
+
+  .memread(memread),
+  .memwrite(memwrite),
+  .entry(entry),
+  .Din(Din),
+  .Dout(Dout),
+
+  .dbg_plic_axi_dummy_id($root.testbench_cvwsoc.dbg_plic_axi_dummy_id),
+
+  .dbg_plic_src_irq($root.testbench_cvwsoc.dbg_plic_src_irq),
+  .dbg_plic_req($root.testbench_cvwsoc.dbg_plic_req),
+  .dbg_plic_pending($root.testbench_cvwsoc.dbg_plic_pending),
+  .dbg_plic_next_pending($root.testbench_cvwsoc.dbg_plic_next_pending),
+  .dbg_plic_in_progress($root.testbench_cvwsoc.dbg_plic_in_progress),
+
+  .dbg_plic_priority($root.testbench_cvwsoc.dbg_plic_priority),
+  .dbg_plic_en_ctx0($root.testbench_cvwsoc.dbg_plic_en_ctx0),
+  .dbg_plic_en_ctx1($root.testbench_cvwsoc.dbg_plic_en_ctx1),
+  .dbg_plic_threshold_ctx0($root.testbench_cvwsoc.dbg_plic_threshold_ctx0),
+  .dbg_plic_threshold_ctx1($root.testbench_cvwsoc.dbg_plic_threshold_ctx1),
+
+  .dbg_plic_claim_ctx0($root.testbench_cvwsoc.dbg_plic_claim_ctx0),
+  .dbg_plic_claim_ctx1($root.testbench_cvwsoc.dbg_plic_claim_ctx1),
+
+  .dbg_plic_priorities_with_irqs_ctx0($root.testbench_cvwsoc.dbg_plic_priorities_with_irqs_ctx0),
+  .dbg_plic_priorities_with_irqs_ctx1($root.testbench_cvwsoc.dbg_plic_priorities_with_irqs_ctx1),
+  .dbg_plic_threshmask_ctx0($root.testbench_cvwsoc.dbg_plic_threshmask_ctx0),
+  .dbg_plic_threshmask_ctx1($root.testbench_cvwsoc.dbg_plic_threshmask_ctx1),
+
+  .dbg_plic_irq_at_max_ctx0($root.testbench_cvwsoc.dbg_plic_irq_at_max_ctx0),
+  .dbg_plic_irq_at_max_ctx1($root.testbench_cvwsoc.dbg_plic_irq_at_max_ctx1),
+
+  .dbg_plic_mextint($root.testbench_cvwsoc.dbg_plic_mextint),
+  .dbg_plic_sextint($root.testbench_cvwsoc.dbg_plic_sextint),
+
+  .dbg_plic_memread($root.testbench_cvwsoc.dbg_plic_memread),
+  .dbg_plic_memwrite($root.testbench_cvwsoc.dbg_plic_memwrite),
+  .dbg_plic_entry($root.testbench_cvwsoc.dbg_plic_entry),
+  .dbg_plic_din($root.testbench_cvwsoc.dbg_plic_din),
+  .dbg_plic_dout($root.testbench_cvwsoc.dbg_plic_dout),
+
+  .dbg_plic_claim0_read($root.testbench_cvwsoc.dbg_plic_claim0_read),
+  .dbg_plic_claim1_read($root.testbench_cvwsoc.dbg_plic_claim1_read),
+  .dbg_plic_claim0_write($root.testbench_cvwsoc.dbg_plic_claim0_write),
+  .dbg_plic_claim1_write($root.testbench_cvwsoc.dbg_plic_claim1_write)
+);

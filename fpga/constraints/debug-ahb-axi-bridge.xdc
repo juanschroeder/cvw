@@ -161,6 +161,3 @@ ila_add_probe u_ila_spi -bus ahbaxibridge/dbg_rd_repeat_cycle -msb 31 -lsb 0 -or
 ila_add_probe u_ila_spi -bus ahbaxibridge/dbg_rd_lastbeat_cycle -msb 31 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus ahbaxibridge/dbg_rd_buf_capture_seq_dbg -msb 15 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus ahbaxibridge/dbg_rd_last_deliver_seq_dbg -msb 15 -lsb 0 -order lsb2msb
-
-# REMOVE!!
-ila_add_probe u_ila_spi -net pc_asserted

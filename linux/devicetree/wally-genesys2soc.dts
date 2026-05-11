@@ -126,7 +126,7 @@
         reg-io-width = <1>;
 
         status = "okay";
-  };
+    };
 
     eth0: ethernet@100D3000 {
         compatible = "litex,liteeth";
@@ -152,11 +152,9 @@
 
             ethphy0: ethernet-phy@0 {
                 reg = <0>;
-};
+            };
         };
-
     };
-    //---------------------------------------------
 
     busclk: busclk {
       #clock-cells = <0>;
@@ -205,6 +203,19 @@
         dma-noncoherent;
     };
 
+    mmc@10090000 {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0 0x10090000 0x0 0x2000>;
+        compatible = "sdhci"; // generic 'custom' driver (not mainline)
+        bus-width = <4>;
+        clock-frequency = <25000000>; // SDHCI base clock as seen by software (divided in Hw)
+        max-frequency = <10000000>; // 10MHz (higher speeds still need to be tested further)
+        disable-wp;
+        no-1-8-v;
+        interrupts = <17>;
+        interrupt-parent = <&plic>;
+    };
 
   };
 

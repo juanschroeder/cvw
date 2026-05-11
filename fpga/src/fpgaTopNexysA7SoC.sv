@@ -853,7 +853,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic            clk48MHz_raw, clk48MHz;
 (* ASYNC_REG="TRUE" *) logic usb_irq_ff1, usb_irq_ff2;
 
-  
+
   // mmcm
   mmcm mmcm(.clk_out1(clk200),
             //.clk_out2(clk200_b),
@@ -893,7 +893,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     BUFG u_bufg_rmii (
     .I(phy_ref_clk_raw),
     .O(rmii_clk50)
-    );    
+    );
 
     // drive PHY + LiteEth
     //assign rmii_ref_clk = rmii_clk50;
@@ -943,6 +943,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
                     , .AXI_DMAIntr(dma_introut_sync)
                     //, .AXI_USBIntr(usb_irq)
                     , .AXI_USBIntr(usb_irq_ff2)
+                    , .AXI_EthIntr(1'b0)
+                    , .AXI_DummyIntr(1'b0)
                     );
 
   // ahb lite to axi bridge
@@ -1345,7 +1347,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   BUFG u_bufg_usb (
     .I(clk48MHz_raw),
     .O(clk48MHz)
-  );    
+  );
 
   // USB OHCI wrapper (SpinalHDL UsbOhciAxi4_p2_dma64)
   // NOTE: phy_clk should be 48 MHz (or another integer multiple of 12 MHz). rmii_clk50 is only a placeholder.
@@ -1458,7 +1460,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
         usb_irq_ff1 <= usb_irq;       // usb_irq is from BUSCLK domain
         usb_irq_ff2 <= usb_irq_ff1;
     end
-  end  
+  end
 
 
   // M01 (AXI4/64) -> MMIO bridge -> AXI4-Lite/32 -> CDMA regs
@@ -1547,9 +1549,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .s_axi_lite_aresetn(resetn),
 
     // AXI4-Lite control
-	    // This project generates CDMA with a small AXI4-Lite address port (6 bits).
-	    // Base address decode is done in the crossbar; CDMA only needs low bits for register offsets.
-	    .s_axi_lite_awaddr (pc_lite_awaddr[5:0]),
+    // This project generates CDMA with a small AXI4-Lite address port (6 bits).
+    // Base address decode is done in the crossbar; CDMA only needs low bits for register offsets.
+    .s_axi_lite_awaddr (pc_lite_awaddr[5:0]),
     .s_axi_lite_awvalid(pc_lite_awvalid),
     .s_axi_lite_awready(pc_lite_awready),
 
@@ -1561,7 +1563,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .s_axi_lite_bvalid (pc_lite_bvalid),
     .s_axi_lite_bready (pc_lite_bready),
 
-	    .s_axi_lite_araddr (pc_lite_araddr[5:0]),
+    .s_axi_lite_araddr (pc_lite_araddr[5:0]),
     .s_axi_lite_arvalid(pc_lite_arvalid),
     .s_axi_lite_arready(pc_lite_arready),
 

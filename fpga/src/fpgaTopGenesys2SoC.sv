@@ -25,6 +25,7 @@
 ///////////////////////////////////////////
 
 `include "config.vh"
+`include "axi/typedef.svh"
 
 import cvw::*;
 
@@ -116,6 +117,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     , inout wire        usb0_dm
     , inout wire        usb1_dp
     , inout wire        usb1_dm
+    // SDHCI card pins
+    , output logic      SD_CLK
+    , input  logic      SD_CD_N
+    , inout  wire       SD_CMD
+    , inout  wire [3:0] SD_DAT
    );
 
 `ifndef P_WISHBONE_ETH_SUPPORTED
@@ -281,54 +287,52 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   (* mark_debug = "true" *) logic            BUS_cb_axi_rlast;
   (* mark_debug = "true" *) logic            BUS_cb_axi_rready;
 
-    // Crossbar packed M_AXI ports
+  // Crossbar packed M_AXI ports
   // Crossbar uses ADDR_WIDTH=32, DATA_WIDTH=64, ID_WIDTH=4
-  // NUM_MI=4 => packed buses:
-  //   - Addresses: [4*32-1:0] = [127:0] (M00=[31:0], M01=[63:32], M02=[95:64], M03=[127:96])
-  //   - Data:      [4*64-1:0] = [255:0]
-  wire [23:0]   cb_m_axi_awid;
-  wire [191:0]  cb_m_axi_awaddr;
-  wire [47:0]   cb_m_axi_awlen;
-  wire [17:0]   cb_m_axi_awsize;
-  wire [11:0]    cb_m_axi_awburst;
-  wire [5:0]    cb_m_axi_awlock;
-  wire [23:0]   cb_m_axi_awcache;
-  wire [17:0]   cb_m_axi_awprot;
-  wire [23:0]   cb_m_axi_awregion;
-  wire [23:0]   cb_m_axi_awqos;
-  wire [5:0]    cb_m_axi_awvalid;
-  wire [5:0]    cb_m_axi_awready;
+  // NUM_MI=7 => M00=DDR, M01=CDMA, M02=VGA, M03=USB, M04=LiteEth, M05=LiteDRAM CSR, M06=SDHCI.
+  wire [27:0]   cb_m_axi_awid;
+  wire [223:0]  cb_m_axi_awaddr;
+  wire [55:0]   cb_m_axi_awlen;
+  wire [20:0]   cb_m_axi_awsize;
+  wire [13:0]   cb_m_axi_awburst;
+  wire [6:0]    cb_m_axi_awlock;
+  wire [27:0]   cb_m_axi_awcache;
+  wire [20:0]   cb_m_axi_awprot;
+  wire [27:0]   cb_m_axi_awregion;
+  wire [27:0]   cb_m_axi_awqos;
+  wire [6:0]    cb_m_axi_awvalid;
+  wire [6:0]    cb_m_axi_awready;
 
-  wire [383:0]  cb_m_axi_wdata;
-  wire [47:0]   cb_m_axi_wstrb;
-  wire [5:0]    cb_m_axi_wlast;
-  wire [5:0]    cb_m_axi_wvalid;
-  wire [5:0]    cb_m_axi_wready;
+  wire [447:0]  cb_m_axi_wdata;
+  wire [55:0]   cb_m_axi_wstrb;
+  wire [6:0]    cb_m_axi_wlast;
+  wire [6:0]    cb_m_axi_wvalid;
+  wire [6:0]    cb_m_axi_wready;
 
-  wire [23:0]   cb_m_axi_bid;
-  wire [11:0]    cb_m_axi_bresp;
-  wire [5:0]    cb_m_axi_bvalid;
-  wire [5:0]    cb_m_axi_bready;
+  wire [27:0]   cb_m_axi_bid;
+  wire [13:0]   cb_m_axi_bresp;
+  wire [6:0]    cb_m_axi_bvalid;
+  wire [6:0]    cb_m_axi_bready;
 
-  wire [23:0]   cb_m_axi_arid;
-  wire [191:0]  cb_m_axi_araddr;
-  wire [47:0]   cb_m_axi_arlen;
-  wire [17:0]   cb_m_axi_arsize;
-  wire [11:0]    cb_m_axi_arburst;
-  wire [5:0]    cb_m_axi_arlock;
-  wire [23:0]   cb_m_axi_arcache;
-  wire [17:0]   cb_m_axi_arprot;
-  wire [23:0]   cb_m_axi_arregion;
-  wire [23:0]   cb_m_axi_arqos;
-  wire [5:0]    cb_m_axi_arvalid;
-  wire [5:0]    cb_m_axi_arready;
+  wire [27:0]   cb_m_axi_arid;
+  wire [223:0]  cb_m_axi_araddr;
+  wire [55:0]   cb_m_axi_arlen;
+  wire [20:0]   cb_m_axi_arsize;
+  wire [13:0]   cb_m_axi_arburst;
+  wire [6:0]    cb_m_axi_arlock;
+  wire [27:0]   cb_m_axi_arcache;
+  wire [20:0]   cb_m_axi_arprot;
+  wire [27:0]   cb_m_axi_arregion;
+  wire [27:0]   cb_m_axi_arqos;
+  wire [6:0]    cb_m_axi_arvalid;
+  wire [6:0]    cb_m_axi_arready;
 
-  wire [23:0]   cb_m_axi_rid;
-  wire [383:0]  cb_m_axi_rdata;
-  wire [11:0]    cb_m_axi_rresp;
-  wire [5:0]    cb_m_axi_rlast;
-  wire [5:0]    cb_m_axi_rvalid;
-  wire [5:0]    cb_m_axi_rready;
+  wire [27:0]   cb_m_axi_rid;
+  wire [447:0]  cb_m_axi_rdata;
+  wire [13:0]   cb_m_axi_rresp;
+  wire [6:0]    cb_m_axi_rlast;
+  wire [6:0]    cb_m_axi_rvalid;
+  wire [6:0]    cb_m_axi_rready;
 
   // Crossbar packed S_AXI ports
   // NUM_SI=4 (S00=CPU, S01=CDMA, S02=VGA, S03=USB OHCI DMA)
@@ -497,6 +501,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic        usb_irq;
 
   logic        liteeth_irq;
+  logic        sdhci_irq;
 
   // Regs window path (M01) signals from dwidth converter back to crossbar
   wire        reg_awready;
@@ -564,6 +569,28 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic [1:0]  litedram_axi_rresp;
   logic [3:0]  litedram_axi_rid;
   logic [63:0] litedram_axi_rdata;
+
+  // SDHCI regs window path (M06) signals back to crossbar.
+  logic        sdhci_reg_awready;
+  logic        sdhci_reg_wready;
+  logic        sdhci_reg_arready;
+  logic        sdhci_reg_bvalid;
+  logic [1:0]  sdhci_reg_bresp;
+  logic [3:0]  sdhci_reg_bid;
+  logic        sdhci_reg_rvalid;
+  logic        sdhci_reg_rlast;
+  logic [1:0]  sdhci_reg_rresp;
+  logic [3:0]  sdhci_reg_rid;
+  logic [63:0] sdhci_reg_rdata;
+
+  (* mark_debug = "true" *) logic        sd_clk_o;
+  (* mark_debug = "true" *) logic        sd_cd_ni;
+  (* mark_debug = "true" *) logic        sd_cmd_en;
+  (* mark_debug = "true" *) logic        sd_cmd_o;
+  (* mark_debug = "true" *) logic        sd_cmd_i;
+  (* mark_debug = "true" *) logic        sd_dat_en;
+  (* mark_debug = "true" *) logic [3:0]  sd_dat_o;
+  (* mark_debug = "true" *) logic [3:0]  sd_dat_i;
 
   // AXI4-Lite/32 signals to USB OHCI control regs (driven by MMIO bridge)
   wire [31:0] usb_lite_awaddr;
@@ -836,19 +863,19 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   // M01 (second MI) is used for CDMA registers via dwidth+protocol converters.
   // M02 (third MI) is used for VGA registers (AXI4/64 slave on BUSCLK).
     // Provide crossbar MI return channels from MIG (M00) and regs windows (M01=CDMA regs, M02=VGA regs, M03=USB regs)
-  assign cb_m_axi_awready = {litedram_axi_awready, liteeth_reg_awready, usb_reg_awready, vga_reg_awready, reg_awready, BUS_cb_axi_awready};
-  assign cb_m_axi_wready  = {litedram_axi_wready, liteeth_reg_wready,  usb_reg_wready,  vga_reg_wready,  reg_wready,  BUS_cb_axi_wready};
-  assign cb_m_axi_arready = {litedram_axi_arready, liteeth_reg_arready, usb_reg_arready, vga_reg_arready, reg_arready, BUS_cb_axi_arready};
+  assign cb_m_axi_awready = {sdhci_reg_awready, litedram_axi_awready, liteeth_reg_awready, usb_reg_awready, vga_reg_awready, reg_awready, BUS_cb_axi_awready};
+  assign cb_m_axi_wready  = {sdhci_reg_wready,  litedram_axi_wready,  liteeth_reg_wready,  usb_reg_wready,  vga_reg_wready,  reg_wready,  BUS_cb_axi_wready};
+  assign cb_m_axi_arready = {sdhci_reg_arready, litedram_axi_arready, liteeth_reg_arready, usb_reg_arready, vga_reg_arready, reg_arready, BUS_cb_axi_arready};
 
-  assign cb_m_axi_bvalid  = {litedram_axi_bvalid, liteeth_reg_bvalid,  usb_reg_bvalid,  vga_reg_bvalid,  reg_bvalid,  BUS_cb_axi_bvalid};
-  assign cb_m_axi_bresp   = {litedram_axi_bresp, liteeth_reg_bresp,   usb_reg_bresp,   vga_reg_bresp,   reg_bresp,   BUS_cb_axi_bresp};
-  assign cb_m_axi_bid     = {litedram_axi_bid, liteeth_reg_bid,     usb_reg_bid,     vga_reg_bid,     reg_bid,     BUS_cb_axi_bid};
+  assign cb_m_axi_bvalid  = {sdhci_reg_bvalid, litedram_axi_bvalid, liteeth_reg_bvalid,  usb_reg_bvalid,  vga_reg_bvalid,  reg_bvalid,  BUS_cb_axi_bvalid};
+  assign cb_m_axi_bresp   = {sdhci_reg_bresp,  litedram_axi_bresp,  liteeth_reg_bresp,   usb_reg_bresp,   vga_reg_bresp,   reg_bresp,   BUS_cb_axi_bresp};
+  assign cb_m_axi_bid     = {sdhci_reg_bid,    litedram_axi_bid,    liteeth_reg_bid,     usb_reg_bid,     vga_reg_bid,     reg_bid,     BUS_cb_axi_bid};
 
-  assign cb_m_axi_rvalid  = {litedram_axi_rvalid, liteeth_reg_rvalid,  usb_reg_rvalid,  vga_reg_rvalid,  reg_rvalid,  BUS_cb_axi_rvalid};
-  assign cb_m_axi_rlast   = {litedram_axi_rlast, liteeth_reg_rlast,   usb_reg_rlast,   vga_reg_rlast,   reg_rlast,   BUS_cb_axi_rlast};
-  assign cb_m_axi_rresp   = {litedram_axi_rresp, liteeth_reg_rresp,   usb_reg_rresp,   vga_reg_rresp,   reg_rresp,   BUS_cb_axi_rresp};
-  assign cb_m_axi_rid     = {litedram_axi_rid, liteeth_reg_rid,     usb_reg_rid,     vga_reg_rid,     reg_rid,     BUS_cb_axi_rid};
-  assign cb_m_axi_rdata   = {litedram_axi_rdata, liteeth_reg_rdata,   usb_reg_rdata,   vga_reg_rdata,   reg_rdata,   BUS_cb_axi_rdata};
+  assign cb_m_axi_rvalid  = {sdhci_reg_rvalid, litedram_axi_rvalid, liteeth_reg_rvalid,  usb_reg_rvalid,  vga_reg_rvalid,  reg_rvalid,  BUS_cb_axi_rvalid};
+  assign cb_m_axi_rlast   = {sdhci_reg_rlast,  litedram_axi_rlast,  liteeth_reg_rlast,   usb_reg_rlast,   vga_reg_rlast,   reg_rlast,   BUS_cb_axi_rlast};
+  assign cb_m_axi_rresp   = {sdhci_reg_rresp,  litedram_axi_rresp,  liteeth_reg_rresp,   usb_reg_rresp,   vga_reg_rresp,   reg_rresp,   BUS_cb_axi_rresp};
+  assign cb_m_axi_rid     = {sdhci_reg_rid,    litedram_axi_rid,    liteeth_reg_rid,     usb_reg_rid,     vga_reg_rid,     reg_rid,     BUS_cb_axi_rid};
+  assign cb_m_axi_rdata   = {sdhci_reg_rdata,  litedram_axi_rdata,  liteeth_reg_rdata,   usb_reg_rdata,   vga_reg_rdata,   reg_rdata,   BUS_cb_axi_rdata};
 
 
   ///////////////////////////////////////////////////////////
@@ -862,7 +889,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic          sdio_reset_open;
   logic          ahblite_resetn;
   logic          cpu_reset;
-  logic          calib;
   logic          init_error;
   logic          ddr_ready;
 
@@ -889,7 +915,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   assign GPO = GPIOOUT[4:0];
   assign ahblite_resetn = peripheral_aresetn;
   assign cpu_reset = bus_struct_reset;
-  assign calib = c0_init_calib_complete;
 
   logic [3:0] SDCCSin;
   assign SDCCS = SDCCSin[0];
@@ -907,6 +932,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic            clk48MHz_raw, clk48MHz;
 (* ASYNC_REG="TRUE" *) logic usb_irq_ff1, usb_irq_ff2;
 (* ASYNC_REG="TRUE" *) logic liteeth_irq_ff1, liteeth_irq_ff2;
+(* ASYNC_REG="TRUE" *) logic sdhci_irq_ff1, sdhci_irq_ff2;
 
 
   // FIXME: CHECK IF THIS IS OK. clk167 is actually 200 MHz. Only one 200 MHz clock output is really needed
@@ -947,14 +973,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 `endif
 
 
-  logic init_calib_complete_cpu;
-  // FIXME: use 'synchronizer' instead
-  // CDC timing fix for async reset
-  (* ASYNC_REG="TRUE" *) logic [1:0] calib_sync;
-  always_ff @(posedge CPUCLK) begin
-    calib_sync <= {calib_sync[0], c0_init_calib_complete};
-  end
-  assign init_calib_complete_cpu = calib_sync[1];
 
   logic rst_req;
   logic resetn_comb;
@@ -1004,6 +1022,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
                     //, .AXI_USBIntr(usb_irq)
                     , .AXI_USBIntr(usb_irq_ff2)
                     , .AXI_EthIntr(liteeth_irq_ff2)
+                    , .AXI_SDHCIIntr(sdhci_irq_ff2)
+                    // Dummy device disabled for now
+                    , .AXI_DummyIntr(1'b0)
                     );
 
   if (P.XILINX_AXI_BR_SUPPORTED) begin
@@ -1141,11 +1162,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   // XBAR is slave for: CPU, CDMA, VGA, USB
   localparam int unsigned N_SLV     = 4;
-  // XBAR is master for: DDR3, CDMA, VGA, USB, LITEETH
-  localparam int unsigned N_MST     = 6;
+  // XBAR is master for: DDR3, CDMA, VGA, USB, LITEETH, LiteDRAM CSR, SDHCI
+  localparam int unsigned N_MST     = 7;
   localparam int unsigned SLV_ID_W  = 2;
   localparam int unsigned MST_ID_W  = SLV_ID_W + $clog2(N_SLV); // 2+2=4 (goes to MIG)
-  localparam int unsigned N_RULES   = 6;
+  localparam int unsigned N_RULES   = 7;
 
   typedef logic [SLV_ID_W-1:0] slv_id_t;
   typedef logic [MST_ID_W-1:0] mst_id_t;
@@ -1581,7 +1602,10 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
         '{ idx: 2, start_addr: 32'h100B_0000, end_addr: 32'h100B_1000 }, // VGA regs
         '{ idx: 3, start_addr: 32'h100C_0000, end_addr: 32'h100C_1000 },  // USB regs
         '{ idx: 4, start_addr: 32'h100D_0000, end_addr: 32'h100F_0000 },  // AXI ETH regs
-        '{ idx: 5, start_addr: 32'h100F_0000, end_addr: 32'h100F_2000 }  // LiteDRAM CSR interface
+        '{ idx: 5, start_addr: 32'h100F_0000, end_addr: 32'h100F_2000 }, // LiteDRAM CSR interface
+        '{ idx: 6,
+            start_addr: axi_addr_t'(P.AXI_SDHCI_BASE[31:0]),
+            end_addr:   axi_addr_t'(P.AXI_SDHCI_BASE[31:0] + P.AXI_SDHCI_RANGE[31:0] + 32'd1) } // SDHCI regs
     };
 
     // ------------------------------
@@ -2106,6 +2130,327 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     end
   end
 
+  if (P.AXI_SDHCI_SUPPORTED) begin : gen_axi_sdhci
+    assign SD_CLK   = sd_clk_o;
+    assign SD_CMD   = sd_cmd_en ? sd_cmd_o : 1'bz;
+    assign sd_cmd_i = SD_CMD;
+    assign SD_DAT   = sd_dat_en ? sd_dat_o : 4'bzzzz;
+    assign sd_dat_i = SD_DAT;
+    assign sd_cd_ni = SD_CD_N;
+
+    axi_sdhci_wrap sdhci_i (
+      .aclk    (BUSCLK),
+      .aresetn (BUSRSTn),
+
+      // AXI slave regs from crossbar M06
+      .s_axi_awid    (cb_m_axi_awid[27:24]),
+      .s_axi_awaddr  (cb_m_axi_awaddr[223:192]),
+      .s_axi_awlen   (cb_m_axi_awlen[55:48]),
+      .s_axi_awsize  (cb_m_axi_awsize[20:18]),
+      .s_axi_awburst (cb_m_axi_awburst[13:12]),
+      .s_axi_awlock  (cb_m_axi_awlock[6]),
+      .s_axi_awcache (cb_m_axi_awcache[27:24]),
+      .s_axi_awprot  (cb_m_axi_awprot[20:18]),
+      .s_axi_awqos   (cb_m_axi_awqos[27:24]),
+      .s_axi_awvalid (cb_m_axi_awvalid[6]),
+      .s_axi_awready (sdhci_reg_awready),
+
+      .s_axi_wdata   (cb_m_axi_wdata[447:384]),
+      .s_axi_wstrb   (cb_m_axi_wstrb[55:48]),
+      .s_axi_wlast   (cb_m_axi_wlast[6]),
+      .s_axi_wvalid  (cb_m_axi_wvalid[6]),
+      .s_axi_wready  (sdhci_reg_wready),
+
+      .s_axi_bresp   (sdhci_reg_bresp),
+      .s_axi_bvalid  (sdhci_reg_bvalid),
+      .s_axi_bid     (sdhci_reg_bid),
+      .s_axi_bready  (cb_m_axi_bready[6]),
+
+      .s_axi_arid    (cb_m_axi_arid[27:24]),
+      .s_axi_araddr  (cb_m_axi_araddr[223:192]),
+      .s_axi_arlen   (cb_m_axi_arlen[55:48]),
+      .s_axi_arsize  (cb_m_axi_arsize[20:18]),
+      .s_axi_arburst (cb_m_axi_arburst[13:12]),
+      .s_axi_arlock  (cb_m_axi_arlock[6]),
+      .s_axi_arcache (cb_m_axi_arcache[27:24]),
+      .s_axi_arprot  (cb_m_axi_arprot[20:18]),
+      .s_axi_arqos   (cb_m_axi_arqos[27:24]),
+      .s_axi_arvalid (cb_m_axi_arvalid[6]),
+      .s_axi_arready (sdhci_reg_arready),
+
+      .s_axi_rdata   (sdhci_reg_rdata),
+      .s_axi_rresp   (sdhci_reg_rresp),
+      .s_axi_rlast   (sdhci_reg_rlast),
+      .s_axi_rvalid  (sdhci_reg_rvalid),
+      .s_axi_rid     (sdhci_reg_rid),
+      .s_axi_rready  (cb_m_axi_rready[6]),
+
+      .sd_clk_o      (sd_clk_o),
+      .sd_cd_ni      (sd_cd_ni),
+      .sd_cmd_en_o   (sd_cmd_en),
+      .sd_cmd_o      (sd_cmd_o),
+      .sd_cmd_i      (sd_cmd_i),
+      .sd_dat_i      (sd_dat_i),
+      .sd_dat_o      (sd_dat_o),
+      .sd_dat_en_o   (sd_dat_en),
+
+      .interrupt_o   (sdhci_irq)
+    );
+
+    // ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    // SDHCI debug taps: command path
+    // ---------------------------------------------------------------------------
+    // (* mark_debug = "true" *) logic [5:0]  dbg_sdhci_current_cmd;
+    // (* mark_debug = "true" *) logic [31:0] dbg_sdhci_current_arg;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_cmd_started;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_cmd_data_present;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_cmd_xfer_dir;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_cmd_needs_busy;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_sd_cmd_done;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_sd_rsp_done;
+
+    // (* mark_debug = "true" *) logic        dbg_sdhci_cmd_result_valid;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_cmd_timeout_error;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_cmd_crc_error;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_cmd_index_error;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_cmd_end_bit_error;
+
+    // assign dbg_sdhci_current_cmd       = sdhci_i.i_axi_sdhci.i_autocmd_wrap.current_cmd;
+    // assign dbg_sdhci_current_arg       = sdhci_i.i_axi_sdhci.i_autocmd_wrap.current_arg;
+    // assign dbg_sdhci_cmd_started       = sdhci_i.i_axi_sdhci.cmd_started;
+    // assign dbg_sdhci_cmd_data_present  = sdhci_i.i_axi_sdhci.cmd_data_present;
+    // assign dbg_sdhci_cmd_xfer_dir      = sdhci_i.i_axi_sdhci.cmd_transfer_direction;
+    // assign dbg_sdhci_cmd_needs_busy    = sdhci_i.i_axi_sdhci.cmd_needs_busy;
+    // assign dbg_sdhci_sd_cmd_done       = sdhci_i.i_axi_sdhci.sd_cmd_done;
+    // assign dbg_sdhci_sd_rsp_done       = sdhci_i.i_axi_sdhci.sd_rsp_done;
+
+    // assign dbg_sdhci_cmd_result_valid  = sdhci_i.i_axi_sdhci.i_autocmd_wrap.cmd_result_valid;
+    // assign dbg_sdhci_cmd_timeout_error = sdhci_i.i_axi_sdhci.i_autocmd_wrap.timeout_error;
+    // assign dbg_sdhci_cmd_crc_error     = sdhci_i.i_axi_sdhci.i_autocmd_wrap.crc_error;
+    // assign dbg_sdhci_cmd_index_error   = sdhci_i.i_axi_sdhci.i_autocmd_wrap.index_error;
+    // assign dbg_sdhci_cmd_end_bit_error = sdhci_i.i_axi_sdhci.i_autocmd_wrap.end_bit_error;
+
+    // // ---------------------------------------------------------------------------
+    // // SDHCI debug taps: mode / register-derived state
+    // // ---------------------------------------------------------------------------
+    // (* mark_debug = "true" *) logic        dbg_sdhci_bus_width_4;
+    // (* mark_debug = "true" *) logic [9:0]  dbg_sdhci_block_size;
+    // (* mark_debug = "true" *) logic [15:0] dbg_sdhci_block_count;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_read_transfer_active;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_write_transfer_active;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_buffer_read_enable;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_buffer_write_enable;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_pause_sd_clk;
+
+    // assign dbg_sdhci_bus_width_4          = sdhci_i.i_axi_sdhci.reg2hw.host_control.data_transfer_width.q;
+    // assign dbg_sdhci_block_size           = sdhci_i.i_axi_sdhci.reg2hw.block_size.transfer_block_size.q;
+    // assign dbg_sdhci_block_count          = sdhci_i.i_axi_sdhci.reg2hw.block_count.q;
+    // assign dbg_sdhci_read_transfer_active = sdhci_i.i_axi_sdhci.reg2hw.present_state.read_transfer_active.q;
+    // assign dbg_sdhci_write_transfer_active= sdhci_i.i_axi_sdhci.reg2hw.present_state.write_transfer_active.q;
+    // assign dbg_sdhci_buffer_read_enable   = sdhci_i.i_axi_sdhci.hw2reg.present_state.buffer_read_enable.d;
+    // assign dbg_sdhci_buffer_write_enable  = sdhci_i.i_axi_sdhci.hw2reg.present_state.buffer_write_enable.d;
+    // assign dbg_sdhci_pause_sd_clk         = sdhci_i.i_axi_sdhci.pause_sd_clk;
+
+    // // ---------------------------------------------------------------------------
+    // // SDHCI debug taps: data FSM
+    // // ---------------------------------------------------------------------------
+    // (* mark_debug = "true" *) logic [1:0]  dbg_sdhci_dat_state;
+    // (* mark_debug = "true" *) logic [2:0]  dbg_sdhci_read_state;
+    // (* mark_debug = "true" *) logic [2:0]  dbg_sdhci_write_state;
+
+    // (* mark_debug = "true" *) logic        dbg_sdhci_start_read;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_read_valid;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_read_done;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_read_crc_err;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_read_end_bit_err;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_timeout_elapsed;
+
+    // (* mark_debug = "true" *) logic        dbg_sdhci_buffer_write_valid;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_buffer_write_ready;
+    // (* mark_debug = "true" *) logic [31:0] dbg_sdhci_buffer_write_data;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_buffer_read_valid;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_buffer_read_ready;
+    // (* mark_debug = "true" *) logic [31:0] dbg_sdhci_buffer_read_data;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_buffer_empty;
+
+    // assign dbg_sdhci_dat_state           = sdhci_i.i_axi_sdhci.i_dat_wrap.dat_state_q;
+    // assign dbg_sdhci_read_state          = sdhci_i.i_axi_sdhci.i_dat_wrap.read_state_q;
+    // assign dbg_sdhci_write_state         = sdhci_i.i_axi_sdhci.i_dat_wrap.write_state_q;
+
+    // assign dbg_sdhci_start_read          = sdhci_i.i_axi_sdhci.i_dat_wrap.start_read;
+    // assign dbg_sdhci_read_valid          = sdhci_i.i_axi_sdhci.i_dat_wrap.read_valid;
+    // assign dbg_sdhci_read_done           = sdhci_i.i_axi_sdhci.i_dat_wrap.read_done;
+    // assign dbg_sdhci_read_crc_err        = sdhci_i.i_axi_sdhci.i_dat_wrap.read_crc_err;
+    // assign dbg_sdhci_read_end_bit_err    = sdhci_i.i_axi_sdhci.i_dat_wrap.read_end_bit_err;
+    // assign dbg_sdhci_timeout_elapsed     = sdhci_i.i_axi_sdhci.i_dat_wrap.timeout_elapsed;
+
+    // assign dbg_sdhci_buffer_write_valid  = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_write_valid;
+    // assign dbg_sdhci_buffer_write_ready  = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_write_ready;
+    // assign dbg_sdhci_buffer_write_data   = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_write_data;
+    // assign dbg_sdhci_buffer_read_valid   = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_read_valid;
+    // assign dbg_sdhci_buffer_read_ready   = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_read_ready;
+    // assign dbg_sdhci_buffer_read_data    = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_read_data;
+    // assign dbg_sdhci_buffer_empty        = sdhci_i.i_axi_sdhci.i_dat_wrap.buffer_empty;
+
+    // // ---------------------------------------------------------------------------
+    // // SDHCI debug taps: dat_buffer / SRAM shift register
+    // // ---------------------------------------------------------------------------
+    // (* mark_debug = "true" *) logic        dbg_sdhci_reg_push;
+    // (* mark_debug = "true" *) logic [31:0] dbg_sdhci_reg_push_data;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_reg_pop;
+    // (* mark_debug = "true" *) logic [31:0] dbg_sdhci_reg_pop_data;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_reg_empty;
+    // (* mark_debug = "true" *) logic [8:0]  dbg_sdhci_reg_length;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_has_block;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_has_space;
+    // (* mark_debug = "true" *) logic [9:0]  dbg_sdhci_current_word_counter;
+
+    // (* mark_debug = "true" *) logic        dbg_sdhci_sram_en;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_sram_pop_front_i;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_sram_pop_front_q;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_sram_push_back_i;
+    // (* mark_debug = "true" *) logic [31:0] dbg_sdhci_sram_back_data_i;
+    // (* mark_debug = "true" *) logic [31:0] dbg_sdhci_sram_front_data_o;
+    // (* mark_debug = "true" *) logic        dbg_sdhci_sram_empty_o;
+    // (* mark_debug = "true" *) logic [8:0]  dbg_sdhci_sram_length_o;
+
+    // assign dbg_sdhci_reg_push            = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_push;
+    // assign dbg_sdhci_reg_push_data       = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_push_data;
+    // assign dbg_sdhci_reg_pop             = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_pop;
+    // assign dbg_sdhci_reg_pop_data        = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_pop_data;
+    // assign dbg_sdhci_reg_empty           = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_empty;
+    // assign dbg_sdhci_reg_length          = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.reg_length;
+    // assign dbg_sdhci_has_block           = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.has_block;
+    // // not in newer version of the RTL
+    // //assign dbg_sdhci_has_space           = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.has_space;
+    // assign dbg_sdhci_current_word_counter= sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.current_word_counter_q;
+
+    // assign dbg_sdhci_sram_en             = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.en_i;
+    // assign dbg_sdhci_sram_pop_front_i    = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.pop_front_i;
+    // assign dbg_sdhci_sram_pop_front_q    = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.pop_front_q;
+    // assign dbg_sdhci_sram_push_back_i    = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.push_back_i;
+    // assign dbg_sdhci_sram_back_data_i    = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.back_data_i;
+    // assign dbg_sdhci_sram_front_data_o   = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.front_data_o;
+    // assign dbg_sdhci_sram_empty_o        = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.empty_o;
+    // assign dbg_sdhci_sram_length_o       = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.length_o;
+
+    // // ---------------------------------------------------------------------------
+    // // SDHCI debug taps: command response / R2 CRC path
+    // // ---------------------------------------------------------------------------
+    // (* mark_debug = "true" *) logic [2:0]   dbg_sdhci_cmd_state;
+    // (* mark_debug = "true" *) logic [6:0]   dbg_sdhci_cmd_cycles_waiting;
+    // (* mark_debug = "true" *) logic [1:0]   dbg_sdhci_accepted_rsp_type;
+
+    // (* mark_debug = "true" *) logic [2:0]   dbg_sdhci_rsp_rx_state;
+    // (* mark_debug = "true" *) logic [7:0]   dbg_sdhci_rsp_bit_cnt;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp_long;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp_receiving;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp_start_bit_observed;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp_all_bits_received;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp_capture_bit;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp_capture_word_bit;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp_crc_start;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp_crc_end_output;
+    // (* mark_debug = "true" *) logic [6:0]   dbg_sdhci_rsp_crc7_calc;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp_crc_corr;
+    // (* mark_debug = "true" *) logic [31:0]  dbg_sdhci_rsp0;
+    // (* mark_debug = "true" *) logic [31:0]  dbg_sdhci_rsp1;
+    // (* mark_debug = "true" *) logic [31:0]  dbg_sdhci_rsp2;
+    // (* mark_debug = "true" *) logic [31:0]  dbg_sdhci_rsp3;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp0_de;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp1_de;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp2_de;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_rsp3_de;
+
+    // (* mark_debug = "true" *) logic [159:0] dbg_sdhci_cmd_resp_shift;
+    // (* mark_debug = "true" *) logic [7:0]   dbg_sdhci_cmd_resp_shift_count;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_cmd_resp_shift_active;
+    // (* mark_debug = "true" *) logic         dbg_sdhci_sd_clk_en_p;
+
+    // assign dbg_sdhci_cmd_state          = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.cmd_state_q;
+    // assign dbg_sdhci_cmd_cycles_waiting = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.cycles_waiting;
+    // assign dbg_sdhci_accepted_rsp_type  = sdhci_i.i_axi_sdhci.i_autocmd_wrap.accepted_rsp_type_q;
+
+    // assign dbg_sdhci_rsp_rx_state             = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.rx_state_q;
+    // assign dbg_sdhci_rsp_bit_cnt              = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.bit_cnt;
+    // assign dbg_sdhci_rsp_long                 = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.long_rsp_i;
+    // assign dbg_sdhci_rsp_receiving            = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.receiving_o;
+    // assign dbg_sdhci_rsp_start_bit_observed   = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.start_bit_observed;
+    // assign dbg_sdhci_rsp_all_bits_received    = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.all_bits_received;
+    // assign dbg_sdhci_rsp_capture_bit          = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.capture_response_bit;
+    // assign dbg_sdhci_rsp_capture_word_bit     = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.capture_word_bit;
+    // assign dbg_sdhci_rsp_crc_start            = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.crc_start;
+    // assign dbg_sdhci_rsp_crc_end_output       = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.crc_end_output;
+    // assign dbg_sdhci_rsp_crc7_calc            = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.crc7_calc;
+    // assign dbg_sdhci_rsp_crc_corr             = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.crc_corr_o;
+    // assign dbg_sdhci_rsp0                     = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.response0_d_o;
+    // assign dbg_sdhci_rsp1                     = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.response1_d_o;
+    // assign dbg_sdhci_rsp2                     = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.response2_d_o;
+    // assign dbg_sdhci_rsp3                     = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.response3_d_o;
+    // assign dbg_sdhci_rsp0_de                  = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.response0_de_o;
+    // assign dbg_sdhci_rsp1_de                  = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.response1_de_o;
+    // assign dbg_sdhci_rsp2_de                  = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.response2_de_o;
+    // assign dbg_sdhci_rsp3_de                  = sdhci_i.i_axi_sdhci.i_autocmd_wrap.i_cmd_logic.i_rsp_read.response3_de_o;
+    // assign dbg_sdhci_sd_clk_en_p              = sdhci_i.i_axi_sdhci.sd_clk_en_p;
+
+    // always_ff @(posedge BUSCLK or negedge BUSRSTn) begin
+    //   if (!BUSRSTn) begin
+    //     dbg_sdhci_cmd_resp_shift        <= '0;
+    //     dbg_sdhci_cmd_resp_shift_count  <= '0;
+    //     dbg_sdhci_cmd_resp_shift_active <= 1'b0;
+    //   end else begin
+    //     if (dbg_sdhci_cmd_started) begin
+    //       dbg_sdhci_cmd_resp_shift        <= '0;
+    //       dbg_sdhci_cmd_resp_shift_count  <= '0;
+    //       dbg_sdhci_cmd_resp_shift_active <= 1'b0;
+    //     end else if (dbg_sdhci_rsp_start_bit_observed) begin
+    //       dbg_sdhci_cmd_resp_shift        <= {{159{1'b0}}, sd_cmd_i};
+    //       dbg_sdhci_cmd_resp_shift_count  <= 8'd1;
+    //       dbg_sdhci_cmd_resp_shift_active <= 1'b1;
+    //     end else if (dbg_sdhci_sd_clk_en_p && dbg_sdhci_cmd_resp_shift_active) begin
+    //       dbg_sdhci_cmd_resp_shift <= {dbg_sdhci_cmd_resp_shift[158:0], sd_cmd_i};
+    //       if (dbg_sdhci_cmd_resp_shift_count != 8'd160) begin
+    //         dbg_sdhci_cmd_resp_shift_count <= dbg_sdhci_cmd_resp_shift_count + 8'd1;
+    //       end
+    //       if (dbg_sdhci_cmd_result_valid || dbg_sdhci_cmd_timeout_error) begin
+    //         dbg_sdhci_cmd_resp_shift_active <= 1'b0;
+    //       end
+    //     end
+    //   end
+    // end
+
+  end else begin : gen_no_axi_sdhci
+    assign SD_CLK = 1'b0;
+    assign SD_CMD = 1'bz;
+    assign SD_DAT = 4'bzzzz;
+
+    assign sdhci_irq = 1'b0;
+    assign {sd_clk_o, sd_cd_ni, sd_cmd_en, sd_cmd_o, sd_cmd_i, sd_dat_en, sd_dat_o, sd_dat_i} = '0;
+
+    assign sdhci_reg_awready = 1'b0;
+    assign sdhci_reg_wready  = 1'b0;
+    assign sdhci_reg_arready = 1'b0;
+    assign sdhci_reg_bvalid  = 1'b0;
+    assign sdhci_reg_bresp   = 2'b00;
+    assign sdhci_reg_bid     = 4'b0000;
+    assign sdhci_reg_rvalid  = 1'b0;
+    assign sdhci_reg_rlast   = 1'b0;
+    assign sdhci_reg_rresp   = 2'b00;
+    assign sdhci_reg_rid     = 4'b0000;
+    assign sdhci_reg_rdata   = 64'b0;
+  end
+
+  always_ff @(posedge CPUCLK or negedge peripheral_aresetn) begin
+    if (!peripheral_aresetn) begin
+        sdhci_irq_ff1 <= 1'b0;
+        sdhci_irq_ff2 <= 1'b0;
+    end else begin
+        sdhci_irq_ff1 <= sdhci_irq;       // sdhci_irq is from BUSCLK domain
+        sdhci_irq_ff2 <= sdhci_irq_ff1;
+    end
+  end
+
 
   // M01 (AXI4/64) -> MMIO bridge -> AXI4-Lite/32 -> CDMA regs
   axi64_mmio_to_axilite32_v2 mmio_cdmaregs (
@@ -2254,7 +2599,21 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .cdma_introut  (dma_introut)
   );
 
-  assign ddr_ready    = c0_init_calib_complete & ~init_error;
+  // CDC: synchronizer for calib_complete signal
+  logic ddr_ready_raw;
+  (* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *) logic [1:0] ddr_ready_bus_sync;
+
+  assign ddr_ready_raw = c0_init_calib_complete & ~init_error;
+  always_ff @(posedge BUSCLK or posedge rst_req) begin
+    if (rst_req) begin
+        ddr_ready_bus_sync <= 2'b00;
+    end else if (ui_clk_sync_rst) begin
+        ddr_ready_bus_sync <= 2'b00;
+    end else begin
+        ddr_ready_bus_sync <= {ddr_ready_bus_sync[0], ddr_ready_raw};
+    end
+  end
+  assign ddr_ready = ddr_ready_bus_sync[1];
 
   assign BUSCORERST  = ~mmcm_locked;    // deassert once BUSCLK is stable; ui_clk_sync_rst stays high through calibration
   assign BUSCORERSTn = ~BUSCORERST;
