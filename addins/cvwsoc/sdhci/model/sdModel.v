@@ -127,6 +127,17 @@ module sdModel (
     end
   endfunction
 
+
+  function read_data_bit;
+    input integer idx;
+    input [2:0] bit_idx;
+    reg [7:0] tmp;
+    begin
+      tmp = read_data_byte(idx);
+      read_data_bit = tmp[bit_idx];
+    end
+  endfunction
+
   function [3:0] read_data_nibble;
     input integer idx;
     input hi;
@@ -155,7 +166,7 @@ module sdModel (
   // block-read and block-write support so Linux does not force mmcblk read-only;
   // READ_BL_LEN remains 9 for 512-byte blocks.  C_SIZE=0xff reports 128 MiB,
   // matching the image size used.
-  `define CSDSTART 120'h400000320059000000ff0000000000
+  `define CSDSTART 120'h400000321159000000ff0000000000
   // SCR metadata returned by ACMD51. Linux (and the standard?) requires SD cards to advertise both
   // 1-bit and 4-bit bus-width support in the SCR bus-width nibble.
   `define SCRSTART 64'h0000000000000500
@@ -875,12 +886,11 @@ module sdModel (
           oeDat <= 0;
         end
 
-        // ACMD51 is normally read before ACMD6, so the card is still in
-        // 1-bit mode. The original OpenCores model emitted SCR as 4-bit data
-        // regardless of BusWidth, producing malformed DAT traffic and bad CRC.
-        // Keep this fix deliberately narrow: only the ACMD51 + 1-bit transmit
-        // path is changed. Existing 4-bit/block-read behavior is left intact.
-        if (doingACMD51 && (BusWidth != 3'd4)) begin
+        // ACMD51/SCR and ACMD13/SD_STATUS can be requested while the card is
+        // still in 1-bit mode.  Linux does this for ACMD13 before switching the
+        // card to 4-bit mode.  The original OpenCores transmit path always
+        // emits 4 data lanes, which corrupts 1-bit ADTC reads.
+        if ((doingACMD51 || doingACMD13) && (BusWidth != 3'd4)) begin
           if (transf_cnt == 1) begin
             // Start bit on DAT0 only; DAT[3:1] stay high/idle.
             datOut <= 4'b1110;
@@ -890,9 +900,9 @@ module sdModel (
             write_out_index <= 0;
             data_send_bit_index <= 3'd7;
           end else if ((transf_cnt >= 2) && (transf_cnt <= bitBlockRec + 1)) begin
-            // Send SCR MSB-first on DAT0.
-            datOut <= {3'b111, SCR[write_out_index][data_send_bit_index]};
-            crcDat_in <= {3'b000, SCR[write_out_index][data_send_bit_index]};
+            // Send the selected register MSB-first on DAT0.
+            datOut <= {3'b111, read_data_bit(write_out_index, data_send_bit_index)};
+            crcDat_in <= {3'b000, read_data_bit(write_out_index, data_send_bit_index)};
             crcDat_en <= 1;
             crcDat_rst <= 0;
 

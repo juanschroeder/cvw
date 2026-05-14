@@ -156,3 +156,23 @@ foreach ila {u_ila_axi u_ila_spi} {
     puts "WARNING: temporary debug core ${ila} not found; no ILA false path applied"
   }
 }
+
+# SDHCI
+set sdhci_io_ports [get_ports -quiet {SD_CMD SD_DAT[*]}]
+set sdclk_obuf_o [get_pins -hier -quiet -regexp {.*SD_CLK.*OBUF.*\/O$}]
+
+if {[llength $sdclk_obuf_o] != 1} {
+  puts "ERROR: SD_CLK OBUF output candidates:"
+  puts [get_pins -hier -regexp {.*SD_CLK.*}]
+  error "Expected exactly one SD_CLK OBUF/O pin, got [llength $sdclk_obuf_o]: $sdclk_obuf_o"
+}
+
+create_generated_clock -name SDHCIDClk -source $sdclk_obuf_o -divide_by 1 [get_ports SD_CLK]
+
+# Card -> FPGA
+set_input_delay  -clock [get_clocks SDHCIDClk] -max -5.000 $sdhci_io_ports
+set_input_delay  -clock [get_clocks SDHCIDClk] -min  5.000 $sdhci_io_ports
+
+# FPGA -> Card
+set_output_delay -clock [get_clocks SDHCIDClk] -max -3.000 $sdhci_io_ports
+set_output_delay -clock [get_clocks SDHCIDClk] -min  3.000 $sdhci_io_ports

@@ -21,8 +21,8 @@
   cpus {
     #address-cells = <0x01>;
     #size-cells = <0x00>;
-    clock-frequency = <0x1C9C380>;
-    timebase-frequency = <0x1C9C380>;
+    clock-frequency = <0x05f5e100>;
+    timebase-frequency = <0x05f5e100>;
 
     cpu@0 {
       phandle = <0x01>;
@@ -53,13 +53,13 @@
 
     uart@10000000 {
       interrupts = <0x0a>;
-      interrupt-parent = <0x03>;
-      clock-frequency = <0x384000>;
+      interrupt-parent = <&plic>;
+      clock-frequency = <1843200>; //UART DLL=DLM
       reg = <0x00 0x10000000 0x00 0x100>;
       compatible = "ns16550a";
     };
 
-    plic@c000000 {
+    plic: plic@c000000 {
       phandle = <0x03>;
       riscv,ndev = <0x35>;
       reg = <0x00 0xc000000 0x00 0x210000>;

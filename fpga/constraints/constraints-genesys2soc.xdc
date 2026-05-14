@@ -136,27 +136,6 @@ set_property -dict { PACKAGE_PIN P29   IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [ge
 set_property -dict { PACKAGE_PIN T30   IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_DAT[3] }]; #IO_L9N_T1_DQS_D13_14 Sch=sd_dat[3]
 set_property -dict { PACKAGE_PIN R28   IOSTANDARD LVCMOS33 } [get_ports { SD_CLK }];                    #IO_L11P_T1_SRCC_14 Sch=sd_sclk
 
-set sdhci_io_ports [get_ports -quiet {SD_CMD SD_DAT[*]}]
-
-set sdhci_clk_src [get_pins -hier -quiet -regexp \
-  {.*gen_axi_sdhci\.sdhci_i/i_axi_sdhci/i_sd_clk_generator/clk_i$}]
-
-if {[llength $sdhci_clk_src] != 1} {
-  error "Expected exactly one SDHCI clock source pin, got [llength $sdhci_clk_src]: $sdhci_clk_src"
-}
-
-# Divider should match what's used in SDHCI instantiation
-create_generated_clock -name SDHCIDClk -source $sdhci_clk_src -divide_by 4 [get_ports SD_CLK]
-
-# Card data is treated as valid around the SD_CLK sampling edge.
-# The values were taken from SDHCI peripheral Cheshire integration.
-# SD Card -> FPGA.
-set_input_delay  -clock [get_clocks SDHCIDClk] -max -5.000 $sdhci_io_ports
-set_input_delay  -clock [get_clocks SDHCIDClk] -min  5.000 $sdhci_io_ports
-
-# FPGA -> SD Card.
-set_output_delay -clock [get_clocks SDHCIDClk] -max -3.000 $sdhci_io_ports
-set_output_delay -clock [get_clocks SDHCIDClk] -min  3.000 $sdhci_io_ports
 
 
 # *********************************

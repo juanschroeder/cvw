@@ -17,12 +17,13 @@ import cvw::*;
 
 
 // Enable what to simulate
-//`define SIM_AXI_RAM 1
-`define SIM_AXI_SDHCI 1
+`define SIM_AXI_RAM 1
+//`define SIM_AXI_SDHCI 1
 
 module testbench_cvwsoc #(
   parameter int unsigned CLK_PERIOD_NS       = 10,
-  parameter int unsigned BUS_CLK_PERIOD_NS   = 7,
+  //parameter int unsigned BUS_CLK_PERIOD_NS   = 7,
+  parameter int unsigned BUS_CLK_PERIOD_NS   = 5, //a bit faster simulation?
   parameter int unsigned RESET_CYCLES        = 32,
   parameter int unsigned BUS_RESET_CYCLES    = 64,
   parameter int unsigned EXT_MEM_ADDR_WIDTH  = 30,
