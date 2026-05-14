@@ -16,9 +16,12 @@
 import cvw::*;
 
 
-// Enable what to simulate
-`define SIM_AXI_RAM 1
-//`define SIM_AXI_SDHCI 1
+// Enable one external-memory model. SDHCI is opt-in; AXI RAM is the default.
+`ifndef SIM_AXI_RAM
+  `ifndef SIM_AXI_SDHCI
+    `define SIM_AXI_RAM 1
+  `endif
+`endif
 
 module testbench_cvwsoc #(
   parameter int unsigned CLK_PERIOD_NS       = 10,
@@ -83,7 +86,7 @@ module testbench_cvwsoc #(
   localparam longint unsigned HEARTBEAT_SPEED_INTERVAL_CYCLES_DEFAULT = HEARTBEAT_CYCLES;
   localparam logic [P.XLEN-1:0] KERNEL_ENTRY_PC = 64'h0000_0000_8020_0000;
   localparam longint unsigned XLEN_BYTES = P.XLEN / 8;
-  localparam longint unsigned BOOTROM_PRELOAD_START = SOC_P.BOOTROM_BASE >> 3;
+  localparam longint unsigned BOOTROM_PRELOAD_START = SOC_P.BOOTROM_BASE >> $clog2(XLEN_BYTES);
   localparam longint unsigned BOOTROM_WORDS = (SOC_P.BOOTROM_RANGE + 1) / XLEN_BYTES;
   localparam longint unsigned UNCORE_RAM_WORDS = (SOC_P.UNCORE_RAM_RANGE + 1) / XLEN_BYTES;
   localparam realtime HALF_PERIOD_NS = CLK_PERIOD_NS / 2.0;
@@ -214,6 +217,7 @@ module testbench_cvwsoc #(
   logic AXI_USBIntr = 1'b0;
   logic AXI_EthIntr = 1'b0;
   logic AXI_DummyIntr;
+  logic AXI_DummyIntr_orig;
   logic ExternalStall = 1'b0;
 
   // ---------------------------------------------------------------------------
@@ -797,7 +801,6 @@ module testbench_cvwsoc #(
   logic [3:0] sd_dat_o;
   logic [3:0] sd_dat_i;
 
-  logic AXI_DummyIntr_orig;
   axi_sdhci_wrap sdhci_i(
       // For simplicity we use same clock as the bus
       .aclk(bus_clk),
@@ -1261,11 +1264,6 @@ module testbench_cvwsoc #(
   endtask
 
   initial begin
-    if (P.XLEN != 64) begin
-      $error("testbench_cvwsoc expects a 64-bit Wally configuration.");
-      $finish;
-    end
-
     if (!$value$plusargs("BOOTROM_BIN=%s", bootrom_bin))
       bootrom_bin = "";
     if (!$value$plusargs("BOOTROM_MEMH=%s", bootrom_memh))
@@ -1322,7 +1320,9 @@ module testbench_cvwsoc #(
                 ". Override with +BOOTROM_BIN=<path> if needed."});
         $finish;
       end
-      bytes_read = $fread(soc.uncoregen.uncore.bootrom.bootrom.memory.ROM, file_handle);
+      bytes_read = $fread(soc.uncoregen.uncore.bootrom.bootrom.memory.ROM,
+                           file_handle,
+                           BOOTROM_PRELOAD_START);
       $fclose(file_handle);
       $display("Loaded %0d bytes of boot ROM from %s", bytes_read, bootrom_bin);
     end else begin
@@ -1387,7 +1387,7 @@ module testbench_cvwsoc #(
       uart_mount_sent <= 1'b0;
       uart_runcmd_sent <= 1'b0;
       heartbeat_speed_initialized <= 1'b0;
-      uart_recent <= "";
+      uart_recent = "";
       heartbeat_speed_prev_wall_s = 0.0;
       heartbeat_speed_elapsed_wall_s = 0.0;
       heartbeat_cycles_per_s = 0.0;
@@ -1470,9 +1470,9 @@ module testbench_cvwsoc #(
           $dumpoff;
           $dumpflush;
           $display("[trace] stopped at cycle=%0d", cycle_count + 1);
-          trace_started <= 1'b0;
-          trace_stopped <= 1'b1;
-          trace_stop_cycle_effective <= 0;
+          trace_started = 1'b0;
+          trace_stopped = 1'b1;
+          trace_stop_cycle_effective = 0;
         end
 
         if ((trace_external_control && trace_start_request && (!trace_started || trace_stopped)) ||

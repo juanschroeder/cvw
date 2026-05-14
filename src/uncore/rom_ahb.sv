@@ -38,9 +38,10 @@ module rom_ahb import cvw::*;  #(parameter cvw_t P,
   output logic                 HRESPRom, HREADYRom
 );
 
-  localparam ADDR_WIDTH    = $clog2(RANGE/8);
-  localparam OFFSET        = $clog2(P.XLEN/8);
-  localparam PRELOAD_START = P.BOOTROM_BASE >> 3; // boot.mem line 1 = ROM[BOOTROM_BASE/8]
+  localparam WORD_BYTES    = P.XLEN/8;
+  localparam ADDR_WIDTH    = $clog2((RANGE+1)/WORD_BYTES);
+  localparam OFFSET        = $clog2(WORD_BYTES);
+  localparam PRELOAD_START = P.BOOTROM_BASE >> OFFSET; // boot.mem line 1 = ROM[BOOTROM_BASE/WORD_BYTES]
 
   // Never stalls
   assign HREADYRom = 1'b1;

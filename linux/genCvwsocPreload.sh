@@ -9,7 +9,9 @@ CVWSOC_PRELOAD_DIR="${CVWSOC_PRELOAD_DIR:-$WALLY/sim/verilator/preload/cvwsoc}"
 
 QEMU_GDB_PORT="${QEMU_GDB_PORT:-1235}"
 QEMU_RAM_MB="${QEMU_RAM_MB:-1024}"
-QEMU_BIN="${QEMU_BIN:-qemu-system-riscv64}"
+CVWSOC_XLEN="${CVWSOC_XLEN:-64}"
+PRELOAD_WORD_BYTES="${PRELOAD_WORD_BYTES:-$((CVWSOC_XLEN / 8))}"
+QEMU_BIN="${QEMU_BIN:-qemu-system-riscv${CVWSOC_XLEN}}"
 GDB_BIN="${GDB_BIN:-riscv64-unknown-elf-gdb}"
 OBJCOPY_BIN="${OBJCOPY_BIN:-objcopy}"
 DTC_BIN="${DTC_BIN:-dtc}"
@@ -29,7 +31,11 @@ UBOOT_BIN="${UBOOT_BIN:-$CVWSOC_DEPLOY_DIR/u-boot.bin}"
 UBOOT_DTB="${UBOOT_DTB:-$CVWSOC_DEPLOY_DIR/cvwsoc-virt.dtb}"
 DTS_SRC="${DTS_SRC:-$WALLY/linux/devicetree/wally-virtsoc.dts}"
 
-CPU_ARGS="${CPU_ARGS:-rva22s64,zicond=true,zfa=true,zfh=true,zcb=true,zbc=true,zkn=true,sstc=true,svadu=true,svnapot=true,pmp=on,debug=off}"
+if [[ "${CVWSOC_XLEN}" == "32" ]]; then
+  CPU_ARGS="${CPU_ARGS:-rv32,pmp=on,debug=off}"
+else
+  CPU_ARGS="${CPU_ARGS:-rva22s64,zicond=true,zfa=true,zfh=true,zcb=true,zbc=true,zkn=true,sstc=true,svadu=true,svnapot=true,pmp=on,debug=off}"
+fi
 BOOTARGS="${BOOTARGS:-earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 ignore_loglevel loglevel=8 rdinit=/bin/busybox.nosuid -- sh}"
 INITRD_ADDR="${INITRD_ADDR:-0x84200000}"
 OPENSBI_DTB_ADDR="${OPENSBI_DTB_ADDR:-0x87000000}"
@@ -126,6 +132,15 @@ require_cmd file "file tool"
 require_cmd readlink "readlink tool"
 require_cmd "$DTC_BIN" "dtc tool"
 require_cmd python3 "python3 tool"
+
+case "$PRELOAD_WORD_BYTES" in
+  4|8)
+    ;;
+  *)
+    echo "Unsupported PRELOAD_WORD_BYTES=$PRELOAD_WORD_BYTES; expected 4 or 8" >&2
+    exit 1
+    ;;
+esac
 
 if [[ -z "$INITRD_SRC" ]]; then
   echo "Missing initrd image for IMAGE_KIND=$IMAGE_NAME in $CVWSOC_DEPLOY_DIR" >&2
@@ -239,8 +254,8 @@ else
     -M virt -m "${QEMU_RAM_MB}M" -nographic \
     -bios "$FW_JUMP_BIN" \
     -dtb "$GENERATED_DTB" \
-    -kernel "$UBOOT_BIN" \
     -cpu "$CPU_ARGS" \
+    -device loader,file="${UBOOT_BIN}",addr="${UBOOT_ADDR}",force-raw=on \
     -device loader,file="${UBOOT_DTB}",addr="${UBOOT_DTB_ADDR}" \
     -device loader,file="${QEMU_KERNEL}",addr="${KERNEL_ADDR}" \
     -device loader,file="${GENERATED_DTB}",addr="${KERNEL_DTB_ADDR}" \
@@ -268,11 +283,11 @@ fi
   -ex "dump binary memory ${RAW_RAM_FILE} ${RAM_BASE} ${RAM_END}" \
   -ex "kill"
 
-truncate -s %8 "$RAW_BOOTMEM_FILE"
-"$OBJCOPY_BIN" --reverse-bytes=8 -F binary "$RAW_BOOTMEM_FILE" "$BOOTMEM_FILE"
+truncate -s "%${PRELOAD_WORD_BYTES}" "$RAW_BOOTMEM_FILE"
+"$OBJCOPY_BIN" --reverse-bytes="${PRELOAD_WORD_BYTES}" -F binary "$RAW_BOOTMEM_FILE" "$BOOTMEM_FILE"
 
-truncate -s %8 "$RAW_RAM_FILE"
-"$OBJCOPY_BIN" --reverse-bytes=8 -F binary "$RAW_RAM_FILE" "$RAM_FILE"
+truncate -s "%${PRELOAD_WORD_BYTES}" "$RAW_RAM_FILE"
+"$OBJCOPY_BIN" --reverse-bytes="${PRELOAD_WORD_BYTES}" -F binary "$RAW_RAM_FILE" "$RAM_FILE"
 
 rm -f "$RAW_RAM_FILE"
 
@@ -284,5 +299,7 @@ echo "  initrd   : $QEMU_INITRD"
 echo "  dts      : $GENERATED_DTS"
 echo "  dtb      : $GENERATED_DTB"
 echo "  image    : $IMAGE_NAME"
+echo "  xlen     : $CVWSOC_XLEN"
+echo "  word     : $PRELOAD_WORD_BYTES bytes"
 echo "  bootargs : $BOOTARGS"
 echo "  addrs    : opensbi_dtb=${OPENSBI_DTB_ADDR} uboot=${UBOOT_ADDR} uboot_dtb=${UBOOT_DTB_ADDR} kernel=${KERNEL_ADDR} kernel_dtb=${KERNEL_DTB_ADDR} initrd=${INITRD_ADDR}"

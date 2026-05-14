@@ -63,6 +63,15 @@ genesys2socxlnx: export MAXSDCCLOCK  := 5000000
 genesys2socxlnx: export MIG_ADDR_WIDTH  :=  30
 genesys2socxlnx: FPGA_GENESYS2SOCXLNX
 
+genesys2soc32: export XILINX_PART := xc7k325tffg900-2
+genesys2soc32: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
+genesys2soc32: export board := genesys2soc32
+genesys2soc32: export SYSTEMCLOCK := 40000000
+genesys2soc32: export MAXSDCCLOCK  := 5000000
+genesys2soc32: export MIG_ADDR_WIDTH  :=  30
+genesys2soc32: FPGA_GENESYS2SOC
+
+
 
 # variables computed from config
 EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
@@ -146,7 +155,6 @@ IP_NEXYSA7SOC: $(dst)/sysrst.log \
 IP_GENESYS2SOC: $(dst)/sysrst.log \
 	MEM_GENESYS2 \
 	$(dst)/mmcm-genesys2soc.log \
-    $(dst)/ahbaxibridge.log	\
 	$(dst)/axicdma.log
 
 IP_GENESYS2SOCXLNX: $(dst)/sysrst.log \
