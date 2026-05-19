@@ -66,10 +66,6 @@ module ahbinterface #(
   logic [AHBW-1:0]                      HWDATAPre;
   logic [AHBW/8-1:0]                    HWSTRBPre;
 
-  if (AHBW < XLEN | AHBW % XLEN != 0) begin : unsupported
-    AHBW_MUST_BE_XLEN_OR_A_MULTIPLE_OF_XLEN unsupported();
-  end
-
   flopen #(AHBW) fb(.clk(HCLK), .en(CaptureEn), .d(HRDATA), .q(FetchBuffer));
 
   if(AHBW == XLEN) begin : noresize
