@@ -1,0 +1,183 @@
+cores:
+  cvw_debug_la:
+    type: logic_analyzer
+    sample_depth: 512
+    trigger_location: 128
+    trigger_mode: single_shot
+    triggers:
+      - uber_calib_state CHANGING
+      # - init_calib_complete RISING
+      # - soc_reset_ext FALLING
+      # - ahb_ext_req RISING
+      # - dtb_window_req RISING
+    probes:
+      # Reset / global status
+      rst_req: 1
+      soc_reset_ext: 1
+      resetn_pin: 1
+      south_reset_pin: 1
+      wally_reset: 1
+      hresetn_open: 1
+      pll_locked: 1
+      init_calib_complete: 1
+      ui_aresetn: 1
+      ui_clk_sync_rst: 1
+      ddr_ready_raw: 1
+      ddr_ready_meta: 1
+      ddr_ready_cpuclk: 1
+      reset_status: 16
+
+      # UberDDR3 calibration debug. debug1[4:0] is state_calibrate.
+      uber_debug1: 32
+      uber_calib_state: 5
+
+      # Basic CPU progress
+      pcf: 32
+      pcm: 32
+      instr_m: 32
+      instr_raw_d: 32
+      instr_valid_m: 1
+      stall_m: 1
+      stall_f: 1
+      stall_d: 1
+      stall_e: 1
+      stall_w: 1
+      flush_m: 1
+      flush_d: 1
+      flush_e: 1
+      flush_w: 1
+      trap_m: 1
+      interrupt_m: 1
+      exception_m: 1
+      mcause: 64
+      mepc: 64
+      mtval: 64
+      scause: 64
+      sepc: 64
+      stval: 64
+      satp: 64
+      mcycle_lo: 32
+      minstret_lo: 32
+      priv_mode_w: 2
+      wfi_m: 1
+      int_pending_m: 1
+      ifu_stall_f: 1
+      lsu_stall_m: 1
+      icache_stall_f: 1
+      dcache_stall_m: 1
+      mtimer_int: 1
+      mext_int: 1
+      sext_int: 1
+      msw_int: 1
+      gpr_a0_lo: 32
+      gpr_a1_lo: 32
+      gpr_a2_lo: 32
+      gpr_a3_lo: 32
+      gpr_a5_lo: 32
+      linux_kernel_seen: 1
+      linux_first_null_fault: 1
+      linux_long_no_retire_not_wfi: 1
+      linux_long_stall_m: 1
+      linux_long_ext_wait: 1
+      linux_long_same_pcm: 1
+      no_retire_count: 16
+      stall_m_count: 16
+      ext_wait_count: 16
+      same_pcm_count: 16
+      linux_hang_class: 4
+      uart_out: 1
+
+      # External AHB bus
+      ahb_haddr: 32
+      ahb_hwrite: 1
+      ahb_htrans: 2
+      ahb_hsize: 3
+      ahb_hburst: 3
+      ahb_hready: 1
+      ahb_hreadyext: 1
+      ahb_hrespext: 1
+      ahb_hselext: 1
+      ahb_ext_req: 1
+      ahb_ext_wait: 1
+      ahb_hwdata: 64
+      ahb_hrdataext: 64
+
+      # DTB access helpers
+      # dtb_window_req: 1
+      # dtb_word_0_req: 1
+      # dtb_word_8_req: 1
+      # dtb_word_10_req: 1
+      # dtb_word_18_req: 1
+      ext_req_count: 16
+
+      # AXI CPU-clock side, enable when debugging AHB->AXI/CDC traffic.
+      # axi_awvalid: 1
+      # axi_awready: 1
+      # axi_wvalid: 1
+      # axi_wready: 1
+      # axi_bvalid: 1
+      # axi_bready: 1
+      # axi_arvalid: 1
+      # axi_arready: 1
+      # axi_rvalid: 1
+      # axi_rready: 1
+      # axi_rlast: 1
+      # axi_aw_count: 16
+      # axi_w_count: 16
+      # axi_b_count: 16
+      # axi_ar_count: 16
+      # axi_r_count: 16
+
+      # URAM / bootrom banner probes, enable when debugging UNCORE_RAM contents.
+      # uram_haddr: 32
+      # uram_ramaddr: 32
+      # uram_word_index: 13
+      # uram_byte_offset: 3
+      # uram_hsel: 1
+      # uram_hseld: 1
+      # uram_hreadyram: 1
+      # uram_hrespram: 1
+      # uram_hreadram: 64
+      # uram_read_req: 1
+      # uram_banner_req: 1
+      # uram_banner_word_ok: 1
+      # uram_banner_word_zero: 1
+
+      # SD/SPI probes, enable when debugging card/GPT/DTB block loading.
+      sdc_entry: 8
+      sdc_memwrite: 1
+      sdc_din: 32
+      sdc_dout: 32
+      sdc_tx_reg: 8
+      sdc_rx_data: 8
+      sdc_sck: 1
+      sdc_cmd: 1
+      sdc_cs: 1
+      # extra SPI probes, disabled because command-byte trigger is not reliable.
+      # sdc_txdata_write: 1
+      # sdc_cmd_byte_seen: 1
+      # sdc_cmd_byte: 8
+      # sdc_cmd_index: 6
+      # sdc_prev_cmd_index: 6
+      # sdc_cmd13_any: 1
+      # sdc_acmd13_cmd_byte: 1
+
+      # Linux serial-probe trigger from current hung-task trace addresses.
+      # kernel_serial_probe_pc: 1
+
+      # APB UART peripheral probes, enable when debugging UART register writes.
+      # uart_memwrite: 1
+      # uart_paddr: 3
+      # uart_pwdata: 8
+      # uart_tx: 1
+
+      # dbg_cond1: 1
+      # dbg_cond2: 1
+      # dbg_cond3: 1
+
+uart:
+  port: "/dev/ttyUSB2"
+  baudrate: 500000
+  clock_freq: 12500000
+  stall_interval: 8
+  chunk_size: 64

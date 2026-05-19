@@ -37,6 +37,7 @@ module uberddr3_wrapper #(
     output wire                        o_ui_aresetn,     // active-low version of the same reset
     output wire                        o_pll_locked,
     output wire                        o_init_calib_complete,
+    output wire [31:0]                 o_debug1,
 
     // ------------------------------------------------------------------------
     // AXI slave interface (SoC side, kept MIG/LiteDRAM-like)
@@ -466,7 +467,7 @@ module uberddr3_wrapper #(
         .o_ddr3_dm             (o_ddr3_dm),
         .o_ddr3_odt            (o_ddr3_odt),
         .o_calib_complete      (o_init_calib_complete),
-        .o_debug1              (),
+        .o_debug1              (o_debug1),
         .i_user_self_refresh   (1'b0)
     );
 
