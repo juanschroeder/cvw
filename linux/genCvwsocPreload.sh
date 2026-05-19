@@ -23,6 +23,15 @@ SKIP_GDB_DUMPS="${SKIP_GDB_DUMPS:-0}"
 UBOOT_INCLUDE="${UBOOT_INCLUDE:-0}"
 IMAGE_KIND="${IMAGE_KIND:-tiny}"
 INITRD_EXT2="${INITRD_EXT2:-0}"
+ROOTFS_MODE="${ROOTFS_MODE:-initrd}"
+ROMFS_ADDR="${ROMFS_ADDR:-0x8e000000}"
+ROMFS_LABEL="${ROMFS_LABEL:-wally-rootfs}"
+ROMFS_ALIGN="${ROMFS_ALIGN:-4096}"
+ROMFS_COMPATIBLE="${ROMFS_COMPATIBLE:-mtd-ram}"
+ROMFS_DTS_SIZE="${ROMFS_DTS_SIZE:-}"
+ROMFS_DTS_SIZE_MIN="${ROMFS_DTS_SIZE_MIN:-0x400000}"
+ROMFS_DTS_SIZE_ALIGN="${ROMFS_DTS_SIZE_ALIGN:-0x1000}"
+ROMFS_BANK_WIDTH="${ROMFS_BANK_WIDTH:-1}"
 
 FW_JUMP_BIN="${FW_JUMP_BIN:-$CVWSOC_DEPLOY_DIR/fw_jump.bin}"
 KERNEL_SRC="${KERNEL_SRC:-}"
@@ -88,6 +97,9 @@ QEMU_INITRD_EXT="cpio"
 if [[ "$INITRD_EXT2" != "0" ]]; then
   QEMU_INITRD_EXT="ext2"
 fi
+if [[ "$ROOTFS_MODE" == "romfs" || "$ROOTFS_MODE" == "romfs-initrd" ]]; then
+  QEMU_INITRD_EXT="romfs"
+fi
 QEMU_INITRD="${QEMU_INITRD:-$CVWSOC_PRELOAD_DIR/initrd-qemu-cvwsoc-${MODE_TAG}.${QEMU_INITRD_EXT}}"
 GENERATED_DTS="${GENERATED_DTS:-$CVWSOC_PRELOAD_DIR/wally-virtsoc-${MODE_TAG}.dts}"
 GENERATED_DTB="${GENERATED_DTB:-$CVWSOC_PRELOAD_DIR/wally-virtsoc-${MODE_TAG}.dtb}"
@@ -132,6 +144,10 @@ require_cmd file "file tool"
 require_cmd readlink "readlink tool"
 require_cmd "$DTC_BIN" "dtc tool"
 require_cmd python3 "python3 tool"
+if [[ "$ROOTFS_MODE" == "romfs" || "$ROOTFS_MODE" == "romfs-initrd" ]]; then
+  require_cmd cpio "cpio tool"
+  require_cmd genromfs "genromfs tool"
+fi
 
 case "$PRELOAD_WORD_BYTES" in
   4|8)
@@ -167,7 +183,18 @@ else
   cp "$KERNEL_SRC_REAL" "$QEMU_KERNEL"
 fi
 
-if [[ "$INITRD_FILE_DESC" == *"gzip compressed data"* ]]; then
+if [[ "$ROOTFS_MODE" == "romfs" || "$ROOTFS_MODE" == "romfs-initrd" ]]; then
+  ROOTFS_EXTRACT_DIR="$(mktemp -d)"
+  ROOTFS_CPIO="$ROOTFS_EXTRACT_DIR/rootfs.cpio"
+  if [[ "$INITRD_FILE_DESC" == *"gzip compressed data"* ]]; then
+    gzip -dc "$INITRD_SRC_REAL" > "$ROOTFS_CPIO"
+  else
+    cp "$INITRD_SRC_REAL" "$ROOTFS_CPIO"
+  fi
+  (cd "$ROOTFS_EXTRACT_DIR" && mkdir rootfs && cd rootfs && cpio -idm --quiet < "$ROOTFS_CPIO")
+  genromfs -f "$QEMU_INITRD" -d "$ROOTFS_EXTRACT_DIR/rootfs" -V "$ROMFS_LABEL" -a "$ROMFS_ALIGN"
+  rm -rf "$ROOTFS_EXTRACT_DIR"
+elif [[ "$INITRD_FILE_DESC" == *"gzip compressed data"* ]]; then
   gzip -dc "$INITRD_SRC_REAL" > "$QEMU_INITRD"
 else
   cp "$INITRD_SRC_REAL" "$QEMU_INITRD"
@@ -191,7 +218,8 @@ print(f"0x{start + size:08x}")
 PY
 )"
 
-python3 - <<'PY' "$DTS_SRC" "$GENERATED_DTS" "$INITRD_ADDR" "$INITRD_END_HEX" "$BOOTARGS"
+python3 - <<'PY' "$DTS_SRC" "$GENERATED_DTS" "$INITRD_ADDR" "$INITRD_END_HEX" "$BOOTARGS" "$ROOTFS_MODE" "$ROMFS_ADDR" "$QEMU_INITRD" "$ROMFS_COMPATIBLE" "$ROMFS_DTS_SIZE" "$ROMFS_BANK_WIDTH" "$ROMFS_DTS_SIZE_MIN" "$ROMFS_DTS_SIZE_ALIGN"
+import os
 import pathlib
 import re
 import sys
@@ -201,9 +229,55 @@ dst = pathlib.Path(sys.argv[2])
 initrd_start = sys.argv[3]
 initrd_end = sys.argv[4]
 bootargs = sys.argv[5]
+rootfs_mode = sys.argv[6]
+romfs_addr = int(sys.argv[7], 16)
+romfs_size = os.path.getsize(sys.argv[8])
+romfs_compatible = sys.argv[9]
+romfs_dts_size = sys.argv[10]
+romfs_bank_width = sys.argv[11]
+romfs_dts_size_min = int(sys.argv[12], 0)
+romfs_dts_size_align = int(sys.argv[13], 0)
+if romfs_dts_size:
+    romfs_size = int(romfs_dts_size, 0)
+else:
+    romfs_size = max(romfs_size, romfs_dts_size_min)
+    romfs_size = (romfs_size + romfs_dts_size_align - 1) // romfs_dts_size_align * romfs_dts_size_align
 
-src = re.sub(r'linux,initrd-start\s*=\s*<0x[0-9a-fA-F]+>;', f'linux,initrd-start = <{initrd_start}>;', src)
-src = re.sub(r'linux,initrd-end\s*=\s*<0x[0-9a-fA-F]+>;', f'linux,initrd-end = <{initrd_end}>;', src)
+if rootfs_mode == "romfs":
+    src = re.sub(r'\n\s*linux,initrd-start\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
+    src = re.sub(r'\n\s*linux,initrd-end\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
+    romfs_node = f'''
+
+  romfs@{romfs_addr:x} {{
+    compatible = "{romfs_compatible}";
+    reg = <0x{romfs_addr >> 32:x} 0x{romfs_addr & 0xffffffff:08x} 0x0 0x{romfs_size:x}>;
+    bank-width = <{romfs_bank_width}>;
+  }};
+'''
+    reserved_node = f'''
+
+  reserved-memory {{
+    #address-cells = <2>;
+    #size-cells = <2>;
+    ranges;
+
+    romfs_reserved: rootfs@{romfs_addr:x} {{
+      reg = <0x{romfs_addr >> 32:x} 0x{romfs_addr & 0xffffffff:08x} 0x0 0x{romfs_size:x}>;
+      no-map;
+    }};
+  }};
+'''
+    if re.search(r'\n\s*romfs@[0-9a-fA-F]+\s*\{.*?\n\s*\};', src, flags=re.S):
+        src = re.sub(r'\n\s*romfs@[0-9a-fA-F]+\s*\{.*?\n\s*\};', romfs_node.rstrip(), src, flags=re.S)
+    else:
+        src = re.sub(r'\n\s*soc\s*\{', romfs_node + '\n  soc {', src, count=1)
+    if re.search(r'\n\s*reserved-memory\s*\{.*?\n\s*\};', src, flags=re.S):
+        src = re.sub(r'\n\s*reserved-memory\s*\{.*?\n\s*\};', reserved_node.rstrip(), src, flags=re.S)
+    else:
+        src = re.sub(r'\n\s*soc\s*\{', reserved_node + '\n  soc {', src, count=1)
+else:
+    src = re.sub(r'linux,initrd-start\s*=\s*<0x[0-9a-fA-F]+>;', f'linux,initrd-start = <{initrd_start}>;', src)
+    src = re.sub(r'linux,initrd-end\s*=\s*<0x[0-9a-fA-F]+>;', f'linux,initrd-end = <{initrd_end}>;', src)
 src = re.sub(r'bootargs\s*=\s*".*?";', f'bootargs = "{bootargs}";', src)
 dst.write_text(src)
 PY
@@ -239,6 +313,10 @@ cleanup() {
 trap cleanup EXIT
 
 if [[ "$MODE_TAG" == "linux" ]]; then
+  ROOTFS_LOADER_ADDR="$INITRD_ADDR"
+  if [[ "$ROOTFS_MODE" == "romfs" ]]; then
+    ROOTFS_LOADER_ADDR="$ROMFS_ADDR"
+  fi
   "$QEMU_BIN" \
     -M virt -m "${QEMU_RAM_MB}M" -nographic \
     -bios "$FW_JUMP_BIN" \
@@ -246,10 +324,14 @@ if [[ "$MODE_TAG" == "linux" ]]; then
     -cpu "$CPU_ARGS" \
     -device loader,file="${QEMU_KERNEL}",addr="${KERNEL_ADDR}" \
     -device loader,file="${GENERATED_DTB}",addr="${KERNEL_DTB_ADDR}" \
-    -device loader,file="${QEMU_INITRD}",addr="${INITRD_ADDR}" \
+    -device loader,file="${QEMU_INITRD}",addr="${ROOTFS_LOADER_ADDR}",force-raw=on \
     -gdb "tcp::${QEMU_GDB_PORT}" -S &
 
 else
+  ROOTFS_LOADER_ADDR="$INITRD_ADDR"
+  if [[ "$ROOTFS_MODE" == "romfs" ]]; then
+    ROOTFS_LOADER_ADDR="$ROMFS_ADDR"
+  fi
   "$QEMU_BIN" \
     -M virt -m "${QEMU_RAM_MB}M" -nographic \
     -bios "$FW_JUMP_BIN" \
@@ -259,7 +341,7 @@ else
     -device loader,file="${UBOOT_DTB}",addr="${UBOOT_DTB_ADDR}" \
     -device loader,file="${QEMU_KERNEL}",addr="${KERNEL_ADDR}" \
     -device loader,file="${GENERATED_DTB}",addr="${KERNEL_DTB_ADDR}" \
-    -device loader,file="${QEMU_INITRD}",addr="${INITRD_ADDR}" \
+    -device loader,file="${QEMU_INITRD}",addr="${ROOTFS_LOADER_ADDR}",force-raw=on \
     -gdb "tcp::${QEMU_GDB_PORT}" -S &
 fi
 QEMU_PID=$!
@@ -289,6 +371,39 @@ truncate -s "%${PRELOAD_WORD_BYTES}" "$RAW_BOOTMEM_FILE"
 truncate -s "%${PRELOAD_WORD_BYTES}" "$RAW_RAM_FILE"
 "$OBJCOPY_BIN" --reverse-bytes="${PRELOAD_WORD_BYTES}" -F binary "$RAW_RAM_FILE" "$RAM_FILE"
 
+if [[ "$ROOTFS_MODE" == "romfs" ]]; then
+  python3 - <<'PY' "$RAM_FILE" "$QEMU_INITRD" "$RAM_BASE" "$ROMFS_ADDR" "$PRELOAD_WORD_BYTES"
+import pathlib
+import sys
+
+ram_path = pathlib.Path(sys.argv[1])
+romfs_path = pathlib.Path(sys.argv[2])
+ram_base = int(sys.argv[3], 0)
+romfs_addr = int(sys.argv[4], 0)
+word_bytes = int(sys.argv[5], 0)
+offset = romfs_addr - ram_base
+romfs = romfs_path.read_bytes()
+if offset < 0:
+    raise SystemExit(f"ROMFS address 0x{romfs_addr:x} is below RAM base 0x{ram_base:x}")
+
+with ram_path.open("rb") as f:
+    f.seek(offset)
+    stored = f.read(len(romfs))
+
+restored = bytearray()
+for idx in range(0, len(stored), word_bytes):
+    restored.extend(stored[idx:idx + word_bytes][::-1])
+restored = bytes(restored[:len(romfs)])
+
+if restored != romfs:
+    raise SystemExit(
+        f"{ram_path}: ROMFS mismatch at offset 0x{offset:x} "
+        f"(phys 0x{romfs_addr:x}); expected {romfs[:8]!r}, got {restored[:8]!r}"
+    )
+print(f"Verified ROMFS preload at offset 0x{offset:x} (phys 0x{romfs_addr:x}, {len(romfs)} bytes)")
+PY
+fi
+
 rm -f "$RAW_RAM_FILE"
 
 echo "Generated cvwsoc preload images (${MODE_TAG}):"
@@ -302,4 +417,5 @@ echo "  image    : $IMAGE_NAME"
 echo "  xlen     : $CVWSOC_XLEN"
 echo "  word     : $PRELOAD_WORD_BYTES bytes"
 echo "  bootargs : $BOOTARGS"
-echo "  addrs    : opensbi_dtb=${OPENSBI_DTB_ADDR} uboot=${UBOOT_ADDR} uboot_dtb=${UBOOT_DTB_ADDR} kernel=${KERNEL_ADDR} kernel_dtb=${KERNEL_DTB_ADDR} initrd=${INITRD_ADDR}"
+echo "  rootfs   : $ROOTFS_MODE"
+echo "  addrs    : opensbi_dtb=${OPENSBI_DTB_ADDR} uboot=${UBOOT_ADDR} uboot_dtb=${UBOOT_DTB_ADDR} kernel=${KERNEL_ADDR} kernel_dtb=${KERNEL_DTB_ADDR} initrd=${INITRD_ADDR} romfs=${ROMFS_ADDR}"
