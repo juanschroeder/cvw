@@ -51,6 +51,7 @@ OPENSBI_DTB_ADDR="${OPENSBI_DTB_ADDR:-0x87000000}"
 KERNEL_DTB_ADDR="${KERNEL_DTB_ADDR:-0x87000000}"
 UBOOT_DTB_ADDR="${UBOOT_DTB_ADDR:-0x80350000}"
 UBOOT_ADDR="${UBOOT_ADDR:-0x80200000}"
+UBOOT_STUB_BIN="${UBOOT_STUB_BIN:-$CVWSOC_PRELOAD_DIR/uboot-replacement-stub-rv${CVWSOC_XLEN}.bin}"
 MODE_TAG="linux"
 if [[ "$UBOOT_INCLUDE" != "0" ]]; then
   MODE_TAG="uboot"
@@ -164,7 +165,9 @@ if [[ -z "$INITRD_SRC" ]]; then
 fi
 require_file "$INITRD_SRC" "initrd image"
 
-if [[ "$MODE_TAG" == "uboot" ]]; then
+if [[ "$MODE_TAG" == "linux" ]]; then
+  require_file "$UBOOT_STUB_BIN" "u-boot replacement stub"
+else
   require_file "$UBOOT_BIN" "u-boot image"
   require_file "$UBOOT_DTB" "u-boot DTB"
 fi
@@ -293,6 +296,9 @@ if [[ "$SKIP_GDB_DUMPS" != "0" ]]; then
   echo "  initrd   : $QEMU_INITRD"
   echo "  dts      : $GENERATED_DTS"
   echo "  dtb      : $GENERATED_DTB"
+  if [[ "$MODE_TAG" == "linux" ]]; then
+    echo "  stub     : $UBOOT_STUB_BIN"
+  fi
   echo "  image    : $IMAGE_NAME"
   echo "  bootargs : $BOOTARGS"
   exit 0
@@ -322,6 +328,7 @@ if [[ "$MODE_TAG" == "linux" ]]; then
     -bios "$FW_JUMP_BIN" \
     -dtb "$GENERATED_DTB" \
     -cpu "$CPU_ARGS" \
+    -device loader,file="${UBOOT_STUB_BIN}",addr="${UBOOT_ADDR}",force-raw=on \
     -device loader,file="${QEMU_KERNEL}",addr="${KERNEL_ADDR}" \
     -device loader,file="${GENERATED_DTB}",addr="${KERNEL_DTB_ADDR}" \
     -device loader,file="${QEMU_INITRD}",addr="${ROOTFS_LOADER_ADDR}",force-raw=on \
@@ -413,6 +420,9 @@ echo "  kernel   : $QEMU_KERNEL"
 echo "  initrd   : $QEMU_INITRD"
 echo "  dts      : $GENERATED_DTS"
 echo "  dtb      : $GENERATED_DTB"
+if [[ "$MODE_TAG" == "linux" ]]; then
+  echo "  stub     : $UBOOT_STUB_BIN"
+fi
 echo "  image    : $IMAGE_NAME"
 echo "  xlen     : $CVWSOC_XLEN"
 echo "  word     : $PRELOAD_WORD_BYTES bytes"
