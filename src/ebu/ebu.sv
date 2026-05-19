@@ -46,8 +46,8 @@ module ebu import cvw::*;  #(parameter cvw_t P) (
   input  logic [2:0]          LSUHSIZE,  // LSU AHB size
   input  logic [2:0]          LSUHBURST, // LSU AHB burst length
   input  logic [P.PA_BITS-1:0]  LSUHADDR,  // LSU AHB address
-  input  logic [P.XLEN-1:0]     LSUHWDATA, // initially support AHBW = XLEN
-  input  logic [P.XLEN/8-1:0]   LSUHWSTRB, // AHB byte mask
+  input  logic [P.AHBW-1:0]     LSUHWDATA, // initially support AHBW = XLEN
+  input  logic [P.AHBW/8-1:0]   LSUHWSTRB, // AHB byte mask
   output logic                LSUHREADY, // AHB peripheral. Never gated as LSU always has priority
 
   // AHB-Lite external signals
@@ -56,7 +56,7 @@ module ebu import cvw::*;  #(parameter cvw_t P) (
   input  logic                HRESP,     // AHB peripheral response. 0: OK 1: Error.  Presently ignored.
   output logic [P.PA_BITS-1:0]  HADDR,     // AHB address to peripheral after arbitration
   output logic [P.AHBW-1:0]     HWDATA,    // AHB Write data after arbitration
-  output logic [P.XLEN/8-1:0]   HWSTRB,    // AHB byte write enables after arbitration
+  output logic [P.AHBW/8-1:0]   HWSTRB,    // AHB byte write enables after arbitration
   output logic                HWRITE,    // AHB transaction direction after arbitration
   output logic [2:0]          HSIZE,     // AHB transaction size after arbitration
   output logic [2:0]          HBURST,    // AHB burst length after arbitration

@@ -34,7 +34,7 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   input  logic                 TIMECLK,
   input  logic [P.PA_BITS-1:0] HADDR,
   input  logic [P.AHBW-1:0]    HWDATA,
-  input  logic [P.XLEN/8-1:0]  HWSTRB,
+  input  logic [P.AHBW/8-1:0]  HWSTRB,
   input  logic                 HWRITE,
   input  logic [2:0]           HSIZE,
   input  logic [2:0]           HBURST,
@@ -82,7 +82,7 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   input logic AXI_SDHCIIntr
 );
 
-  logic [P.XLEN-1:0]           HREADRam, HREADSDC;
+  logic [P.AHBW-1:0]           HREADRam, HREADSDC;
   // Wishbone stuff
   logic [P.XLEN-1:0]  HREADWbIsland;
   logic               HRESPWbIsland, HREADYWbIsland;
@@ -105,7 +105,7 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   logic                        HSELEXT_DDR;
   logic                        HRESPRam,  HRESPSDC;
   logic                        HREADYRam, HRESPSDCD;
-  logic [P.XLEN-1:0]           HREADBootRom;
+  logic [P.AHBW-1:0]           HREADBootRom;
   logic                        HSELBootRom, HSELBootRomD, HRESPBootRom, HREADYBootRom, HREADYSDC;
   logic                        HSELNoneD;
   logic                        UARTIntr,GPIOIntr, SPIIntr;
@@ -134,13 +134,13 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   logic                        PCLK, PRESETn, PWRITE, PENABLE;
   logic [5:0]                  PSEL;
   logic [31:0]                 PADDR;
-  logic [P.XLEN-1:0]           PWDATA;
-  logic [P.XLEN/8-1:0]         PSTRB;
+  logic [P.AHBW-1:0]           PWDATA;
+  logic [P.AHBW/8-1:0]         PSTRB;
   /* verilator lint_off UNDRIVEN */ // undriven in rv32e configuration
   logic [5:0]                  PREADY;
-  logic [5:0][P.XLEN-1:0]      PRDATA;
+  logic [5:0][P.AHBW-1:0]      PRDATA;
   /* verilator lint_on UNDRIVEN */
-  logic [P.XLEN-1:0]           HREADBRIDGE;
+  logic [P.AHBW-1:0]           HREADBRIDGE;
   logic                        HRESPBRIDGE, HREADYBRIDGE, HSELBRIDGE, HSELBRIDGED;
   /* SDC Interrupt (SPI Controller) */
   logic                        SDCIntr;
@@ -282,11 +282,11 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
   assign HSELEXT = HSELEXT_DDR | HSELAXIDMA | HSELAXIVGA | HSELAXIUSB | HSELAXIETH | HSELAXILITEDRAM | HSELAXIDUMMY | HSELAXISDHCI; // OUTPUT
 
   // AHB Read Multiplexer
-  assign HRDATA = ({P.XLEN{HSELRamD}} & HREADRam) |
-                  ({P.XLEN{HSELWbIslandD}} & HREADWbIsland) |
-                  ({P.XLEN{HSELEXTD_ALL}} & HRDATAEXT) |
-                  ({P.XLEN{HSELBRIDGED}} & HREADBRIDGE) |
-                  ({P.XLEN{HSELBootRomD}} & HREADBootRom);
+  assign HRDATA = ({P.AHBW{HSELRamD}} & HREADRam) |
+                  ({P.AHBW{HSELWbIslandD}} & HREADWbIsland) |
+                  ({P.AHBW{HSELEXTD_ALL}} & HRDATAEXT) |
+                  ({P.AHBW{HSELBRIDGED}} & HREADBRIDGE) |
+                  ({P.AHBW{HSELBootRomD}} & HREADBootRom);
 
   assign HRESP = HSELRamD & HRESPRam |
                  HSELWbIslandD & HRESPWbIsland |

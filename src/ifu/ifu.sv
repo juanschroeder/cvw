@@ -39,7 +39,7 @@ module ifu import cvw::*;  #(parameter cvw_t P) (
   input  logic                 JumpD, JumpE,
   // Bus interface
   output logic [P.PA_BITS-1:0] IFUHADDR,                                 // Bus address from IFU to EBU
-  input  logic [P.XLEN-1:0]    HRDATA,                                   // Bus read data from IFU to EBU
+  input  logic [P.AHBW-1:0]    HRDATA,                                   // Bus read data from IFU to EBU
   input  logic                 IFUHREADY,                                // Bus ready from IFU to EBU
   output logic                 IFUHWRITE,                                // Bus write operation from IFU to EBU
   output logic [2:0]           IFUHSIZE,                                 // Bus operation size from IFU to EBU
@@ -100,7 +100,7 @@ module ifu import cvw::*;  #(parameter cvw_t P) (
 );
 
   localparam [31:0]            nop = 32'h00000013;                       // instruction for NOP
-  localparam            LINELEN = P.ICACHE_SUPPORTED ? P.ICACHE_LINELENINBITS : P.XLEN;
+  localparam            LINELEN = P.ICACHE_SUPPORTED ? P.ICACHE_LINELENINBITS : P.AHBW;
 
   logic [P.XLEN-1:0]           PCNextF;                                  // Next PCF, selected from Branch predictor, Privilege, or PC+2/4
   logic [P.XLEN-1:0]           PC1NextF;                                 // Branch predictor next PCF
@@ -284,7 +284,7 @@ module ifu import cvw::*;  #(parameter cvw_t P) (
       assign BusRW = ~ITLBMissF & ~SelIROM ? IFURWF : 0;
       assign IFUHSIZE = 3'b010;
 
-      ahbinterface #(P.XLEN, 1'b0) ahbinterface(.HCLK(clk), .Flush(FlushD), .HRESETn(~reset), .HREADY(IFUHREADY),
+      ahbinterface #(.XLEN(P.XLEN), .LSU(1'b0), .AHBW(P.AHBW)) ahbinterface(.HCLK(clk), .Flush(FlushD), .HRESETn(~reset), .HREADY(IFUHREADY),
         .HRDATA(HRDATA), .HTRANS(IFUHTRANS), .HWRITE(IFUHWRITE), .HWDATA(),
         .HWSTRB(), .BusRW, .BusAtomic('0), .ByteMask(), .WriteData('0),
         .Stall(GatedStallD), .BusStall, .BusCommitted(BusCommittedF), .FetchBuffer(FetchBuffer));
@@ -297,7 +297,7 @@ module ifu import cvw::*;  #(parameter cvw_t P) (
     end
 
     // mux between the alignments of uncached reads.
-    if(P.XLEN == 64) mux4 #(32) UncachedShiftInstrMux(FetchBuffer[32-1:0], FetchBuffer[48-1:16],
+    if(P.AHBW == 64) mux4 #(32) UncachedShiftInstrMux(FetchBuffer[32-1:0], FetchBuffer[48-1:16],
                                                       FetchBuffer[64-1:32], {16'b0, FetchBuffer[64-1:48]},
                                                       PCSpillF[2:1], ShiftUncachedInstr);
     else mux2 #(32) UncachedShiftInstrMux(FetchBuffer[32-1:0], {16'b0, FetchBuffer[32-1:16]}, PCSpillF[1], ShiftUncachedInstr);

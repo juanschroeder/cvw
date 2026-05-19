@@ -72,14 +72,14 @@ module lsu import cvw::*;  #(parameter cvw_t P) (
   output logic                    StoreAmoAccessFaultM,                 // Store or AMO access fault
   // connect to ahb
   output logic [P.PA_BITS-1:0]    LSUHADDR,                             // Bus address from LSU to EBU
-  input  logic [P.XLEN-1:0]       HRDATA,                               // Bus read data from LSU to EBU
-  output logic [P.XLEN-1:0]       LSUHWDATA,                            // Bus write data from LSU to EBU
+  input  logic [P.AHBW-1:0]       HRDATA,                               // Bus read data from LSU to EBU
+  output logic [P.AHBW-1:0]       LSUHWDATA,                            // Bus write data from LSU to EBU
   input  logic                    LSUHREADY,                            // Bus ready from LSU to EBU
   output logic                    LSUHWRITE,                            // Bus write operation from LSU to EBU
   output logic [2:0]              LSUHSIZE,                             // Bus operation size from LSU to EBU
   output logic [2:0]              LSUHBURST,                            // Bus burst from LSU to EBU
   output logic [1:0]              LSUHTRANS,                            // Bus transaction type from LSU to EBU
-  output logic [P.XLEN/8-1:0]     LSUHWSTRB,                            // Bus byte write enables from LSU to EBU
+  output logic [P.AHBW/8-1:0]     LSUHWSTRB,                            // Bus byte write enables from LSU to EBU
   // page table walker
   input  logic [P.XLEN-1:0]       SATP_REGW,                            // SATP (supervisor address translation and protection) CSR
   input  logic                    STATUS_MXR, STATUS_SUM, STATUS_MPRV,  // STATUS CSR bits: make executable readable, supervisor user memory, machine privilege
@@ -351,25 +351,39 @@ module lsu import cvw::*;  #(parameter cvw_t P) (
         .Cacheable(CacheableOrFlushCacheM), .BusRW, .Stall(GatedStallW),
         .BusStall(LSUBusStallM), .BusCommitted(BusCommittedM));
 
-      mux3 #(P.LLEN) UnCachedDataMux(.d0(DCacheReadDataWordSpillM), .d1({LLENPOVERAHBW{FetchBuffer[P.XLEN-1:0]}}),
-                                    .d2({{P.LLEN-P.XLEN{1'b0}}, DTIMReadDataWordM[P.XLEN-1:0]}),
-                                    .s({SelDTIM, ~(CacheableOrFlushCacheM)}), .y(ReadDataWordMuxM));
-    end else begin : passthrough // No Cache, use simple ahbinterface instead of ahbcacheinterface
+      mux3 #(P.LLEN) UnCachedDataMux(.d0(DCacheReadDataWordSpillM), .d1({LLENPOVERAHBW{FetchBuffer[P.AHBW-1:0]}}),
+                                    .d2(DTIMReadDataWordM[P.LLEN-1:0]),
+                                    .s({SelDTIM, ~(CacheableOrFlushCacheM)}), .y(ReadDataWordMuxM));    end else begin : passthrough // No Cache, use simple ahbinterface instead of ahbcacheinterface
       logic [1:0] BusRW;                    // Non-DTIM memory access, ignore cacheableM
-      logic [P.XLEN-1:0] FetchBuffer;
+      logic [P.AHBW-1:0] FetchBuffer;
+      logic [P.XLEN-1:0] FetchBufferWord;
       assign BusRW = ~SelDTIM ? LSURWM : 0;
 
       assign LSUHADDR = PAdrM;
       assign LSUHSIZE = LSUFunct3M;
 
-      ahbinterface #(P.XLEN, 1'b1) ahbinterface(.HCLK(clk), .HRESETn(~reset), .Flush(LSUFlushW), .HREADY(LSUHREADY),
+      if(P.LLEN != P.XLEN) begin : unsupported_llen
+        SIMPLE_LSU_AHB64_PATCH_ASSUMES_LLEN_EQUALS_XLEN unsupported();
+      end
+
+      ahbinterface #(.XLEN(P.XLEN), .LSU(1'b1), .AHBW(P.AHBW)) ahbinterface(.HCLK(clk), .HRESETn(~reset), .Flush(LSUFlushW), .HREADY(LSUHREADY),
         .HRDATA(HRDATA), .HTRANS(LSUHTRANS), .HWRITE(LSUHWRITE), .HWDATA(LSUHWDATA),
         .HWSTRB(LSUHWSTRB), .BusRW, .BusAtomic(AtomicM[1]), .ByteMask(ByteMaskM[P.XLEN/8-1:0]), .WriteData(LSUWriteDataM[P.XLEN-1:0]),
         .Stall(GatedStallW), .BusStall(LSUBusStallM), .BusCommitted(BusCommittedM), .FetchBuffer(FetchBuffer));
 
+      if(P.AHBW == P.XLEN) begin
+        assign FetchBufferWord = FetchBuffer[P.XLEN-1:0];
+      end else if(P.AHBW == 2*P.XLEN) begin
+        mux2 #(P.XLEN) FetchBufferWordMux(FetchBuffer[P.XLEN-1:0],
+                                        FetchBuffer[2*P.XLEN-1:P.XLEN],
+                                        PAdrM[$clog2(P.XLEN/8)],
+                                        FetchBufferWord);
+      end else begin
+        AHBW_NOT_SUPPORTED_FOR_SIMPLE_LSU unsupported();
+      end
     // Mux between the 2 sources of read data, 0: Bus, 1: DTIM
-      if(P.DTIM_SUPPORTED) mux2 #(P.XLEN) ReadDataMux2(FetchBuffer, DTIMReadDataWordM[P.XLEN-1:0], SelDTIM, ReadDataWordMuxM[P.XLEN-1:0]);
-      else assign ReadDataWordMuxM[P.XLEN-1:0] = FetchBuffer[P.XLEN-1:0];
+      if(P.DTIM_SUPPORTED) mux2 #(P.XLEN) ReadDataMux2(FetchBufferWord, DTIMReadDataWordM[P.XLEN-1:0], SelDTIM, ReadDataWordMuxM[P.XLEN-1:0]);
+      else assign ReadDataWordMuxM[P.XLEN-1:0] = FetchBufferWord[P.XLEN-1:0];
       assign LSUHBURST = 3'b0;
       assign {DCacheStallM, DCacheCommittedM, DCacheMiss, DCacheAccess, DCacheReadDataWordM} = '0;
     end

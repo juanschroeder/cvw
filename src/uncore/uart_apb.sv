@@ -33,11 +33,11 @@ module uart_apb import cvw::*; #(parameter cvw_t P) (
   input  logic                PCLK, PRESETn,
   input  logic                PSEL,
   input  logic [2:0]          PADDR,
-  input  logic [P.XLEN-1:0]   PWDATA,
-  input  logic [P.XLEN/8-1:0] PSTRB,
+  input  logic [P.AHBW-1:0]   PWDATA,
+  input  logic [P.AHBW/8-1:0] PSTRB,
   input  logic                PWRITE,
   input  logic                PENABLE,
-  output logic [P.XLEN-1:0]   PRDATA,
+  output logic [P.AHBW-1:0]   PRDATA,
   output logic                PREADY,
   input  logic                SIN, DSRb, DCDb, CTSb, RIb,           // from E1A driver from RS232 interface
   output logic                SOUT, RTSb, DTRb,                     // to E1A driver to RS232 interface
@@ -47,6 +47,7 @@ module uart_apb import cvw::*; #(parameter cvw_t P) (
   logic [2:0]      entry;
   logic            MEMRb, MEMWb, memread, memwrite;
   logic [7:0]      Din, Dout;
+  localparam int unsigned BUS_BYTES = P.AHBW/8;
 
   assign memwrite = PWRITE & PENABLE & PSEL;  // only write in access phase
   assign memread  = ~PWRITE & PENABLE & PSEL;
@@ -56,8 +57,7 @@ module uart_apb import cvw::*; #(parameter cvw_t P) (
   assign MEMWb    = ~memwrite;
 
   assign Din = PWDATA[7:0];
-  if (P.XLEN == 64) assign PRDATA = {Dout, Dout, Dout, Dout, Dout, Dout, Dout, Dout};
-  else              assign PRDATA = {Dout, Dout, Dout, Dout};
+  assign PRDATA = {BUS_BYTES{Dout}};
 
   logic BAUDOUTb;  // loop tx clock BAUDOUTb back to rx clock RCLK
   uartPC16550D #(P.UART_PRESCALE) uartPC(
