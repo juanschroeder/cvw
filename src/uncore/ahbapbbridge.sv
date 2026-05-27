@@ -73,8 +73,13 @@ module ahbapbbridge import cvw::*;  #(parameter cvw_t P,
   // assign PWAKEUP = 1'b1; // not used
 
   // AHB Data phase signal doesn't need delay.  Note that they are guaranteed to remain stable until READY is asserted
-  assign PWDATA = HWDATA;
-  assign PSTRB  = HWSTRB;
+  if (P.XLEN == 32 && P.AHBW == 64) begin
+    assign PWDATA = PADDR[2] ? {32'b0, HWDATA[63:32]} : {32'b0, HWDATA[31:0]};
+    assign PSTRB  = PADDR[2] ? {4'b0,  HWSTRB[7:4]}   : {4'b0,  HWSTRB[3:0]};
+  end else begin
+    assign PWDATA = HWDATA;
+    assign PSTRB  = HWSTRB;
+  end
 
   // enable logic: goes high a cycle after initTrans, then back low on cycle after desired PREADY is asserted
   // cycle1: AHB puts HADDR, HWRITE, HSEL on bus.  initTrans is 1, and these are captured
@@ -88,13 +93,17 @@ module ahbapbbridge import cvw::*;  #(parameter cvw_t P,
   // result and ready multiplexer
   int i;
   always_comb begin
-    // default: no peripheral selected: read 0, indicate ready during access phase so bus doesn't hang
     HRDATA = '0;
     PREADYOUT = 1'b1;
-    for (i=0; i<PERIPHS; i++)  begin
-      if (PSEL[i]) begin // highest numbered peripheral has priority, but multiple PSEL should never be asserted
-          HRDATA = PRDATA[i];
-          PREADYOUT = PREADY[i];
+    for (i = 0; i < PERIPHS; i++) begin
+      if (PSEL[i]) begin
+        if (P.XLEN == 32 && P.AHBW == 64) begin
+            if (PADDR[2]) HRDATA[63:32] = PRDATA[i][31:0];
+            else          HRDATA[31:0]  = PRDATA[i][31:0];
+        end else begin
+            HRDATA = PRDATA[i];
+        end
+        PREADYOUT = PREADY[i];
       end
     end
   end
