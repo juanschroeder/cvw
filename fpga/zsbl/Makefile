@@ -26,12 +26,14 @@ MARCH           :=-march=rv64imfdc_zifencei
 MABI            :=-mabi=lp64d
 LINK_FLAGS      :=$(MARCH) $(MABI) -nostartfiles -L $(RISCV)/riscv64-unknown-elf/lib
 LINKER		:=linker1000.x
+MEM_WIDTH       := 64
 
 # FGPA parameters
 SYSTEMCLOCK   ?= 20000000
 MAXSDCCLOCK   ?=  5000000
 EXT_MEM_BASE  ?= 0x80000000
 EXT_MEM_RANGE ?= 0x10000000
+BOOTROM_BASE  ?=
 INC_DIRS      ?=
 INC+=${INC_DIRS:%=-I%}
 
@@ -117,9 +119,14 @@ $(TARGET).memfile: $(TARGET)
 	@echo 'Making object dump file.'
 	riscv64-unknown-elf-objdump -DS $< > $<.objdump
 	@echo 'Making memory file'
-	riscv64-unknown-elf-elf2hex --bit-width 64 --input $^ --output $@
+	riscv64-unknown-elf-elf2hex --bit-width $(MEM_WIDTH) --input $^ --output $@
 	extractFunctionRadix.sh $<.objdump
 	@echo 'Splitting memfile.'
-	./splitfile.sh $@
+	@if [ -z "$(BOOTROM_BASE)" ] || [ -z "$(UNCORE_RAM_BASE)" ] || [ -z "$(MEM_WIDTH)" ]; then \
+		echo "BOOTROM_BASE, UNCORE_RAM_BASE, and MEM_WIDTH must be set"; \
+		exit 1; \
+	fi; \
+	K=$$(( ($(UNCORE_RAM_BASE) - $(BOOTROM_BASE)) / ($(MEM_WIDTH) / 8) )); \
+	./splitfile.sh $@ $$K
 	mv boot.mem ../src/boot.mem
 	mv data.mem ../src/data.mem

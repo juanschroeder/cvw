@@ -53,7 +53,7 @@ module rom1p1r #(parameter ADDR_WIDTH = 8, DATA_WIDTH = 32, PRELOAD_ENABLED = 0,
 
   initial
     if (PRELOAD_ENABLED) begin
-      if (DATA_WIDTH == 64) begin
+      //if (DATA_WIDTH == 64) begin
         `ifdef VERILATOR
             // because Verilator doesn't automatically accept $WALLY from shell
             string       WALLY_DIR = getenvval("WALLY");
@@ -61,9 +61,9 @@ module rom1p1r #(parameter ADDR_WIDTH = 8, DATA_WIDTH = 32, PRELOAD_ENABLED = 0,
         `else
             $readmemh({"$WALLY/fpga/src/boot.mem"}, ROM, PRELOAD_START);  // load boot ROM for FPGA
         `endif
-      end else begin // put something in the ROM so it is not optimized away
-        ROM[0] = 'h00002197;
-      end
+      //end else begin // put something in the ROM so it is not optimized away
+      //  ROM[0] = 'h00002197;
+      //end
     end
 
   always_ff @ (posedge clk)
