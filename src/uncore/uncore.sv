@@ -84,7 +84,7 @@ module uncore import cvw::*;  #(parameter cvw_t P)(
 
   logic [P.AHBW-1:0]           HREADRam, HREADSDC;
   // Wishbone stuff
-  logic [P.XLEN-1:0]  HREADWbIsland;
+  logic [P.AHBW-1:0]  HREADWbIsland;
   logic               HRESPWbIsland, HREADYWbIsland;
   // AXI stuff
   logic [29:0]         wb_adr;

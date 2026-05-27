@@ -12,15 +12,20 @@ import axi_vga_wrap_pkg::*;
 // axi_vga_wrap.sv
 `timescale 1ns/1ps
 
-module axi_vga_wrap (
+module axi_vga_wrap #(
+  parameter int unsigned AXI_ADDR_W = 32,
+  parameter int unsigned AXI_DATA_W = 64,
+  parameter int unsigned AXI_ID_W   = 4,
+  parameter int unsigned AXI_USER_W = 1
+) (
   input  logic        aclk,
   input  logic        aresetn,
 
   // ----------------------------
   // AXI SLAVE (regs) from xbar M02
   // ----------------------------
-  input  logic [3:0]  s_axi_awid,
-  input  logic [31:0] s_axi_awaddr,
+  input  logic [AXI_ID_W-1:0]   s_axi_awid,
+  input  logic [AXI_ADDR_W-1:0] s_axi_awaddr,
   input  logic [7:0]  s_axi_awlen,
   input  logic [2:0]  s_axi_awsize,
   input  logic [1:0]  s_axi_awburst,
@@ -31,19 +36,19 @@ module axi_vga_wrap (
   input  logic        s_axi_awvalid,
   output logic        s_axi_awready,
 
-  input  logic [63:0] s_axi_wdata,
-  input  logic [7:0]  s_axi_wstrb,
+  input  logic [AXI_DATA_W-1:0]   s_axi_wdata,
+  input  logic [AXI_DATA_W/8-1:0] s_axi_wstrb,
   input  logic        s_axi_wlast,
   input  logic        s_axi_wvalid,
   output logic        s_axi_wready,
 
-  output logic [3:0]  s_axi_bid,
+  output logic [AXI_ID_W-1:0] s_axi_bid,
   output logic [1:0]  s_axi_bresp,
   output logic        s_axi_bvalid,
   input  logic        s_axi_bready,
 
-  input  logic [3:0]  s_axi_arid,
-  input  logic [31:0] s_axi_araddr,
+  input  logic [AXI_ID_W-1:0]   s_axi_arid,
+  input  logic [AXI_ADDR_W-1:0] s_axi_araddr,
   input  logic [7:0]  s_axi_arlen,
   input  logic [2:0]  s_axi_arsize,
   input  logic [1:0]  s_axi_arburst,
@@ -54,8 +59,8 @@ module axi_vga_wrap (
   input  logic        s_axi_arvalid,
   output logic        s_axi_arready,
 
-  output logic [3:0]  s_axi_rid,
-  output logic [63:0] s_axi_rdata,
+  output logic [AXI_ID_W-1:0]     s_axi_rid,
+  output logic [AXI_DATA_W-1:0]   s_axi_rdata,
   output logic [1:0]  s_axi_rresp,
   output logic        s_axi_rlast,
   output logic        s_axi_rvalid,
@@ -64,8 +69,8 @@ module axi_vga_wrap (
   // ----------------------------
   // AXI MASTER (scanout) to xbar S02
   // ----------------------------
-  output logic [3:0]  m_axi_awid,
-  output logic [31:0] m_axi_awaddr,
+  output logic [AXI_ID_W-1:0]   m_axi_awid,
+  output logic [AXI_ADDR_W-1:0] m_axi_awaddr,
   output logic [7:0]  m_axi_awlen,
   output logic [2:0]  m_axi_awsize,
   output logic [1:0]  m_axi_awburst,
@@ -75,19 +80,19 @@ module axi_vga_wrap (
   output logic        m_axi_awvalid,
   input  logic        m_axi_awready,
 
-  output logic [63:0] m_axi_wdata,
-  output logic [7:0]  m_axi_wstrb,
+  output logic [AXI_DATA_W-1:0]   m_axi_wdata,
+  output logic [AXI_DATA_W/8-1:0] m_axi_wstrb,
   output logic        m_axi_wlast,
   output logic        m_axi_wvalid,
   input  logic        m_axi_wready,
 
-  input  logic [3:0]  m_axi_bid,
+  input  logic [AXI_ID_W-1:0] m_axi_bid,
   input  logic [1:0]  m_axi_bresp,
   input  logic        m_axi_bvalid,
   output logic        m_axi_bready,
 
-  output logic [3:0]  m_axi_arid,
-  output logic [31:0] m_axi_araddr,
+  output logic [AXI_ID_W-1:0]   m_axi_arid,
+  output logic [AXI_ADDR_W-1:0] m_axi_araddr,
   output logic [7:0]  m_axi_arlen,
   output logic [2:0]  m_axi_arsize,
   output logic [1:0]  m_axi_arburst,
@@ -97,8 +102,8 @@ module axi_vga_wrap (
   output logic        m_axi_arvalid,
   input  logic        m_axi_arready,
 
-  input  logic [3:0]  m_axi_rid,
-  input  logic [63:0] m_axi_rdata,
+  input  logic [AXI_ID_W-1:0]     m_axi_rid,
+  input  logic [AXI_DATA_W-1:0]   m_axi_rdata,
   input  logic [1:0]  m_axi_rresp,
   input  logic        m_axi_rlast,
   input  logic        m_axi_rvalid,
@@ -118,11 +123,6 @@ module axi_vga_wrap (
   import axi_pkg::*;
   `include "axi/typedef.svh"
   `include "register_interface/typedef.svh"
-
-  localparam int unsigned AXI_ADDR_W = 32;
-  localparam int unsigned AXI_DATA_W = 64;
-  localparam int unsigned AXI_ID_W   = 4;
-  localparam int unsigned AXI_USER_W = 1;
 
   typedef logic [AXI_ADDR_W-1:0] axi_addr_t;
   typedef logic [AXI_DATA_W-1:0] axi_data_t;
@@ -146,6 +146,10 @@ module axi_vga_wrap (
   typedef logic [31:0] reg_addr_t;
   typedef logic [31:0] reg_data_t;
   typedef logic [3:0]  reg_strb_t;
+
+  if ((AXI_DATA_W != 32) && (AXI_DATA_W != 64)) begin : gen_bad_axi_width
+    initial $fatal(1, "axi_vga_wrap supports AXI_DATA_W 32 or 64, got %0d", AXI_DATA_W);
+  end
 
   // these packages are defined in vga_regbus_pkg.sv
 //   `REG_BUS_TYPEDEF_REQ(reg_req_t,  reg_addr_t, reg_data_t, reg_strb_t)
@@ -271,12 +275,11 @@ module axi_vga_wrap (
         dbg_reg_rsp_rdata = reg_rsp.rdata;
     end
 
-  
   axi_to_reg_v2 #(
-    .AxiAddrWidth (32),
-    .AxiDataWidth (64),
-    .AxiIdWidth   (4),
-    .AxiUserWidth (1),
+    .AxiAddrWidth (AXI_ADDR_W),
+    .AxiDataWidth (AXI_DATA_W),
+    .AxiIdWidth   (AXI_ID_W),
+    .AxiUserWidth (AXI_USER_W),
     .RegDataWidth (32),          // because your regbus wdata is 32-bit, wstrb is 4-bit
     //.CutMemReqs   (1'b0),
     .CutMemReqs   (1'b1), //As in Cheshire project

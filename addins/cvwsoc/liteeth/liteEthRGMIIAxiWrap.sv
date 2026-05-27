@@ -12,7 +12,12 @@ module liteEthRGMIIAxiWrap #(
   parameter logic [31:0] CSR_SIZE  = 32'h00010000,  // 64KB
 
   // IDELAYCTRL settings
-  parameter int          IDELAY_RST_CYCLES = 6      // shift-register length
+  parameter int          IDELAY_RST_CYCLES = 6,     // shift-register length
+
+  // SoC AXI bus
+  parameter int unsigned AXI_ADDR_W = 32,
+  parameter int unsigned AXI_DATA_W = 64,
+  parameter int unsigned AXI_ID_W   = 4
 )(
   // BUS clock/reset for AXI/MMIO + LiteEth sys_clock
   input  logic        bus_clk,
@@ -23,40 +28,40 @@ module liteEthRGMIIAxiWrap #(
   input  logic        clk200_locked,   // 1 when clk200 is stable (tie 1'b1 if you insist)
 
   // ------------------------------------------------------------
-  // AXI4 (64-bit) SLAVE interface (connect to crossbar Mxx)
+  // AXI4 SLAVE interface (connect to crossbar Mxx)
   // ------------------------------------------------------------
-  input  logic [3:0]  s_axi_awid,
-  input  logic [31:0] s_axi_awaddr,
+  input  logic [AXI_ID_W-1:0]   s_axi_awid,
+  input  logic [AXI_ADDR_W-1:0] s_axi_awaddr,
   input  logic [7:0]  s_axi_awlen,
   input  logic [2:0]  s_axi_awsize,
   input  logic [1:0]  s_axi_awburst,
   input  logic        s_axi_awvalid,
   output logic        s_axi_awready,
 
-  input  logic [63:0] s_axi_wdata,
-  input  logic [7:0]  s_axi_wstrb,
+  input  logic [AXI_DATA_W-1:0]   s_axi_wdata,
+  input  logic [AXI_DATA_W/8-1:0] s_axi_wstrb,
   input  logic        s_axi_wlast,
   input  logic        s_axi_wvalid,
   output logic        s_axi_wready,
 
   output logic [1:0]  s_axi_bresp,
   output logic        s_axi_bvalid,
-  output logic [3:0]  s_axi_bid,
+  output logic [AXI_ID_W-1:0] s_axi_bid,
   input  logic        s_axi_bready,
 
-  input  logic [3:0]  s_axi_arid,
-  input  logic [31:0] s_axi_araddr,
+  input  logic [AXI_ID_W-1:0]   s_axi_arid,
+  input  logic [AXI_ADDR_W-1:0] s_axi_araddr,
   input  logic [7:0]  s_axi_arlen,
   input  logic [2:0]  s_axi_arsize,
   input  logic [1:0]  s_axi_arburst,
   input  logic        s_axi_arvalid,
   output logic        s_axi_arready,
 
-  output logic [63:0] s_axi_rdata,
+  output logic [AXI_DATA_W-1:0] s_axi_rdata,
   output logic [1:0]  s_axi_rresp,
   output logic        s_axi_rlast,
   output logic        s_axi_rvalid,
-  output logic [3:0]  s_axi_rid,
+  output logic [AXI_ID_W-1:0] s_axi_rid,
   input  logic        s_axi_rready,
 
   // ------------------------------------------------------------
@@ -76,6 +81,10 @@ module liteEthRGMIIAxiWrap #(
   // Raw interrupt from LiteEth (BUSCLK domain). CDC belongs in SoC top.
   output logic        interrupt
 );
+
+  if ((AXI_DATA_W != 32) && (AXI_DATA_W != 64)) begin : gen_bad_axi_width
+    initial $fatal(1, "liteEthRGMIIAxiWrap supports AXI_DATA_W 32 or 64, got %0d", AXI_DATA_W);
+  end
 
   // ===========================================================================
   // IDELAYCTRL (for IDELAYE2 used inside liteEthAXIRgmii.v)
@@ -162,13 +171,16 @@ module liteEthRGMIIAxiWrap #(
 
 
   // ===========================================
-  // 64-bit AXI4 MMIO -> 32-bit AXI-Lite adapter
+  // AXI4 MMIO -> 32-bit AXI-Lite adapter
   // ===========================================
   //axi64_mmio_to_axilite32_v2 u_axi64_to_axil (
-  axi64_to_axil_adapter_split #(
+  axi_to_axil_adapter_split #(
     .BUF_BASE(RX_BASE),
-    .BUF_END(TX_BASE + BUF_SIZE)
-  )  u_axi64_to_axil (
+    .BUF_END(TX_BASE + BUF_SIZE),
+    .AXI_ADDR_WIDTH(AXI_ADDR_W),
+    .AXI_DATA_WIDTH(AXI_DATA_W),
+    .AXI_ID_WIDTH(AXI_ID_W)
+  )  u_axi_to_axil (
     .aclk          (bus_clk),
     .aresetn       (bus_resetn),
 

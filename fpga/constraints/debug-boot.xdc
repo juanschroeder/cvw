@@ -29,7 +29,7 @@ connect_debug_port u_ila_spi/clk [get_nets CPUCLK]
 # set_property port_width 64 [get_debug_ports u_ila_spi/probe0]
 # set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_spi/probe0]
 #connect_debug_port u_ila_spi/probe0 [get_nets [list {wallypipelinedsoc/core/PCM[0]} {wallypipelinedsoc/core/PCM[1]} {wallypipelinedsoc/core/PCM[2]} {wallypipelinedsoc/core/PCM[3]} {wallypipelinedsoc/core/PCM[4]} {wallypipelinedsoc/core/PCM[5]} {wallypipelinedsoc/core/PCM[6]} {wallypipelinedsoc/core/PCM[7]} {wallypipelinedsoc/core/PCM[8]} {wallypipelinedsoc/core/PCM[9]} {wallypipelinedsoc/core/PCM[10]} {wallypipelinedsoc/core/PCM[11]} {wallypipelinedsoc/core/PCM[12]} {wallypipelinedsoc/core/PCM[13]} {wallypipelinedsoc/core/PCM[14]} {wallypipelinedsoc/core/PCM[15]} {wallypipelinedsoc/core/PCM[16]} {wallypipelinedsoc/core/PCM[17]} {wallypipelinedsoc/core/PCM[18]} {wallypipelinedsoc/core/PCM[19]} {wallypipelinedsoc/core/PCM[20]} {wallypipelinedsoc/core/PCM[21]} {wallypipelinedsoc/core/PCM[22]} {wallypipelinedsoc/core/PCM[23]} {wallypipelinedsoc/core/PCM[24]} {wallypipelinedsoc/core/PCM[25]} {wallypipelinedsoc/core/PCM[26]} {wallypipelinedsoc/core/PCM[27]} {wallypipelinedsoc/core/PCM[28]} {wallypipelinedsoc/core/PCM[29]} {wallypipelinedsoc/core/PCM[30]} {wallypipelinedsoc/core/PCM[31]} {wallypipelinedsoc/core/PCM[32]} {wallypipelinedsoc/core/PCM[33]} {wallypipelinedsoc/core/PCM[34]} {wallypipelinedsoc/core/PCM[35]} {wallypipelinedsoc/core/PCM[36]} {wallypipelinedsoc/core/PCM[37]} {wallypipelinedsoc/core/PCM[38]} {wallypipelinedsoc/core/PCM[39]} {wallypipelinedsoc/core/PCM[40]} {wallypipelinedsoc/core/PCM[41]} {wallypipelinedsoc/core/PCM[42]} {wallypipelinedsoc/core/PCM[43]} {wallypipelinedsoc/core/PCM[44]} {wallypipelinedsoc/core/PCM[45]} {wallypipelinedsoc/core/PCM[46]} {wallypipelinedsoc/core/PCM[47]} {wallypipelinedsoc/core/PCM[48]} {wallypipelinedsoc/core/PCM[49]} {wallypipelinedsoc/core/PCM[50]} {wallypipelinedsoc/core/PCM[51]} {wallypipelinedsoc/core/PCM[52]} {wallypipelinedsoc/core/PCM[53]} {wallypipelinedsoc/core/PCM[54]} {wallypipelinedsoc/core/PCM[55]} {wallypipelinedsoc/core/PCM[56]} {wallypipelinedsoc/core/PCM[57]} {wallypipelinedsoc/core/PCM[58]} {wallypipelinedsoc/core/PCM[59]} {wallypipelinedsoc/core/PCM[60]} {wallypipelinedsoc/core/PCM[61]} {wallypipelinedsoc/core/PCM[62]} {wallypipelinedsoc/core/PCM[63]} ]]
-ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/PCM -msb 63 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/PCM -msb auto -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/InstrM -msb 31 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -net wallypipelinedsoc/core/TrapM
 ila_add_probe u_ila_spi -net wallypipelinedsoc/core/InstrValidM
@@ -58,20 +58,19 @@ ila_add_probe u_ila_spi -bus wallypipelinedsoc/uncoregen.uncore/sdc.sdc/controll
 ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/sdc.sdc/ReceiveFIFOReadInc
 
 # AHB bus signals
-ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/ebu.ebu/HADDR -msb 31 -lsb 0 -order lsb2msb
 #ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/ebu.ebu/HTRANS -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus HSIZE -msb 2 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/HSIZE -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/HWDATA -msb 63 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/HRDATA  -msb 31 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/lsu/LSUHWSTRB -msb 7 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/HWDATA -msb auto -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/HRDATA  -msb auto -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/lsu/LSUHWSTRB -msb auto -lsb 0 -order lsb2msb
 
 ila_add_probe u_ila_spi -net HREADY
 ila_add_probe u_ila_spi -net HWRITE
 ila_add_probe u_ila_spi -bus HTRANS -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus HADDR -msb 31 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -net HSELEXT
-ila_add_probe u_ila_spi -bus HRDATAEXT -msb 63 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus HRDATAEXT -msb auto -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus HPROT -msb 3 -lsb 0 -order lsb2msb
 #ila_add_probe u_ila_spi -bus HPROT -msb 0 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_spi -bus HTRANS -msb 1 -lsb 0 -order lsb2msb
@@ -106,6 +105,49 @@ set_property ALL_PROBE_SAME_MU_CNT 1 [get_debug_cores u_ila_axi]
 # Test change (ChatGPT)
 set_property port_width 1 [get_debug_ports u_ila_axi/clk]
 connect_debug_port u_ila_axi/clk [get_nets BUSCLK]
+
+
+# USB
+ila_add_probe u_ila_axi -bus   usb_m_axi_awid -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus  usb_m_axi_awaddr -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus   usb_m_axi_awlen -msb 7 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus   usb_m_axi_awsize -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus   usb_m_axi_awburst -msb 1 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net usb_m_axi_awlock
+ila_add_probe u_ila_axi -bus   usb_m_axi_awcache  -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus   usb_m_axi_awprot  -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net usb_m_axi_awvalid
+ila_add_probe u_ila_axi -net usb_m_axi_awready
+
+ila_add_probe u_ila_axi -bus  usb_m_axi_wdata  -msb auto -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus   usb_m_axi_wstrb  -msb auto -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net usb_m_axi_wlast
+ila_add_probe u_ila_axi -net usb_m_axi_wvalid
+ila_add_probe u_ila_axi -net usb_m_axi_wready
+
+ila_add_probe u_ila_axi -bus   usb_m_axi_bid  -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus   usb_m_axi_bresp  -msb 1 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net usb_m_axi_bvalid
+ila_add_probe u_ila_axi -net usb_m_axi_bready
+
+ila_add_probe u_ila_axi -bus usb_m_axi_arid  -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus usb_m_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus usb_m_axi_arlen  -msb 7 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus usb_m_axi_arsize  -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus usb_m_axi_arburst  -msb 1 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net usb_m_axi_arlock
+ila_add_probe u_ila_axi -bus usb_m_axi_arcache  -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus usb_m_axi_arprot  -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net usb_m_axi_arvalid
+ila_add_probe u_ila_axi -net usb_m_axi_arready
+
+ila_add_probe u_ila_axi -bus  usb_m_axi_rid  -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus usb_m_axi_rdata  -msb auto -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus usb_m_axi_rresp  -msb 1 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net usb_m_axi_rlast
+ila_add_probe u_ila_axi -net usb_m_axi_rvalid
+ila_add_probe u_ila_axi -net usb_m_axi_rready
+
 
 # SDHCI probes
 ila_add_probe u_ila_axi -net sd_clk_o
@@ -222,7 +264,7 @@ ila_add_probe u_ila_axi -bus m_axi_awsize -msb 2 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -bus m_axi_awburst -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -net m_axi_awvalid
 ila_add_probe u_ila_axi -net m_axi_awready
-ila_add_probe u_ila_axi -bus m_axi_wdata -msb 63 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus m_axi_wdata -msb auto -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -net m_axi_wvalid
 ila_add_probe u_ila_axi -net m_axi_wready
 ila_add_probe u_ila_axi -net m_axi_wlast
@@ -288,7 +330,7 @@ ila_add_probe u_ila_axi -bus BUS_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -net BUS_cb_axi_rready
 # ila_add_probe u_ila_axi -bus BUS_cb_axi_rresp -msb 1 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -net BUS_cb_axi_rlast
-# ila_add_probe u_ila_axi -bus BUS_cb_axi_rdata -msb 63 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus BUS_cb_axi_rdata -msb auto -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus BUS_cb_axi_rid -msb 3 -lsb 0 -order lsb2msb
 
 # ila_add_probe u_ila_axi -net BUS_cb_axi_awvalid
@@ -298,7 +340,7 @@ ila_add_probe u_ila_axi -bus BUS_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -net BUS_cb_axi_wvalid
 # ila_add_probe u_ila_axi -net BUS_cb_axi_wready
 # ila_add_probe u_ila_axi -net BUS_cb_axi_wlast
-# ila_add_probe u_ila_axi -bus BUS_cb_axi_wdata -msb 63 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus BUS_cb_axi_wdata -msb auto -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -net BUS_cb_axi_bvalid
 # ila_add_probe u_ila_axi -net BUS_cb_axi_bready
 
@@ -315,7 +357,7 @@ ila_add_probe u_ila_axi -net c0_init_calib_complete
 
 ## REMOVE THIS: CPU clock domain
 # ila_add_probe u_ila_axi -bus wallypipelinedsoc/core/InstrM -msb 31 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus wallypipelinedsoc/core/PCM -msb 63 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus wallypipelinedsoc/core/PCM -msb auto -lsb 0 -order lsb2msb
 ##################################################################
 ##################################################################
 ##################################################################
