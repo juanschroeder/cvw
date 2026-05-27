@@ -23,7 +23,8 @@ WALLYCONF ?= fpgagenesys2soc
 CONFIG ?= $(if $(CVWSOC_RV32),fpgagenesys2soc32,$(WALLYCONF))
 CVWSOC_SIM_AXI_RAM ?= $(if $(CVWSOC_SIM_SDHCI),0,1)
 CVWSOC_XLEN ?= $(if $(CVWSOC_RV32),32,64)
-CVWSOC_WORD_BYTES ?= $(if $(filter 32,$(CVWSOC_XLEN)),4,8)
+CVWSOC_BUS_WIDTH ?= 64
+CVWSOC_WORD_BYTES ?= $(if $(filter 32,$(CVWSOC_BUS_WIDTH)),4,8)
 VERILATOR ?= verilator
 VERILATOR_DIR := $(WALLY)/sim/verilator
 COPIED_ROOT := $(WALLY)/fpga/src/CopiedFiles_do_not_add_to_repo
@@ -323,6 +324,9 @@ INCLUDE_PATH := \
 	-I$(PULP_REGISTER_INTERFACE_ROOT)/include \
 	-I$(SDHCI_ROOT)/include
 
+VERILOG_AXI_SOURCES := \
+	$(wildcard $(COPIED_ROOT)/verilog-axi/rtl/axi_ram.v)
+
 SOURCES := \
 	$(COMMON_CELLS_SOURCES) \
 	$(AXI_SOURCES) \
@@ -330,7 +334,7 @@ SOURCES := \
 	$(WALLY)/testbench/$(TESTBENCH).sv \
 	$(CORE_SOURCES) \
 	$(BRIDGE_RTL) \
-	$(wildcard $(COPIED_ROOT)/verilog-axi/rtl/*.v) \
+	$(VERILOG_AXI_SOURCES) \
 	$(PULP_REGISTER_INTERFACE_SOURCES) \
 	$(PERIPH_SOURCES)
 
@@ -377,6 +381,7 @@ OBJCOPY_BIN=$(OBJCOPY_BIN) \
 DTC_BIN=$(DTC_BIN) \
 UNLZ4_BIN=$(UNLZ4_BIN) \
 CVWSOC_XLEN=$(CVWSOC_XLEN) \
+CVWSOC_BUS_WIDTH=$(CVWSOC_BUS_WIDTH) \
 PRELOAD_WORD_BYTES=$(CVWSOC_WORD_BYTES) \
 OPENSBI_DTB_ADDR=$(OPENSBI_DTB_ADDR) \
 KERNEL_DTB_ADDR=$(KERNEL_DTB_ADDR) \
@@ -461,6 +466,7 @@ $(CVWSOC_LINUX_QEMU_CFG): FORCE | $(CVWSOC_PRELOAD_DIR)
 		printf 'QEMU_RAM_MB=%s\n' '$(QEMU_RAM_MB)'; \
 		printf 'CPU_ARGS=%s\n' '$(CPU_ARGS)'; \
 		printf 'CVWSOC_XLEN=%s\n' '$(CVWSOC_XLEN)'; \
+		printf 'CVWSOC_BUS_WIDTH=%s\n' '$(CVWSOC_BUS_WIDTH)'; \
 		printf 'PRELOAD_WORD_BYTES=%s\n' '$(CVWSOC_WORD_BYTES)'; \
 		printf 'DTC_BIN=%s\n' '$(DTC_BIN)'; \
 		printf 'UNLZ4_BIN=%s\n' '$(UNLZ4_BIN)'; \
@@ -529,6 +535,7 @@ $(CVWSOC_UBOOT_QEMU_CFG): FORCE | $(CVWSOC_PRELOAD_DIR)
 		printf 'QEMU_RAM_MB=%s\n' '$(QEMU_RAM_MB)'; \
 		printf 'CPU_ARGS=%s\n' '$(CPU_ARGS)'; \
 		printf 'CVWSOC_XLEN=%s\n' '$(CVWSOC_XLEN)'; \
+		printf 'CVWSOC_BUS_WIDTH=%s\n' '$(CVWSOC_BUS_WIDTH)'; \
 		printf 'PRELOAD_WORD_BYTES=%s\n' '$(CVWSOC_WORD_BYTES)'; \
 		printf 'DTC_BIN=%s\n' '$(DTC_BIN)'; \
 		printf 'UNLZ4_BIN=%s\n' '$(UNLZ4_BIN)'; \
@@ -560,6 +567,7 @@ $(CVWSOC_LINUX_PRELOAD_CFG): FORCE | $(CVWSOC_PRELOAD_DIR)
 		printf 'GDB_BIN=%s\n' '$(GDB_BIN)'; \
 		printf 'OBJCOPY_BIN=%s\n' '$(OBJCOPY_BIN)'; \
 		printf 'CVWSOC_XLEN=%s\n' '$(CVWSOC_XLEN)'; \
+		printf 'CVWSOC_BUS_WIDTH=%s\n' '$(CVWSOC_BUS_WIDTH)'; \
 		printf 'PRELOAD_WORD_BYTES=%s\n' '$(CVWSOC_WORD_BYTES)'; \
 		printf 'DTC_BIN=%s\n' '$(DTC_BIN)'; \
 		printf 'UNLZ4_BIN=%s\n' '$(UNLZ4_BIN)'; \
@@ -640,6 +648,7 @@ $(CVWSOC_UBOOT_PRELOAD_CFG): FORCE | $(CVWSOC_PRELOAD_DIR)
 		printf 'GDB_BIN=%s\n' '$(GDB_BIN)'; \
 		printf 'OBJCOPY_BIN=%s\n' '$(OBJCOPY_BIN)'; \
 		printf 'CVWSOC_XLEN=%s\n' '$(CVWSOC_XLEN)'; \
+		printf 'CVWSOC_BUS_WIDTH=%s\n' '$(CVWSOC_BUS_WIDTH)'; \
 		printf 'PRELOAD_WORD_BYTES=%s\n' '$(CVWSOC_WORD_BYTES)'; \
 		printf 'DTC_BIN=%s\n' '$(DTC_BIN)'; \
 		printf 'UNLZ4_BIN=%s\n' '$(UNLZ4_BIN)'; \
@@ -663,7 +672,7 @@ $(CVWSOC_LINUX_QEMU_ASSETS) &: $(CVWSOC_LINUX_QEMU_CFG) $(WALLY)/linux/genCvwsoc
 	SNAPSHOT_AT_HANDOFF=0 \
 	SKIP_GDB_DUMPS=1 \
 	$(CVWSOC_PRELOAD_COMMON_ENV) \
-	EXTERNAL_DTB=$(CVWSOC_VERILATOR_DTB) \
+	EXTERNAL_DTB= \
 	UBOOT_INCLUDE=0 \
 	KERNEL_ADDR=$(CVWSOC_KERNEL_ADDR) \
 	RAW_BOOTMEM_FILE=$(CVWSOC_LINUX_RAW_BOOTROM_BIN) \
