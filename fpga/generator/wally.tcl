@@ -34,7 +34,7 @@ if {$board=="ArtyA7"} {
     add_files  {../src/fpgaTopNexysA7.sv}
 } elseif {$board=="nexysa7soc"} {
     add_files  {../src/fpgaTopNexysA7SoC.sv}
-} elseif {$board=="genesys2soc"} {
+} elseif {$board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc"} {
     add_files  {../src/fpgaTopGenesys2SoC.sv}
 } elseif {$board=="genesys2socxlnx"} {
     add_files  {../src/fpgaTopGenesys2SoC.sv}
@@ -44,7 +44,7 @@ if {$board=="ArtyA7"} {
 
 # read in ip
 import_ip IP/sysrst.srcs/sources_1/ip/sysrst/sysrst.xci
-if {$board != "genesys2soc"} {
+if {! ($board == "genesys2soc" || $board == "genesys2rv32soc" || $board=="genesys2rv32w64soc")} {
 import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
 import_ip IP/clkconverter.srcs/sources_1/ip/clkconverter/clkconverter.xci
 }
@@ -60,7 +60,7 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
     import_ip IP/axicrossbar.srcs/sources_1/ip/axicrossbar/axicrossbar.xci
     import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
-} elseif {$board=="genesys2soc" } {
+} elseif {$board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" } {
     # import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
     # FIXME: remove later
@@ -102,13 +102,16 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexy
 } elseif {$board=="genesys2socxlnx" } {
     add_files -fileset constrs_1 -norecurse ../constraints/constraints-genesys2soc.xdc
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-genesys2soc.xdc]
+} elseif {$board=="genesys2rv32soc"  || $board=="genesys2rv32w64soc"} {
+    add_files -fileset constrs_1 -norecurse ../constraints/constraints-genesys2soc.xdc
+    set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-genesys2soc.xdc]
 } else {
     add_files -fileset constrs_1 -norecurse ../constraints/constraints-$boardSubName.xdc
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$boardSubName.xdc]
 }
 
 # only tested on the Genesys 2
-if {$board=="nexysa7soc" || $board=="genesys2soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc"} {
     set uberddr3_supported [expr {[info exists ::env(UBERDDR3_SUPPORTED)] ? $::env(UBERDDR3_SUPPORTED) : "0"}]
     set litedram_supported  [expr {[info exists ::env(LITEDRAM_SUPPORTED)]  ? $::env(LITEDRAM_SUPPORTED)  : "0"}]
 
@@ -116,19 +119,35 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"} {
     puts "DEBUG litedram_supported=($litedram_supported)"
 
     if {$litedram_supported=="1"} {
-        add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-litedram.xdc
-        set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-litedram.xdc]
+        if { $board=="genesys2rv32soc"  || $board=="genesys2rv32w64soc"} {
+            add_files -fileset constrs_1 -norecurse ../constraints/constraints-genesys2soc-litedram.xdc
+            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-genesys2soc-litedram.xdc]
+        } else {
+            add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-litedram.xdc
+            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-litedram.xdc]
+        }
     } elseif {$uberddr3_supported=="1"} {
-        add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-uberddr3.xdc
-        set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-uberddr3.xdc]
+        if { $board=="genesys2rv32soc"  || $board=="genesys2rv32w64soc"} {
+            add_files -fileset constrs_1 -norecurse ../constraints/constraints-genesys2soc-uberddr3.xdc
+            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-genesys2soc-uberddr3.xdc]
+        } else {
+            add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-uberddr3.xdc
+            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-uberddr3.xdc]
+        }
     } else {
-        add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-mig.xdc
-        set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-mig.xdc]
-        puts "DEBUG Using Xilinx MIG"
+        if { $board=="genesys2rv32soc"  || $board=="genesys2rv32w64soc"} {
+            add_files -fileset constrs_1 -norecurse ../constraints/constraints-genesys2soc-mig.xdc
+            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-genesys2soc-mig.xdc]
+            puts "DEBUG Using Xilinx MIG"
+        } else {
+            add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-mig.xdc
+            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-mig.xdc]
+            puts "DEBUG Using Xilinx MIG"
+        }
     }
 }
 
-if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
 
     set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared \
         ../src/CopiedFiles_do_not_add_to_repo/cvwsoc \
@@ -170,7 +189,7 @@ if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} 
 }
 
 set_param messaging.defaultLimit 100000
-if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
     set_param general.maxThreads 16
 
     puts "###########################################################################"
@@ -213,7 +232,7 @@ if {$board=="ArtyA7"} {
     #source ../constraints/big-debug-spi.xdc
     #source ../constraints/debug-spi.xdc
     # NO ILA
-} elseif {$board=="genesys2soc" || $board=="genesys2socxlnx" } {
+} elseif {$board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" ||$board=="genesys2socxlnx" } {
     source ../constraints/debug-boot.xdc
 } else {
     #source ../constraints/vcu-small-debug.xdc
@@ -223,11 +242,11 @@ if {$board=="ArtyA7"} {
 }
 
 # WIP: bridge debugging
-#if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socdebug"} {
+#if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socdebug"} {
 #        source ../constraints/debug-ahb-axi-bridge.xdc
 #}
 
-if {$board=="nexysa7soc" || $board=="genesys2soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc"} {
     if {$litedram_supported=="1"} {
         source ../constraints/debug-boot-litedram.xdc
     } elseif {$uberddr3_supported=="1"} {
@@ -257,7 +276,7 @@ if {$board=="nexysa7soc"} {
 }
 
 
-if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
     #set_property STEPS.ROUTE_DESIGN.ARGS.ULTRATHREADS true [get_runs impl_1] #doesn't exist
     #set_property "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" "-ultrathreads -no_psir" [get_runs impl_1]
     # set_property -name "STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS" \
@@ -280,7 +299,7 @@ if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} 
 }
 
 # Further optimization tuning
-if {$board=="nexysa7soc" || $board=="genesys2soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc"} {
 
     # WARNING: set_property strategy resets some properties' values (CHECKME!!)
 
@@ -293,8 +312,8 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"} {
     # set_property strategy Performance_WLBlockPlacementFanoutOpt [get_runs impl_1]
 }
 
-if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} {
-    if {$board=="genesys2socxlnx" } {
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
+    if {$board=="genesys2socxlnx" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" } {
         set hook [file normalize ../constraints/constraints-genesys2soc-timing.tcl]
     } else {
     set hook [file normalize ../constraints/constraints-$board-timing.tcl]
@@ -316,7 +335,7 @@ if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx"} 
 }
 
 launch_runs impl_1 -jobs 12
-if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2socxlnx" } {
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx" } {
     puts "###########################################################################"
     report_property -all [get_runs impl_1]
     puts "###########################################################################"
@@ -340,6 +359,6 @@ report_timing -max_paths 10 -nworst 10 -delay_type max -sort_by slack     -file 
 report_timing -nworst 1 -delay_type max -sort_by group                    -file reports/imp_timing.rpt
 report_utilization -hierarchical                                          -file reports/imp_utilization.rpt
 
-if {$board=="nexysa7soc" || $board=="genesys2soc"} {
+if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc"} {
     write_project_tcl -force $ipName.tcl
 }
