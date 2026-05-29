@@ -13,6 +13,9 @@
 *.elf*
 *.list
 *.memfile
+*.ila
+*.fst
+*.fst.hier
 
 # General directories to ignore
 .vscode/
