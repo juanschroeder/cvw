@@ -63,7 +63,7 @@ if {[llength $p]} { set_false_path -to $p }
 #if {[llength $a] && [llength $b]} { set_clock_groups -asynchronous -group $a -group $b }
 
 # USB BuferCC
-set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/.*buffercc/buffers_0_reg/D$}]
+set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/(gen_ohci_dma(32|64)\.)?u_ohci/cc/.*buffercc/buffers_0_reg/D$}]
 if {[llength $dst]} {
   set_false_path -to $dst
 } else {
@@ -93,7 +93,7 @@ if {[llength $dst]} { set_false_path -to $dst }
 # USB OHCI: ccToggle crossings (clk_out2_mmcm <-> clk_pll_i)
 # These are toggle-based CDC blocks; Vivado still reports reg->reg across domains.
 # Cut timing into the destination "outputArea" regs.
-set_false_path -to [must_get_pins {.*usb_ohci_i/u_ohci/cc/output_.*_ccToggle/outputArea_.*_reg(\[[0-9]+\])?/D$}]
+set_false_path -to [must_get_pins {.*usb_ohci_i/(gen_ohci_dma(32|64)\.)?u_ohci/cc/output_.*_ccToggle/outputArea_.*_reg(\[[0-9]+\])?/D$}]
 
 # # ------------------------------------------------------------
 # # LiteEth: async reset pins (PRE) recovery/removal checks across RMII/system clocks
@@ -119,7 +119,7 @@ puts $f "HOOK RAN at [clock format [clock seconds]]"
 close $f
 
 # ANY OHCI BufferCC first-stage flop
-set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/.*buffercc/buffers_0_reg/D$}]
+set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/(gen_ohci_dma(32|64)\.)?u_ohci/cc/.*buffercc/buffers_0_reg/D$}]
 if {[llength $dst]} {
   set_false_path -to $dst
 } else {
@@ -130,11 +130,11 @@ set_false_path -to [must_get_pins {(^|.*/)usb_phy_resetn_ff_reg\[[01]\]/CLR$}]
 
 
 # ccToggle -> BufferCC first stage (this one was NOT covered by your old regexes)
-set_false_path -to [must_get_pins {.*usb_ohci_i/u_ohci/cc/.*_ccToggle/popArea_.*_reg(\[[0-9]+\])?/D$}]
+set_false_path -to [must_get_pins {.*usb_ohci_i/(gen_ohci_dma(32|64)\.)?u_ohci/cc/.*_ccToggle/popArea_.*_reg(\[[0-9]+\])?/D$}]
 if {[llength $p]} { set_false_path -to $p }
-set_false_path -to [must_get_pins {.*usb_ohci_i/u_ohci/cc/.*_asyncAssertSyncDeassert_buffercc/buffers_[01]_reg/PRE$}]
+set_false_path -to [must_get_pins {.*usb_ohci_i/(gen_ohci_dma(32|64)\.)?u_ohci/cc/.*_asyncAssertSyncDeassert_buffercc/buffers_[01]_reg/PRE$}]
 
-set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/u_ohci/cc/output_tick_pulseCCByToggle/inArea_target_buffercc/buffers_0_reg/D$}]
+set dst [get_pins -hier -quiet -regexp {.*usb_ohci_i/(gen_ohci_dma(32|64)\.)?u_ohci/cc/output_tick_pulseCCByToggle/inArea_target_buffercc/buffers_0_reg/D$}]
 if {[llength $dst]} { set_false_path -to $dst }
 
 

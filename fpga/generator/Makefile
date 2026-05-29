@@ -63,6 +63,36 @@ genesys2socxlnx: export MAXSDCCLOCK  := 5000000
 genesys2socxlnx: export MIG_ADDR_WIDTH  :=  30
 genesys2socxlnx: FPGA_GENESYS2SOCXLNX
 
+genesys2rv32soc: export XILINX_PART := xc7k325tffg900-2
+genesys2rv32soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
+genesys2rv32soc: export board := genesys2rv32soc
+genesys2rv32soc: export SYSTEMCLOCK := 55000000
+genesys2rv32soc: export MAXSDCCLOCK  := 5000000
+genesys2rv32soc: export MIG_ADDR_WIDTH  :=  30
+genesys2rv32soc: export MEM_WIDTH  :=  32
+genesys2rv32soc: FPGA_GENESYS2RV32SOC
+
+# same build as rv32soc but different config (no changes beyond this)
+genesys2rv32minsoc: export XILINX_PART := xc7k325tffg900-2
+genesys2rv32minsoc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
+genesys2rv32minsoc: export board := genesys2rv32soc
+genesys2rv32minsoc: export SYSTEMCLOCK := 55000000
+genesys2rv32minsoc: export MAXSDCCLOCK  := 5000000
+genesys2rv32minsoc: export MIG_ADDR_WIDTH  :=  30
+genesys2rv32minsoc: export MEM_WIDTH  :=  32
+genesys2rv32minsoc: FPGA_GENESYS2RV32SOC
+
+# same FPGA build as rv32 with different config
+genesys2rv32w64soc: export XILINX_PART := xc7k325tffg900-2
+genesys2rv32w64soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
+genesys2rv32w64soc: export board := genesys2rv32w64soc
+genesys2rv32w64soc: export SYSTEMCLOCK := 55000000
+genesys2rv32w64soc: export MAXSDCCLOCK  := 5000000
+genesys2rv32w64soc: export MIG_ADDR_WIDTH  :=  30
+genesys2rv32w64soc: export MEM_WIDTH  :=  64
+genesys2rv32w64soc: FPGA_GENESYS2RV32SOC
+
+
 
 # variables computed from config
 EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
@@ -70,14 +100,18 @@ EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' ../../config/deriv/fpga$(board)/confi
 EXT_MEM_RANGE = $(shell grep 'EXT_MEM_RANGE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
 _LITEDRAM_SUPPORTED = $(shell grep 'LITEDRAM_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
 LITEDRAM_BASE = $(shell grep 'LITEDRAM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
+BOOTROM_BASE = $(shell grep 'BOOTROM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 UNCORE_RAM_BASE = $(shell grep 'UNCORE_RAM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 UNCORE_RAM_RANGE = $(shell grep 'UNCORE_RAM_RANGE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
 _UBERDDR3_SUPPORTED = $(shell grep 'UBERDDR3_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
 genesys2soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
 genesys2soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
-genesys2socdebug: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
-genesys2socdebug: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
-
+genesys2rv32soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+genesys2rv32soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
+genesys2rv32w64soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+genesys2rv32w64soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
+genesys2rv32minsoc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+genesys2rv32minsoc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
 
 .PHONY: FPGA_Arty FPGA_VCU
 FPGA_Arty: PreProcessFiles IP_Arty zsbl
@@ -109,6 +143,9 @@ FPGA_GENESYS2SOC: PreProcessFilesSoC IP_GENESYS2SOC liblitedram zsblsoc
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
 FPGA_GENESYS2SOCXLNX: PreProcessFilesSoC IP_GENESYS2SOCXLNX zsbl
+	@$(call VIVADO_TCL,wally.tcl,wally.log)
+
+FPGA_GENESYS2RV32SOC: PreProcessFilesSoC IP_GENESYS2RV32SOC liblitedram zsbl32soc
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
 # Generate IP Blocks
@@ -146,7 +183,6 @@ IP_NEXYSA7SOC: $(dst)/sysrst.log \
 IP_GENESYS2SOC: $(dst)/sysrst.log \
 	MEM_GENESYS2 \
 	$(dst)/mmcm-genesys2soc.log \
-    $(dst)/ahbaxibridge.log	\
 	$(dst)/axicdma.log
 
 IP_GENESYS2SOCXLNX: $(dst)/sysrst.log \
@@ -156,6 +192,10 @@ IP_GENESYS2SOCXLNX: $(dst)/sysrst.log \
 	$(dst)/axicdma.log \
 	$(dst)/axicrossbar.log  \
 	$(dst)/clkconverter.log
+
+IP_GENESYS2RV32SOC: $(dst)/sysrst.log \
+	$(dst)/mmcm-genesys2soc.log \
+	$(dst)/axicdma.log
 
 # Generate Memory IP Blocks
 .PHONY: MEM_VCU MEM_Arty
@@ -169,6 +209,10 @@ MEM_GENESYS2:
 
 MEM_GENESYS2SOCXLNX:
 	$(MAKE) $(dst)/ddr3-genesys2soc.log
+
+# MEM_GENESYS2RV32SOC: No MIG IP for RV32
+# MEM_GENESYS2RV32SOC:
+# 	$(MAKE) $(dst)/ddr3-genesys2soc.log
 
 MEM_NEXYSA7:
 	$(MAKE) $(dst)/ddr2-$(board).log
@@ -248,7 +292,8 @@ PreProcessFilesSoC: PreProcessFiles
 .PHONY: zsbl
 zsbl:
 	$(MAKE) -C ../zsbl clean
-	SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) $(MAKE) -C ../zsbl
+	SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
+		BOOTROM_BASE=$(BOOTROM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) $(MAKE) -C ../zsbl
 
 export LIBLITEDRAM_SRC_DIR =  $(PWD)/../../addins/litex/litex/soc/software/liblitedram
 LITEDRAM_INC_DIRS = "$(PWD)/../../addins/cvwsoc/litedram/$(board)/include \
@@ -258,13 +303,35 @@ LITEDRAM_INC_DIRS = "$(PWD)/../../addins/cvwsoc/litedram/$(board)/include \
 					$(LIBLITEDRAM_DIRECTORY)/.. $(LIBLITEDRAM_SRC_DIR)"
 LIBS = "-L$(PWD)/../../addins/cvwsoc/litedram -llitedram"
 # build the Zero stage boot loader (ZSBL)
-.PHONY: zsblsoc liblitedram
+.PHONY: zsblsoc zsbl32soc liblitedram
 zsblsoc:
 	$(MAKE) -C ../zsbl clean
 	SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
 		LITEDRAM_SUPPORTED=$(LITEDRAM_SUPPORTED) LITEDRAM_BASE=$(LITEDRAM_BASE)            \
-		UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE)            \
+		BOOTROM_BASE=$(BOOTROM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE) \
 		LIBS=$(LIBS) INC_DIRS=$(LITEDRAM_INC_DIRS) $(MAKE) -C ../zsbl
+
+ZSBL32SOC_CC      ?= riscv64-unknown-elf-gcc
+ZSBL32SOC_AS      ?= riscv64-unknown-elf-as
+ZSBL32SOC_AR      ?= riscv64-unknown-elf-ar
+ZSBL32SOC_MARCH   ?= -march=rv32imac_zicsr_zifencei
+ZSBL32SOC_MABI    ?= -mabi=ilp32
+ZSBL32SOC_LIBDIR  ?= $(RISCV)/riscv64-unknown-elf/lib/rv32imac/ilp32
+ZSBL32SOC_SYSROOT ?= $(RISCV)/riscv64-unknown-elf
+ZSBL32SOC_MEM_WIDTH ?= $(MEM_WIDTH)
+# 32-bit CPU build
+zsbl32soc:
+	$(MAKE) -C ../zsbl clean
+	sed 's/elf64-littleriscv/elf32-littleriscv/g' ../zsbl/linker1000.x > ../zsbl/linker1000_32.x
+	$(MAKE) -C ../zsbl                                                                 \
+		SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
+		LITEDRAM_SUPPORTED=$(LITEDRAM_SUPPORTED) LITEDRAM_BASE=$(LITEDRAM_BASE)          \
+		BOOTROM_BASE=$(BOOTROM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE) \
+		LIBS=$(LIBS) INC_DIRS=$(LITEDRAM_INC_DIRS)                                       \
+		CC=$(ZSBL32SOC_CC) AS=$(ZSBL32SOC_AS) AR=$(ZSBL32SOC_AR)                         \
+		MARCH=$(ZSBL32SOC_MARCH) MABI=$(ZSBL32SOC_MABI) MEM_WIDTH=$(ZSBL32SOC_MEM_WIDTH) \
+		LINKER=linker1000_32.x                                                           \
+		LINK_FLAGS="$(ZSBL32SOC_MARCH) $(ZSBL32SOC_MABI) -nostartfiles -L $(ZSBL32SOC_LIBDIR) -L $(ZSBL32SOC_SYSROOT)/lib"
 
 LIBLITEDRAM_DIRECTORY = $(LIBLITEDRAM_SRC_DIR)
 liblitedram:

@@ -16,9 +16,12 @@
 import cvw::*;
 
 
-// Enable what to simulate
-`define SIM_AXI_RAM 1
-//`define SIM_AXI_SDHCI 1
+// Enable one external-memory model. SDHCI is opt-in; AXI RAM is the default.
+`ifndef SIM_AXI_RAM
+  `ifndef SIM_AXI_SDHCI
+    `define SIM_AXI_RAM 1
+  `endif
+`endif
 
 module testbench_cvwsoc #(
   parameter int unsigned CLK_PERIOD_NS       = 10,
@@ -69,6 +72,7 @@ module testbench_cvwsoc #(
     end
   endfunction
 
+  localparam BUSW = P.AHBW; // AXI width = AHB width
   localparam cvw_t SOC_P = cvwsoc_sim_cfg(P);
   localparam int unsigned AXI_ID_WIDTH = 4;
   localparam int unsigned XBAR_NUM_SLV_PORTS = 2;
@@ -82,18 +86,18 @@ module testbench_cvwsoc #(
   localparam longint unsigned HEARTBEAT_CYCLES = 10_000_000;
   localparam longint unsigned HEARTBEAT_SPEED_INTERVAL_CYCLES_DEFAULT = HEARTBEAT_CYCLES;
   localparam logic [P.XLEN-1:0] KERNEL_ENTRY_PC = 64'h0000_0000_8020_0000;
-  localparam longint unsigned XLEN_BYTES = P.XLEN / 8;
-  localparam longint unsigned BOOTROM_PRELOAD_START = SOC_P.BOOTROM_BASE >> 3;
-  localparam longint unsigned BOOTROM_WORDS = (SOC_P.BOOTROM_RANGE + 1) / XLEN_BYTES;
-  localparam longint unsigned UNCORE_RAM_WORDS = (SOC_P.UNCORE_RAM_RANGE + 1) / XLEN_BYTES;
+  localparam longint unsigned AHBW_BYTES = P.AHBW / 8;
+  localparam longint unsigned BOOTROM_PRELOAD_START = SOC_P.BOOTROM_BASE >> $clog2(AHBW_BYTES);
+  localparam longint unsigned BOOTROM_WORDS = (SOC_P.BOOTROM_RANGE + 1) / AHBW_BYTES;
+  localparam longint unsigned UNCORE_RAM_WORDS = (SOC_P.UNCORE_RAM_RANGE + 1) / AHBW_BYTES;
   localparam realtime HALF_PERIOD_NS = CLK_PERIOD_NS / 2.0;
   localparam realtime BUS_HALF_PERIOD_NS = BUS_CLK_PERIOD_NS / 2.0;
   localparam realtime UART_BIT_PERIOD_NS = 1_000_000_000.0 / 115200.0;
   localparam realtime UART_TX_START_DELAY_NS = 100_000.0;
 
   typedef logic [31:0]                axi_addr_t;
-  typedef logic [P.XLEN-1:0]          axi_data_t;
-  typedef logic [P.XLEN/8-1:0]        axi_strb_t;
+  typedef logic [BUSW-1:0]          axi_data_t;
+  typedef logic [BUSW/8-1:0]        axi_strb_t;
   typedef logic [AXI_ID_WIDTH-1:0]    slv_id_t;
   typedef logic [AXI_MST_ID_WIDTH-1:0] mst_id_t;
   typedef logic [0:0]                 axi_user_t;
@@ -125,7 +129,7 @@ module testbench_cvwsoc #(
     AxiIdUsedSlvPorts:  AXI_ID_WIDTH,
     UniqueIds:          1'b0,
     AxiAddrWidth:       32,
-    AxiDataWidth:       P.XLEN,
+    AxiDataWidth:       BUSW,
     NoAddrRules:        XBAR_NUM_ADDR_RULES
   };
 
@@ -167,7 +171,7 @@ module testbench_cvwsoc #(
   logic                 HRESETn;
   logic [P.PA_BITS-1:0] HADDR;
   logic [P.AHBW-1:0]    HWDATA;
-  logic [P.XLEN/8-1:0]  HWSTRB;
+  logic [BUSW/8-1:0]    HWSTRB;
   logic                 HWRITE;
   logic [2:0]           HSIZE;
   logic [2:0]           HBURST;
@@ -177,7 +181,23 @@ module testbench_cvwsoc #(
   logic                 HREADY;
   logic [P.XLEN-1:0]    PCM;
   logic                 InstrValidM;
+  logic [31:0]          InstrM;
   logic                 TrapM;
+  logic                 StallM;
+  logic                 FlushM;
+
+  // Other SoC internal signals
+  logic [P.AHBW-1:0]    HRDATAINT;
+
+  // APB signals
+  logic                        PCLK, PRESETn, PWRITE, PENABLE;
+  logic [5:0]                  PSEL;
+  logic [31:0]                 PADDR;
+  logic [P.AHBW-1:0]           PWDATA;
+  logic [P.AHBW/8-1:0]         PSTRB;
+  logic [5:0]                  PREADY;
+  logic [5:0][P.AHBW-1:0]      PRDATA;
+
 
   // ---------------------------------------------------------------------------
   // Uncore I/O
@@ -214,6 +234,7 @@ module testbench_cvwsoc #(
   logic AXI_USBIntr = 1'b0;
   logic AXI_EthIntr = 1'b0;
   logic AXI_DummyIntr;
+  logic AXI_DummyIntr_orig;
   logic ExternalStall = 1'b0;
 
   // ---------------------------------------------------------------------------
@@ -231,8 +252,8 @@ module testbench_cvwsoc #(
   logic                    m_axi_awvalid;
   logic                    m_axi_awready;
 
-  logic [P.XLEN-1:0]       m_axi_wdata;
-  logic [P.XLEN/8-1:0]     m_axi_wstrb;
+  logic [BUSW-1:0]       m_axi_wdata;
+  logic [BUSW/8-1:0]     m_axi_wstrb;
   logic                    m_axi_wlast;
   logic                    m_axi_wvalid;
   logic                    m_axi_wready;
@@ -255,7 +276,7 @@ module testbench_cvwsoc #(
   logic                    m_axi_arready;
 
   logic [AXI_ID_WIDTH-1:0] m_axi_rid;
-  logic [P.XLEN-1:0]       m_axi_rdata;
+  logic [BUSW-1:0]       m_axi_rdata;
   logic [1:0]              m_axi_rresp;
   logic                    m_axi_rlast;
   logic                    m_axi_rvalid;
@@ -273,9 +294,21 @@ module testbench_cvwsoc #(
   mst_req_t  [XBAR_NUM_MST_PORTS-1:0] mst_req;
   mst_resp_t [XBAR_NUM_MST_PORTS-1:0] mst_resp;
 
-  assign PCM = soc.core.ifu.PCM;
-  assign InstrValidM = soc.core.ieu.InstrValidM;
-  assign TrapM = soc.core.TrapM;
+  assign PCM            = soc.core.ifu.PCM;
+  assign InstrValidM    = soc.core.ieu.InstrValidM;
+  assign InstrM         = soc.core.InstrM;
+  assign TrapM          = soc.core.TrapM;
+  assign StallM         = soc.core.StallM;
+  assign FlushM         = soc.core.FlushM;
+
+  assign HRDATAINT      = soc.core.HRDATA;
+
+  assign PCLK = soc.uncoregen.uncore.PCLK;
+  assign PSEL = soc.uncoregen.uncore.PSEL;
+  assign PADDR = soc.uncoregen.uncore.PADDR;
+  assign PWDATA = soc.uncoregen.uncore.PWDATA;
+  assign PSTRB = soc.uncoregen.uncore.PSTRB;
+  assign PRDATA = soc.uncoregen.uncore.PRDATA;
 
   //--------------------------------
   // EXTRA DEBUG STUFF (REMOVE)
@@ -347,12 +380,13 @@ module testbench_cvwsoc #(
     .AXI_DMAIntr(AXI_DMAIntr),
     .AXI_USBIntr(AXI_USBIntr),
     .AXI_EthIntr(AXI_EthIntr),
+    .AXI_SDHCIIntr(1'b0),
     .AXI_DummyIntr(AXI_DummyIntr)
   );
 
   ahb_to_axi4_burst #(
     .AW(32),
-    .DW(P.XLEN),
+    .DW(BUSW),
     .IW(AXI_ID_WIDTH)
   ) bridge (
     .clk(clk),
@@ -520,9 +554,9 @@ module testbench_cvwsoc #(
   );
 
   axi_ram #(
-    .DATA_WIDTH(P.XLEN),
+    .DATA_WIDTH(BUSW),
     .ADDR_WIDTH(EXT_MEM_ADDR_WIDTH),
-    .STRB_WIDTH(P.XLEN/8),
+    .STRB_WIDTH(BUSW/8),
     .ID_WIDTH(AXI_MST_ID_WIDTH),
     .PIPELINE_OUTPUT(0)
   ) ext_ram_i (
@@ -567,9 +601,9 @@ module testbench_cvwsoc #(
 
 `ifdef SIM_AXI_RAM
   axi_ram #(
-    .DATA_WIDTH(P.XLEN),
+    .DATA_WIDTH(BUSW),
     .ADDR_WIDTH(PERIPH_ADDR_WIDTH),
-    .STRB_WIDTH(P.XLEN/8),
+    .STRB_WIDTH(BUSW/8),
     .ID_WIDTH(AXI_MST_ID_WIDTH),
     .PIPELINE_OUTPUT(0)
   ) periph_ram_i (
@@ -797,7 +831,6 @@ module testbench_cvwsoc #(
   logic [3:0] sd_dat_o;
   logic [3:0] sd_dat_i;
 
-  logic AXI_DummyIntr_orig;
   axi_sdhci_wrap sdhci_i(
       // For simplicity we use same clock as the bus
       .aclk(bus_clk),
@@ -1261,11 +1294,6 @@ module testbench_cvwsoc #(
   endtask
 
   initial begin
-    if (P.XLEN != 64) begin
-      $error("testbench_cvwsoc expects a 64-bit Wally configuration.");
-      $finish;
-    end
-
     if (!$value$plusargs("BOOTROM_BIN=%s", bootrom_bin))
       bootrom_bin = "";
     if (!$value$plusargs("BOOTROM_MEMH=%s", bootrom_memh))
@@ -1322,7 +1350,9 @@ module testbench_cvwsoc #(
                 ". Override with +BOOTROM_BIN=<path> if needed."});
         $finish;
       end
-      bytes_read = $fread(soc.uncoregen.uncore.bootrom.bootrom.memory.ROM, file_handle);
+      bytes_read = $fread(soc.uncoregen.uncore.bootrom.bootrom.memory.ROM,
+                           file_handle,
+                           BOOTROM_PRELOAD_START);
       $fclose(file_handle);
       $display("Loaded %0d bytes of boot ROM from %s", bytes_read, bootrom_bin);
     end else begin
@@ -1387,7 +1417,7 @@ module testbench_cvwsoc #(
       uart_mount_sent <= 1'b0;
       uart_runcmd_sent <= 1'b0;
       heartbeat_speed_initialized <= 1'b0;
-      uart_recent <= "";
+      uart_recent = "";
       heartbeat_speed_prev_wall_s = 0.0;
       heartbeat_speed_elapsed_wall_s = 0.0;
       heartbeat_cycles_per_s = 0.0;
@@ -1470,9 +1500,9 @@ module testbench_cvwsoc #(
           $dumpoff;
           $dumpflush;
           $display("[trace] stopped at cycle=%0d", cycle_count + 1);
-          trace_started <= 1'b0;
-          trace_stopped <= 1'b1;
-          trace_stop_cycle_effective <= 0;
+          trace_started = 1'b0;
+          trace_stopped = 1'b1;
+          trace_stop_cycle_effective = 0;
         end
 
         if ((trace_external_control && trace_start_request && (!trace_started || trace_stopped)) ||

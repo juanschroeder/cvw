@@ -41,7 +41,7 @@ module wallypipelinedsoc import cvw::*; #(parameter cvw_t P)  (
   output logic                HCLK, HRESETn,
   output logic [P.PA_BITS-1:0]  HADDR,
   output logic [P.AHBW-1:0]     HWDATA,
-  output logic [P.XLEN/8-1:0]   HWSTRB,
+  output logic [P.AHBW/8-1:0]   HWSTRB,
   output logic                HWRITE,
   output logic [2:0]          HSIZE,
   output logic [2:0]          HBURST,

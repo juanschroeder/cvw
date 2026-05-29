@@ -1,0 +1,81 @@
+/dts-v1/;
+
+/ {
+  #address-cells = <0x02>;
+  #size-cells = <0x02>;
+  compatible = "wally-virt";
+  model = "wally-virt,qemu";
+
+  chosen {
+    linux,initrd-end = <0x85c43a00>;
+    linux,initrd-start = <0x84200000>;
+    bootargs = "earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 ignore_loglevel loglevel=8 rdinit=/bin/sh";
+    stdout-path = "/soc/uart@10000000";
+  };
+
+  memory@80000000 {
+    device_type = "memory";
+    reg = <0x00 0x80000000 0x00 0x10000000>;
+  };
+
+  cpus {
+    #address-cells = <0x01>;
+    #size-cells = <0x00>;
+    clock-frequency = <100000000>;
+    timebase-frequency = <100000000>;
+
+    cpu@0 {
+      phandle = <0x01>;
+      device_type = "cpu";
+      reg = <0x00>;
+      status = "okay";
+      compatible = "riscv";
+      riscv,isa = "rv32imafdc_zicbom_zicboz_zicbop_zicsr_zifencei";
+      riscv,isa-base = "rv32i";
+      riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "zicbom", "zicboz", "zicbop", "zicsr", "zifencei";
+      riscv,cboz-block-size = <64>;
+      riscv,cbom-block-size = <64>;
+      mmu-type = "riscv,sv32";
+
+      cpu_intc: interrupt-controller {
+        #interrupt-cells = <0x01>;
+        #address-cells = <0x00>;
+        interrupt-controller;
+        compatible = "riscv,cpu-intc";
+        phandle = <0x02>;
+      };
+    };
+  };
+
+  soc {
+    #address-cells = <0x02>;
+    #size-cells = <0x02>;
+    compatible = "simple-bus";
+    ranges;
+
+    uart@10000000 {
+      interrupts = <0x0a>;
+      interrupt-parent = <0x03>;
+      clock-frequency = <0x384000>;
+      reg = <0x00 0x10000000 0x00 0x100>;
+      compatible = "ns16550a";
+    };
+
+    plic@c000000 {
+      phandle = <0x03>;
+      riscv,ndev = <0x35>;
+      reg = <0x00 0xc000000 0x00 0x210000>;
+      interrupts-extended = <&cpu_intc 0x0b &cpu_intc 0x09>;
+      interrupt-controller;
+      compatible = "sifive,plic-1.0.0\0riscv,plic0";
+      #interrupt-cells = <0x01>;
+      #address-cells = <0x00>;
+    };
+
+    clint@2000000 {
+      interrupts-extended = <&cpu_intc 0x03 &cpu_intc 0x07>;
+      reg = <0x00 0x2000000 0x00 0x10000>;
+      compatible = "sifive,clint0\0riscv,clint0";
+    };
+  };
+};

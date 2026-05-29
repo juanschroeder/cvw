@@ -111,10 +111,17 @@ module uberddr3_wrapper #(
     localparam int UBER_AXI_LSBS        = $clog2(UBER_AXI_DATA_WIDTH) - 3;
     localparam int UBER_AXI_ADDR_WIDTH  = UBER_WB_ADDR_BITS + UBER_AXI_LSBS;
 
-    // Sanity check: this wrapper is intentionally 64 -> 256 bits.
+    // Sanity check: this wrapper adapts the SoC-facing AXI port to UberDDR3's
+    // native 256-bit AXI port.
     initial begin
-        if (AXI_DATA_WIDTH != 64) begin
-            $error("uberddr3_wrapper currently expects AXI_DATA_WIDTH=64 on the external SoC-facing AXI port.");
+        if ((AXI_DATA_WIDTH % 8) != 0) begin
+            $error("uberddr3_wrapper AXI_DATA_WIDTH must be byte-aligned.");
+        end
+        if (AXI_DATA_WIDTH > UBER_AXI_DATA_WIDTH) begin
+            $error("uberddr3_wrapper AXI_DATA_WIDTH must not exceed UBER_AXI_DATA_WIDTH.");
+        end
+        if ((UBER_AXI_DATA_WIDTH % AXI_DATA_WIDTH) != 0) begin
+            $error("uberddr3_wrapper UBER_AXI_DATA_WIDTH must be an integer multiple of AXI_DATA_WIDTH.");
         end
         if (UBER_AXI_DATA_WIDTH != 256) begin
             $error("uberddr3_wrapper currently expects UBER_AXI_DATA_WIDTH=256 for the internal UberDDR3 AXI port.");
@@ -195,7 +202,7 @@ module uberddr3_wrapper #(
     wire u_uber_rst_n = ~i_sys_rst & pll_locked;
 
     // ------------------------------------------------------------------------
-    // Internal AXI wiring: external 64-bit AXI -> axi_adapter -> internal 256-bit AXI
+    // Internal AXI wiring: external SoC-facing AXI -> axi_adapter -> internal 256-bit AXI
     // ------------------------------------------------------------------------
     wire [AXI_ID_WIDTH-1:0]         axi256_awid;
     wire [AXI_ADDR_WIDTH-1:0]       axi256_awaddr_full;
@@ -256,7 +263,7 @@ module uberddr3_wrapper #(
         .CONVERT_BURST        (1),
         .CONVERT_NARROW_BURST (0),
         .FORWARD_ID           (1)
-    ) u_axi_adapter_64_to_256 (
+    ) u_axi_adapter_soc_to_256 (
         .clk                  (o_ui_clk),
         .rst                  (o_ui_clk_sync_rst),
 

@@ -33,11 +33,11 @@ module gpio_apb import cvw::*;  #(parameter cvw_t P) (
   input  logic                PCLK, PRESETn,
   input  logic                PSEL,
   input  logic [7:0]          PADDR,
-  input  logic [P.XLEN-1:0]   PWDATA,
-  input  logic [P.XLEN/8-1:0] PSTRB,
+  input  logic [P.AHBW-1:0]   PWDATA,
+  input  logic [P.AHBW/8-1:0] PSTRB,
   input  logic                PWRITE,
   input  logic                PENABLE,
-  output logic [P.XLEN-1:0]   PRDATA,
+  output logic [P.AHBW-1:0]   PRDATA,
   output logic                PREADY,
   input  logic [31:0]         iof0, iof1,
   input  logic [31:0]         GPIOIN,
@@ -78,7 +78,7 @@ module gpio_apb import cvw::*;  #(parameter cvw_t P) (
   // account for subword read/write circuitry
   // -- Note GPIO registers are 32 bits no matter what; access them with LW SW.
   assign Din = PWDATA[31:0];
-  if (P.XLEN == 64) assign PRDATA = {Dout, Dout};
+  if (P.AHBW == 64) assign PRDATA = {Dout, Dout};
   else              assign PRDATA = Dout;
 
   // register access

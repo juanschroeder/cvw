@@ -3,6 +3,17 @@ namespace eval ::ila_util {
     array set probe0_used {}
 }
 
+proc ila_resolve_one_net {p} {
+    set m [get_nets -quiet [list $p]]
+    if {[llength $m] == 0 && [string first "/" $p] >= 0} {
+        set pf [string map [list "\\" "\\\\" "\"" "\\\""] $p]
+        set m [get_nets -hier -quiet -filter "NAME == \"$pf\""]
+    }
+    if {[llength $m] == 0} { return "" }
+    if {[llength $m] != 1} { error "ila_add_probe: '$p' matched [llength $m] nets; make it unique" }
+    return [lindex $m 0]
+}
+
 proc ila_add_probe {ila args} {
     # ---- persistent state (per ILA core instance) ----
     global ila_probe0_used ila_core_obj
@@ -68,12 +79,28 @@ proc ila_add_probe {ila args} {
     if {$bus_base ne ""} {
         if {$msb eq "" || $lsb eq ""} { error "ila_add_probe: -bus requires -msb and -lsb" }
         set patterns [list]
-        if {$order eq "lsb2msb"} {
-            for {set b $lsb} {$b <= $msb} {incr b} { lappend patterns "${bus_base}\[$b\]" }
-        } elseif {$order eq "msb2lsb"} {
-            for {set b $msb} {$b >= $lsb} {incr b -1} { lappend patterns "${bus_base}\[$b\]" }
+        if {$msb eq "auto"} {
+            if {$order ne "lsb2msb"} { error "ila_add_probe: -msb auto requires -order lsb2msb" }
+            set seen_missing 0
+            for {set b $lsb} {$b < 1024} {incr b} {
+                set p "${bus_base}\[$b\]"
+                set m [ila_resolve_one_net $p]
+                if {$m eq ""} {
+                    if {$b == $lsb} { error "ila_add_probe: matched 0 nets for '$p'" }
+                    set seen_missing 1
+                } else {
+                    if {$seen_missing} { error "ila_add_probe: non-contiguous bus '$bus_base': found bit $b after a missing lower bit" }
+                    lappend patterns $p
+                }
+            }
         } else {
-            error "ila_add_probe: -order must be lsb2msb or msb2lsb"
+            if {$order eq "lsb2msb"} {
+                for {set b $lsb} {$b <= $msb} {incr b} { lappend patterns "${bus_base}\[$b\]" }
+            } elseif {$order eq "msb2lsb"} {
+                for {set b $msb} {$b >= $lsb} {incr b -1} { lappend patterns "${bus_base}\[$b\]" }
+            } else {
+                error "ila_add_probe: -order must be lsb2msb or msb2lsb"
+            }
         }
     }
 
@@ -85,11 +112,9 @@ proc ila_add_probe {ila args} {
         set nets [list]
         foreach p $patterns {
             # literal match for names containing [n]
-            set m [get_nets -quiet [list $p]]
-            if {[llength $m] == 0} { set m [get_nets -hier -quiet [list $p]] }
-            if {[llength $m] == 0} { error "ila_add_probe: matched 0 nets for '$p'" }
-            if {[llength $m] != 1} { error "ila_add_probe: '$p' matched [llength $m] nets; make it unique" }
-            lappend nets [lindex $m 0]
+            set m [ila_resolve_one_net $p]
+            if {$m eq ""} { error "ila_add_probe: matched 0 nets for '$p'" }
+            lappend nets $m
         }
     }
 

@@ -35,12 +35,12 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
   input  logic                PCLK, PRESETn,
   input  logic                PSEL,
   input  logic [7:0]          PADDR,
-  input  logic [P.XLEN-1:0]   PWDATA,
-  input  logic [P.XLEN/8-1:0] PSTRB,
+  input  logic [P.AHBW-1:0]   PWDATA,
+  input  logic [P.AHBW/8-1:0] PSTRB,
   input  logic                PWRITE,
   input  logic                PENABLE,
   output logic                PREADY,
-  output logic [P.XLEN-1:0]   PRDATA,
+  output logic [P.AHBW-1:0]   PRDATA,
   output logic                SPIOut,
   input  logic                SPIIn,
   output logic [3:0]          SPICS,
@@ -63,6 +63,8 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
   localparam SPI_RXMARK =  8'h54;
   localparam SPI_IE =      8'h70;
   localparam SPI_IP =      8'h74;
+
+  localparam int unsigned BUS_BYTES = P.AHBW/8;
 
   // SPI control registers. Refer to SiFive FU540-C000 manual
   logic [11:0] SckDiv;
@@ -145,8 +147,7 @@ module spi_apb import cvw::*; #(parameter cvw_t P) (
   // -- Note SPI registers are 32 bits no matter what; access them with LW SW.
 
   assign Din = PWDATA[31:0];
-  if (P.XLEN == 64) assign PRDATA = { Dout,  Dout};
-  else              assign PRDATA =  Dout;
+  assign PRDATA = {BUS_BYTES{Dout}};
 
   // Register access
   always_ff@(posedge PCLK)
