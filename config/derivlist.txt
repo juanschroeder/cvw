@@ -236,7 +236,7 @@ BPRED_SIZE              32'd5
 BTB_SIZE                32'd5
 
 # RV32 (XLEN=32) with AHBW=64
-deriv fpgagenesys2socrv32w64 fpgagenesys2rv32soc
+deriv fpgagenesys2rv32w64soc fpgagenesys2rv32soc
 AHBW                    64
 
 
