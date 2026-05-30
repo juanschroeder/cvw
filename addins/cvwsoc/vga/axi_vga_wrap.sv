@@ -318,7 +318,7 @@ module axi_vga_wrap #(
     .reg_resp_t   ( reg_resp_t ),
     // Default: 16 and 24
     // Using BufferDepth=4 and MaxReadTxns=4 was tested at least once be good for timing requirements and not have black stripes
-    .BufferDepth  ( 4 ),
+    .BufferDepth  ( 16 ),
     .MaxReadTxns  ( 4 ) 
   ) i_axi_vga (
     .clk_i         ( aclk     ),

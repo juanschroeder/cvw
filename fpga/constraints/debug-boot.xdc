@@ -50,12 +50,12 @@ ila_add_probe u_ila_spi -net wallypipelinedsoc/core/FlushM
 # ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/lsu/ReadDataM  -msb 63 -lsb 0 -order lsb2msb
 
 # SD card (SPI bus) signals
-ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCCLK
-ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCIn
-ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCCS[0]
-ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCCmd
-ila_add_probe u_ila_spi -bus wallypipelinedsoc/uncoregen.uncore/sdc.sdc/controller/CurrState  -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/sdc.sdc/ReceiveFIFOReadInc
+# ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCCLK
+# ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCIn
+# ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCCS[0]
+# ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCCmd
+# ila_add_probe u_ila_spi -bus wallypipelinedsoc/uncoregen.uncore/sdc.sdc/controller/CurrState  -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/sdc.sdc/ReceiveFIFOReadInc
 
 # AHB bus signals
 #ila_add_probe u_ila_spi -bus wallypipelinedsoc/core/ebu.ebu/HTRANS -msb 1 -lsb 0 -order lsb2msb
@@ -108,56 +108,56 @@ connect_debug_port u_ila_axi/clk [get_nets BUSCLK]
 
 
 # USB
-ila_add_probe u_ila_axi -bus   usb_m_axi_awid -msb 3 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus  usb_m_axi_awaddr -msb 31 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus   usb_m_axi_awlen -msb 7 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus   usb_m_axi_awsize -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus   usb_m_axi_awburst -msb 1 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -net usb_m_axi_awlock
-ila_add_probe u_ila_axi -bus   usb_m_axi_awcache  -msb 3 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus   usb_m_axi_awprot  -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -net usb_m_axi_awvalid
-ila_add_probe u_ila_axi -net usb_m_axi_awready
+# ila_add_probe u_ila_axi -bus   usb_m_axi_awid -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus  usb_m_axi_awaddr -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus   usb_m_axi_awlen -msb 7 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus   usb_m_axi_awsize -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus   usb_m_axi_awburst -msb 1 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net usb_m_axi_awlock
+# ila_add_probe u_ila_axi -bus   usb_m_axi_awcache  -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus   usb_m_axi_awprot  -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net usb_m_axi_awvalid
+# ila_add_probe u_ila_axi -net usb_m_axi_awready
 
-ila_add_probe u_ila_axi -bus  usb_m_axi_wdata  -msb auto -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus   usb_m_axi_wstrb  -msb auto -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -net usb_m_axi_wlast
-ila_add_probe u_ila_axi -net usb_m_axi_wvalid
-ila_add_probe u_ila_axi -net usb_m_axi_wready
+# ila_add_probe u_ila_axi -bus  usb_m_axi_wdata  -msb auto -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus   usb_m_axi_wstrb  -msb auto -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net usb_m_axi_wlast
+# ila_add_probe u_ila_axi -net usb_m_axi_wvalid
+# ila_add_probe u_ila_axi -net usb_m_axi_wready
 
-ila_add_probe u_ila_axi -bus   usb_m_axi_bid  -msb 3 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus   usb_m_axi_bresp  -msb 1 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -net usb_m_axi_bvalid
-ila_add_probe u_ila_axi -net usb_m_axi_bready
+# ila_add_probe u_ila_axi -bus   usb_m_axi_bid  -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus   usb_m_axi_bresp  -msb 1 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net usb_m_axi_bvalid
+# ila_add_probe u_ila_axi -net usb_m_axi_bready
 
-ila_add_probe u_ila_axi -bus usb_m_axi_arid  -msb 3 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus usb_m_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus usb_m_axi_arlen  -msb 7 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus usb_m_axi_arsize  -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus usb_m_axi_arburst  -msb 1 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -net usb_m_axi_arlock
-ila_add_probe u_ila_axi -bus usb_m_axi_arcache  -msb 3 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus usb_m_axi_arprot  -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -net usb_m_axi_arvalid
-ila_add_probe u_ila_axi -net usb_m_axi_arready
+# ila_add_probe u_ila_axi -bus usb_m_axi_arid  -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus usb_m_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus usb_m_axi_arlen  -msb 7 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus usb_m_axi_arsize  -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus usb_m_axi_arburst  -msb 1 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net usb_m_axi_arlock
+# ila_add_probe u_ila_axi -bus usb_m_axi_arcache  -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus usb_m_axi_arprot  -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net usb_m_axi_arvalid
+# ila_add_probe u_ila_axi -net usb_m_axi_arready
 
-ila_add_probe u_ila_axi -bus  usb_m_axi_rid  -msb 3 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus usb_m_axi_rdata  -msb auto -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus usb_m_axi_rresp  -msb 1 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -net usb_m_axi_rlast
-ila_add_probe u_ila_axi -net usb_m_axi_rvalid
-ila_add_probe u_ila_axi -net usb_m_axi_rready
+# ila_add_probe u_ila_axi -bus  usb_m_axi_rid  -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus usb_m_axi_rdata  -msb auto -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus usb_m_axi_rresp  -msb 1 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net usb_m_axi_rlast
+# ila_add_probe u_ila_axi -net usb_m_axi_rvalid
+# ila_add_probe u_ila_axi -net usb_m_axi_rready
 
 
 # SDHCI probes
-ila_add_probe u_ila_axi -net sd_clk_o
-ila_add_probe u_ila_axi -net sd_cd_ni
-ila_add_probe u_ila_axi -net sd_cmd_en
-ila_add_probe u_ila_axi -net sd_cmd_o
-ila_add_probe u_ila_axi -net sd_cmd_i
-ila_add_probe u_ila_axi -net sd_dat_en
-ila_add_probe u_ila_axi -bus sd_dat_o -msb 3 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus sd_dat_i -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net sd_clk_o
+# ila_add_probe u_ila_axi -net sd_cd_ni
+# ila_add_probe u_ila_axi -net sd_cmd_en
+# ila_add_probe u_ila_axi -net sd_cmd_o
+# ila_add_probe u_ila_axi -net sd_cmd_i
+# ila_add_probe u_ila_axi -net sd_dat_en
+# ila_add_probe u_ila_axi -bus sd_dat_o -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus sd_dat_i -msb 3 -lsb 0 -order lsb2msb
 
 # # SDHCI debug taps: command path
 # ila_add_probe u_ila_axi -bus gen_axi_sdhci.dbg_sdhci_current_cmd -msb 5 -lsb 0 -order lsb2msb
@@ -271,12 +271,12 @@ ila_add_probe u_ila_axi -net m_axi_wlast
 ila_add_probe u_ila_axi -net m_axi_bvalid
 ila_add_probe u_ila_axi -net m_axi_bready
 # #ila_add_probe u_ila_axi -bus m_axi_bresp -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus m_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus m_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus m_axi_arlen -msb 7 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus m_axi_arsize -msb 2 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus m_axi_arburst -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net m_axi_arvalid
-# ila_add_probe u_ila_axi -net m_axi_arready
+ila_add_probe u_ila_axi -net m_axi_arvalid
+ila_add_probe u_ila_axi -net m_axi_arready
 # ila_add_probe u_ila_axi -bus m_axi_rdata -msb 63 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -net m_axi_rvalid
 # ila_add_probe u_ila_axi -net m_axi_rready
