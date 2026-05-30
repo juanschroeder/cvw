@@ -99,18 +99,24 @@ EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' ../../config/deriv/fpga$(board)/confi
 
 EXT_MEM_RANGE = $(shell grep 'EXT_MEM_RANGE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
 _LITEDRAM_SUPPORTED = $(shell grep 'LITEDRAM_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
+_SDHCI_SUPPORTED = $(shell grep 'AXI_SDHCI_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
 LITEDRAM_BASE = $(shell grep 'LITEDRAM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
+SDHCI_BASE = $(shell grep 'AXI_SDHCI_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 BOOTROM_BASE = $(shell grep 'BOOTROM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 UNCORE_RAM_BASE = $(shell grep 'UNCORE_RAM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 UNCORE_RAM_RANGE = $(shell grep 'UNCORE_RAM_RANGE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
 _UBERDDR3_SUPPORTED = $(shell grep 'UBERDDR3_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
 genesys2soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+genesys2soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
 genesys2soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
 genesys2rv32soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+genesys2rv32soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
 genesys2rv32soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
 genesys2rv32w64soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+genesys2rv32w64soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
 genesys2rv32w64soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
 genesys2rv32minsoc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+genesys2rv32minsoc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
 genesys2rv32minsoc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
 
 .PHONY: FPGA_Arty FPGA_VCU
@@ -284,6 +290,7 @@ PreProcessFilesSoC: PreProcessFiles
 	cp -r ../../addins/uberddr3 ../src/CopiedFiles_do_not_add_to_repo/
 	# copy sdhci
 	cp -r ../../addins/sdhci ../src/CopiedFiles_do_not_add_to_repo/
+	patch -d ../src/CopiedFiles_do_not_add_to_repo/sdhci -p1 -N --forward < ../../addins/cvwsoc/sdhci/zsbl_cheshire_stub.patch
 
 	# LITTLE_ENDIAN for UART core
 	grep -q 'define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v || sed -i '1i`define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v
@@ -302,12 +309,15 @@ LITEDRAM_INC_DIRS = "$(PWD)/../../addins/cvwsoc/litedram/$(board)/include \
 					$(LIBLITEDRAM_DIRECTORY)/../include                   \
 					$(LIBLITEDRAM_DIRECTORY)/.. $(LIBLITEDRAM_SRC_DIR)"
 LIBS = "-L$(PWD)/../../addins/cvwsoc/litedram -llitedram"
+SDHCI_SRC_DIR = ../src/CopiedFiles_do_not_add_to_repo/sdhci/sw
 # build the Zero stage boot loader (ZSBL)
 .PHONY: zsblsoc zsbl32soc liblitedram
 zsblsoc:
 	$(MAKE) -C ../zsbl clean
 	SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
 		LITEDRAM_SUPPORTED=$(LITEDRAM_SUPPORTED) LITEDRAM_BASE=$(LITEDRAM_BASE)            \
+		SDHCI_SUPPORTED=$(SDHCI_SUPPORTED) SDHCI_BASE=$(SDHCI_BASE)                       \
+		SDHCI_SRC_DIR=$(SDHCI_SRC_DIR)                                                    \
 		BOOTROM_BASE=$(BOOTROM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE) \
 		LIBS=$(LIBS) INC_DIRS=$(LITEDRAM_INC_DIRS) $(MAKE) -C ../zsbl
 
@@ -326,6 +336,8 @@ zsbl32soc:
 	$(MAKE) -C ../zsbl                                                                 \
 		SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
 		LITEDRAM_SUPPORTED=$(LITEDRAM_SUPPORTED) LITEDRAM_BASE=$(LITEDRAM_BASE)          \
+		SDHCI_SUPPORTED=$(SDHCI_SUPPORTED) SDHCI_BASE=$(SDHCI_BASE)                     \
+		SDHCI_SRC_DIR=$(SDHCI_SRC_DIR)                                                  \
 		BOOTROM_BASE=$(BOOTROM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE) \
 		LIBS=$(LIBS) INC_DIRS=$(LITEDRAM_INC_DIRS)                                       \
 		CC=$(ZSBL32SOC_CC) AS=$(ZSBL32SOC_AS) AR=$(ZSBL32SOC_AR)                         \

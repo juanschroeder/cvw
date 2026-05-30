@@ -3,6 +3,9 @@
 `include "register_interface/typedef.svh"
 `include "register_interface/assign.svh"
 
+// Uncomment to use the same conservative MMIO bridge for AXI32 and AXI64.
+`define SDHCI_USE_SAME_AXIL_ADAPTER
+
 // axi_shdci_wrap.sv
 import sdhci_regbus_pkg::*;
 import sdhci_reg_pkg::*;
@@ -148,88 +151,12 @@ module axi_sdhci_wrap #(
         dbg_reg_rsp_rdata = reg_rsp.rdata;
     end
 
-  if (AXI_DATA_W == 32) begin : gen_axi32_to_axilite32
-    axi_req_t  axi_req;
-    axi_resp_t axi_resp;
-
-    always_comb begin
-      axi_req = '0;
-
-      axi_req.aw_valid   = s_axi_awvalid;
-      axi_req.aw.id      = s_axi_awid;
-      axi_req.aw.addr    = s_axi_awaddr;
-      axi_req.aw.len     = s_axi_awlen;
-      axi_req.aw.size    = s_axi_awsize;
-      axi_req.aw.burst   = s_axi_awburst;
-      axi_req.aw.lock    = s_axi_awlock;
-      axi_req.aw.cache   = s_axi_awcache;
-      axi_req.aw.prot    = s_axi_awprot;
-      axi_req.aw.qos     = s_axi_awqos;
-      axi_req.aw.region  = '0;
-      axi_req.aw.atop    = '0;
-      axi_req.aw.user    = '0;
-
-      axi_req.w_valid    = s_axi_wvalid;
-      axi_req.w.data     = s_axi_wdata;
-      axi_req.w.strb     = s_axi_wstrb;
-      axi_req.w.last     = s_axi_wlast;
-      axi_req.w.user     = '0;
-
-      axi_req.b_ready    = s_axi_bready;
-
-      axi_req.ar_valid   = s_axi_arvalid;
-      axi_req.ar.id      = s_axi_arid;
-      axi_req.ar.addr    = s_axi_araddr;
-      axi_req.ar.len     = s_axi_arlen;
-      axi_req.ar.size    = s_axi_arsize;
-      axi_req.ar.burst   = s_axi_arburst;
-      axi_req.ar.lock    = s_axi_arlock;
-      axi_req.ar.cache   = s_axi_arcache;
-      axi_req.ar.prot    = s_axi_arprot;
-      axi_req.ar.qos     = s_axi_arqos;
-      axi_req.ar.region  = '0;
-      axi_req.ar.user    = '0;
-
-      axi_req.r_ready    = s_axi_rready;
-    end
-
-    always_comb begin
-      s_axi_awready = axi_resp.aw_ready;
-      s_axi_wready  = axi_resp.w_ready;
-      s_axi_bvalid  = axi_resp.b_valid;
-      s_axi_bresp   = axi_resp.b.resp;
-      s_axi_bid     = axi_resp.b.id;
-      s_axi_arready = axi_resp.ar_ready;
-      s_axi_rvalid  = axi_resp.r_valid;
-      s_axi_rdata   = axi_resp.r.data;
-      s_axi_rresp   = axi_resp.r.resp;
-      s_axi_rlast   = axi_resp.r.last;
-      s_axi_rid     = axi_resp.r.id;
-    end
-
-    axi_to_axi_lite #(
-      .AxiAddrWidth    ( AXI_ADDR_W  ),
-      .AxiDataWidth    ( AXI_DATA_W  ),
-      .AxiIdWidth      ( AXI_ID_W    ),
-      .AxiUserWidth    ( AXI_USER_W  ),
-      .AxiMaxWriteTxns ( 2           ),
-      .AxiMaxReadTxns  ( 2           ),
-      .FallThrough     ( 1'b0        ),
-      .full_req_t      ( axi_req_t   ),
-      .full_resp_t     ( axi_resp_t  ),
-      .lite_req_t      ( axil_req_t  ),
-      .lite_resp_t     ( axil_rsp_t  )
+`ifdef SDHCI_USE_SAME_AXIL_ADAPTER
+    axi_mmio_to_axilite32_v3 #(
+      .AXI_ADDR_WIDTH ( AXI_ADDR_W    ),
+      .AXI_DATA_WIDTH ( AXI_DATA_W    ),
+      .AXI_ID_WIDTH   ( AXI_ID_W      )
     ) i_axi_to_axilite32 (
-      .clk_i      ( aclk     ),
-      .rst_ni     ( aresetn  ),
-      .test_i     ( 1'b0     ),
-      .slv_req_i  ( axi_req  ),
-      .slv_resp_o ( axi_resp ),
-      .mst_req_o  ( axil_req ),
-      .mst_resp_i ( axil_rsp )
-    );
-  end else begin : gen_axi_64_to_axilite32
-    axi64_mmio_to_axilite32_v2 i_axi64_to_axilite32 (
       .aclk    ( aclk    ),
       .aresetn ( aresetn ),
 
@@ -291,7 +218,156 @@ module axi_sdhci_wrap #(
       .m_axil_rvalid ( axil_rsp.r_valid ),
       .m_axil_rready ( axil_req.r_ready )
     );
-  end
+`else
+    if (AXI_DATA_W == 32) begin : gen_axi32_to_axilite32
+      axi_req_t  axi_req;
+      axi_resp_t axi_resp;
+
+      always_comb begin
+        axi_req = '0;
+
+        axi_req.aw_valid   = s_axi_awvalid;
+        axi_req.aw.id      = s_axi_awid;
+        axi_req.aw.addr    = s_axi_awaddr;
+        axi_req.aw.len     = s_axi_awlen;
+        axi_req.aw.size    = s_axi_awsize;
+        axi_req.aw.burst   = s_axi_awburst;
+        axi_req.aw.lock    = s_axi_awlock;
+        axi_req.aw.cache   = s_axi_awcache;
+        axi_req.aw.prot    = s_axi_awprot;
+        axi_req.aw.qos     = s_axi_awqos;
+        axi_req.aw.region  = '0;
+        axi_req.aw.atop    = '0;
+        axi_req.aw.user    = '0;
+
+        axi_req.w_valid    = s_axi_wvalid;
+        axi_req.w.data     = s_axi_wdata;
+        axi_req.w.strb     = s_axi_wstrb;
+        axi_req.w.last     = s_axi_wlast;
+        axi_req.w.user     = '0;
+
+        axi_req.b_ready    = s_axi_bready;
+
+        axi_req.ar_valid   = s_axi_arvalid;
+        axi_req.ar.id      = s_axi_arid;
+        axi_req.ar.addr    = s_axi_araddr;
+        axi_req.ar.len     = s_axi_arlen;
+        axi_req.ar.size    = s_axi_arsize;
+        axi_req.ar.burst   = s_axi_arburst;
+        axi_req.ar.lock    = s_axi_arlock;
+        axi_req.ar.cache   = s_axi_arcache;
+        axi_req.ar.prot    = s_axi_arprot;
+        axi_req.ar.qos     = s_axi_arqos;
+        axi_req.ar.region  = '0;
+        axi_req.ar.user    = '0;
+
+        axi_req.r_ready    = s_axi_rready;
+      end
+
+      always_comb begin
+        s_axi_awready = axi_resp.aw_ready;
+        s_axi_wready  = axi_resp.w_ready;
+        s_axi_bvalid  = axi_resp.b_valid;
+        s_axi_bresp   = axi_resp.b.resp;
+        s_axi_bid     = axi_resp.b.id;
+        s_axi_arready = axi_resp.ar_ready;
+        s_axi_rvalid  = axi_resp.r_valid;
+        s_axi_rdata   = axi_resp.r.data;
+        s_axi_rresp   = axi_resp.r.resp;
+        s_axi_rlast   = axi_resp.r.last;
+        s_axi_rid     = axi_resp.r.id;
+      end
+
+      axi_to_axi_lite #(
+        .AxiAddrWidth    ( AXI_ADDR_W  ),
+        .AxiDataWidth    ( AXI_DATA_W  ),
+        .AxiIdWidth      ( AXI_ID_W    ),
+        .AxiUserWidth    ( AXI_USER_W  ),
+        .AxiMaxWriteTxns ( 2           ),
+        .AxiMaxReadTxns  ( 2           ),
+        .FallThrough     ( 1'b0        ),
+        .full_req_t      ( axi_req_t   ),
+        .full_resp_t     ( axi_resp_t  ),
+        .lite_req_t      ( axil_req_t  ),
+        .lite_resp_t     ( axil_rsp_t  )
+      ) i_axi_to_axilite32 (
+        .clk_i      ( aclk     ),
+        .rst_ni     ( aresetn  ),
+        .test_i     ( 1'b0     ),
+        .slv_req_i  ( axi_req  ),
+        .slv_resp_o ( axi_resp ),
+        .mst_req_o  ( axil_req ),
+        .mst_resp_i ( axil_rsp )
+      );
+    end else begin : gen_axi64_to_axilite32
+      axi_mmio_to_axilite32_v3 #(
+        .AXI_ADDR_WIDTH ( AXI_ADDR_W ),
+        .AXI_DATA_WIDTH ( AXI_DATA_W ),
+        .AXI_ID_WIDTH   ( AXI_ID_W   )
+      ) i_axi64_to_axilite32 (
+        .aclk    ( aclk    ),
+        .aresetn ( aresetn ),
+
+        .s_axi_awid    ( s_axi_awid    ),
+        .s_axi_awaddr  ( s_axi_awaddr  ),
+        .s_axi_awlen   ( s_axi_awlen   ),
+        .s_axi_awsize  ( s_axi_awsize  ),
+        .s_axi_awburst ( s_axi_awburst ),
+        .s_axi_awvalid ( s_axi_awvalid ),
+        .s_axi_awready ( s_axi_awready ),
+
+        .s_axi_wdata  ( s_axi_wdata  ),
+        .s_axi_wstrb  ( s_axi_wstrb  ),
+        .s_axi_wlast  ( s_axi_wlast  ),
+        .s_axi_wvalid ( s_axi_wvalid ),
+        .s_axi_wready ( s_axi_wready ),
+
+        .s_axi_bresp  ( s_axi_bresp  ),
+        .s_axi_bvalid ( s_axi_bvalid ),
+        .s_axi_bid    ( s_axi_bid    ),
+        .s_axi_bready ( s_axi_bready ),
+
+        .s_axi_arid    ( s_axi_arid    ),
+        .s_axi_araddr  ( s_axi_araddr  ),
+        .s_axi_arlen   ( s_axi_arlen   ),
+        .s_axi_arsize  ( s_axi_arsize  ),
+        .s_axi_arburst ( s_axi_arburst ),
+        .s_axi_arvalid ( s_axi_arvalid ),
+        .s_axi_arready ( s_axi_arready ),
+
+        .s_axi_rdata  ( s_axi_rdata  ),
+        .s_axi_rresp  ( s_axi_rresp  ),
+        .s_axi_rlast  ( s_axi_rlast  ),
+        .s_axi_rvalid ( s_axi_rvalid ),
+        .s_axi_rid    ( s_axi_rid    ),
+        .s_axi_rready ( s_axi_rready ),
+
+        .m_axil_awaddr  ( axil_req.aw.addr  ),
+        .m_axil_awprot  ( axil_req.aw.prot  ),
+        .m_axil_awvalid ( axil_req.aw_valid ),
+        .m_axil_awready ( axil_rsp.aw_ready ),
+
+        .m_axil_wdata  ( axil_req.w.data  ),
+        .m_axil_wstrb  ( axil_req.w.strb  ),
+        .m_axil_wvalid ( axil_req.w_valid ),
+        .m_axil_wready ( axil_rsp.w_ready ),
+
+        .m_axil_bresp  ( axil_rsp.b.resp  ),
+        .m_axil_bvalid ( axil_rsp.b_valid ),
+        .m_axil_bready ( axil_req.b_ready ),
+
+        .m_axil_araddr  ( axil_req.ar.addr  ),
+        .m_axil_arprot  ( axil_req.ar.prot  ),
+        .m_axil_arvalid ( axil_req.ar_valid ),
+        .m_axil_arready ( axil_rsp.ar_ready ),
+
+        .m_axil_rdata  ( axil_rsp.r.data  ),
+        .m_axil_rresp  ( axil_rsp.r.resp  ),
+        .m_axil_rvalid ( axil_rsp.r_valid ),
+        .m_axil_rready ( axil_req.r_ready )
+      );
+    end
+`endif
 
   axi_lite_to_reg #(
     .ADDR_WIDTH     ( AXI_ADDR_W  ),
@@ -313,10 +389,8 @@ module axi_sdhci_wrap #(
         .AddrWidth(AXI_ADDR_W),
         .reg_req_t    ( reg_req_t  ),
         .reg_rsp_t   ( reg_resp_t ),
-        // The CVW SoC testbench drives the peripheral bus at 7 ns (~143 MHz).
-        // Pre-divide by 4 here so the SDHCI core sees ~35.7 MHz instead of
-        // an out-of-spec >63 MHz source clock.
-        .ClkPreDiv(2),
+        // Pre-divider to be < 63 MHz in all cases
+        .ClkPreDiv(4),
         .TimeoutDivider(1),
         // Keep the existing debounce setting for now; this only affects
         // card-detect stabilization, not the command/data engine.

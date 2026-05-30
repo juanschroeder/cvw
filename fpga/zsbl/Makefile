@@ -34,14 +34,29 @@ MAXSDCCLOCK   ?=  5000000
 EXT_MEM_BASE  ?= 0x80000000
 EXT_MEM_RANGE ?= 0x10000000
 BOOTROM_BASE  ?=
+SDHCI_SUPPORTED ?= 0
+SDHCI_BASE ?= 0x10090000
+SDHCI_SRC_DIR ?=
 INC_DIRS      ?=
 INC+=${INC_DIRS:%=-I%}
+SDHCI_BUILD_ENABLED := $(if $(MAKECMDGOALS),$(filter-out clean directories,$(MAKECMDGOALS)),all)
+ifneq ($(SDHCI_BUILD_ENABLED),)
+  ifeq ($(SDHCI_SUPPORTED),1)
+    ifeq ($(strip $(SDHCI_SRC_DIR)),)
+      $(error SDHCI_SRC_DIR must be set when SDHCI_SUPPORTED=1)
+    endif
+    INC += -I$(SDHCI_SRC_DIR)/lib/inc
+    SDHCI_OBJECTS := $(BUILDDIR)/sdhci/sdhc.o $(BUILDDIR)/sdhci/sdmmc.o $(BUILDDIR)/sdhci/sdmmc_mem.o
+    OBJECTS += $(SDHCI_OBJECTS)
+  endif
+endif
+INC+=-I.
 
 
 AFLAGS =$(MARCH) $(MABI) -W
 # Override directive allows us to prepend other options on the command line
 # e.g. $ make CFLAGS=-g
-override CFLAGS +=$(MARCH) $(MABI) -mcmodel=medany -O2 -g  -DSYSTEMCLOCK=${SYSTEMCLOCK} -DMAXSDCCLOCK=${MAXSDCCLOCK} -DEXT_MEM_BASE=${EXT_MEM_BASE} -DEXT_MEM_RANGE=${EXT_MEM_RANGE} -DLITEDRAM_SUPPORTED=${LITEDRAM_SUPPORTED} -DLITEDRAM_BASE=${LITEDRAM_BASE} -DUNCORE_RAM_BASE=${UNCORE_RAM_BASE} -DUNCORE_RAM_RANGE=${UNCORE_RAM_RANGE}
+override CFLAGS +=$(MARCH) $(MABI) -mcmodel=medany -O2 -g  -DSYSTEMCLOCK=${SYSTEMCLOCK} -DMAXSDCCLOCK=${MAXSDCCLOCK} -DEXT_MEM_BASE=${EXT_MEM_BASE} -DEXT_MEM_RANGE=${EXT_MEM_RANGE} -DLITEDRAM_SUPPORTED=${LITEDRAM_SUPPORTED} -DLITEDRAM_BASE=${LITEDRAM_BASE} -DUNCORE_RAM_BASE=${UNCORE_RAM_BASE} -DUNCORE_RAM_RANGE=${UNCORE_RAM_RANGE} -DSDHCI_SUPPORTED=${SDHCI_SUPPORTED} -DSDHCI_BASE=${SDHCI_BASE}
 AS=riscv64-unknown-elf-as
 CC=riscv64-unknown-elf-gcc
 AR=riscv64-unknown-elf-ar
@@ -91,6 +106,15 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(CEXT)
 	@sed -e 's|.*:|$(BUILDDIR)/$*.$(OBJEXT):|' < $(BUILDDIR)/$*.$(DEPEXT).tmp > $(BUILDDIR)/$*.$(DEPEXT)
 	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILDDIR)/$*.$(DEPEXT)
 	@rm -f $(BUILDDIR)/$*.$(DEPEXT).tmp
+
+$(BUILDDIR)/sdhci/%.$(OBJEXT): $(SDHCI_SRC_DIR)/lib/src/%.$(CEXT)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(INC) -c -o $@ $< > $(BUILDDIR)/sdhci/$*.list
+	@$(CC) $(CFLAGS) $(INC) -MM $< > $(BUILDDIR)/sdhci/$*.$(DEPEXT)
+	@cp -f $(BUILDDIR)/sdhci/$*.$(DEPEXT) $(BUILDDIR)/sdhci/$*.$(DEPEXT).tmp
+	@sed -e 's|.*:|$@:|' < $(BUILDDIR)/sdhci/$*.$(DEPEXT).tmp > $(BUILDDIR)/sdhci/$*.$(DEPEXT)
+	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/sdhci/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILDDIR)/sdhci/$*.$(DEPEXT)
+	@rm -f $(BUILDDIR)/sdhci/$*.$(DEPEXT).tmp
 
 # gcc won't output dependencies for assembly files for some reason
 # most asm files don't have dependencies so the echo will work for now.

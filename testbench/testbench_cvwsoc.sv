@@ -59,7 +59,11 @@ module testbench_cvwsoc #(
       tmp.WISHBONE_UART_SUPPORTED = 1'b0;
       tmp.WISHBONE_ETH_SUPPORTED = 1'b0;
       tmp.WISHBONE_STUB_SUPPORTED = 1'b0;
+`ifdef SIM_AXI_SDHCI
+      tmp.AXI_SDHCI_SUPPORTED = 1'b1;
+`else
       tmp.AXI_SDHCI_SUPPORTED = 1'b0;
+`endif
       tmp.AXI_DMA_SUPPORTED = 1'b0;
       tmp.AXI_VGA_SUPPORTED = 1'b0;
       tmp.AXI_USB_SUPPORTED = 1'b0;
@@ -76,20 +80,22 @@ module testbench_cvwsoc #(
   localparam cvw_t SOC_P = cvwsoc_sim_cfg(P);
   localparam int unsigned AXI_ID_WIDTH = 4;
   localparam int unsigned XBAR_NUM_SLV_PORTS = 2;
-  localparam int unsigned XBAR_NUM_MST_PORTS = 2;
-  localparam int unsigned XBAR_NUM_ADDR_RULES = 2;
+  localparam int unsigned XBAR_NUM_MST_PORTS = 3;
+  localparam int unsigned XBAR_NUM_ADDR_RULES = 3;
   localparam int unsigned AXI_MST_ID_WIDTH = AXI_ID_WIDTH + $clog2(XBAR_NUM_SLV_PORTS);
   localparam logic [31:0] EXT_RAM_BASE_ADDR = 32'h8000_0000;
   localparam logic [31:0] EXT_RAM_END_ADDR = EXT_RAM_BASE_ADDR + (32'd1 << EXT_MEM_ADDR_WIDTH);
-  localparam logic [31:0] PERIPH_BASE_ADDR = 32'h2000_0000;
-  localparam logic [31:0] PERIPH_END_ADDR = PERIPH_BASE_ADDR + 32'h0004_0000;
+  localparam logic [31:0] SDHCI_BASE_ADDR = SOC_P.AXI_SDHCI_BASE[31:0];
+  localparam logic [31:0] SDHCI_END_ADDR = SDHCI_BASE_ADDR + SOC_P.AXI_SDHCI_RANGE[31:0] + 32'd1;
+  localparam logic [31:0] AXI_DUMMY_BASE_ADDR = SOC_P.AXI_DUMMY_BASE[31:0];
+  localparam logic [31:0] AXI_DUMMY_END_ADDR = AXI_DUMMY_BASE_ADDR + SOC_P.AXI_DUMMY_RANGE[31:0] + 32'd1;
   localparam longint unsigned HEARTBEAT_CYCLES = 10_000_000;
   localparam longint unsigned HEARTBEAT_SPEED_INTERVAL_CYCLES_DEFAULT = HEARTBEAT_CYCLES;
   localparam logic [P.XLEN-1:0] KERNEL_ENTRY_PC = 64'h0000_0000_8020_0000;
   localparam longint unsigned AHBW_BYTES = P.AHBW / 8;
-  localparam longint unsigned BOOTROM_PRELOAD_START = SOC_P.BOOTROM_BASE >> $clog2(AHBW_BYTES);
-  localparam longint unsigned BOOTROM_WORDS = (SOC_P.BOOTROM_RANGE + 1) / AHBW_BYTES;
-  localparam longint unsigned UNCORE_RAM_WORDS = (SOC_P.UNCORE_RAM_RANGE + 1) / AHBW_BYTES;
+  localparam int unsigned BOOTROM_PRELOAD_START = SOC_P.BOOTROM_BASE >> $clog2(AHBW_BYTES);
+  localparam int unsigned BOOTROM_WORDS = (SOC_P.BOOTROM_RANGE + 1) / AHBW_BYTES;
+  localparam int unsigned UNCORE_RAM_WORDS = (SOC_P.UNCORE_RAM_RANGE + 1) / AHBW_BYTES;
   localparam realtime HALF_PERIOD_NS = CLK_PERIOD_NS / 2.0;
   localparam realtime BUS_HALF_PERIOD_NS = BUS_CLK_PERIOD_NS / 2.0;
   localparam realtime UART_BIT_PERIOD_NS = 1_000_000_000.0 / 115200.0;
@@ -135,7 +141,8 @@ module testbench_cvwsoc #(
 
   localparam axi_pkg::xbar_rule_32_t [XBAR_NUM_ADDR_RULES-1:0] XBAR_ADDR_MAP = '{
     '{ idx: 0, start_addr: EXT_RAM_BASE_ADDR, end_addr: EXT_RAM_END_ADDR },
-    '{ idx: 1, start_addr: PERIPH_BASE_ADDR,  end_addr: PERIPH_END_ADDR }
+    '{ idx: 1, start_addr: SDHCI_BASE_ADDR, end_addr: SDHCI_END_ADDR },
+    '{ idx: 2, start_addr: AXI_DUMMY_BASE_ADDR, end_addr: AXI_DUMMY_END_ADDR }
   };
 
   // ---------------------------------------------------------------------------
@@ -233,7 +240,9 @@ module testbench_cvwsoc #(
   logic AXI_DMAIntr = 1'b0;
   logic AXI_USBIntr = 1'b0;
   logic AXI_EthIntr = 1'b0;
-  logic AXI_DummyIntr;
+  logic AXI_SDHCIIntr;
+  logic AXI_SDHCIIntr_orig;
+  logic AXI_DummyIntr = 1'b0;
   logic AXI_DummyIntr_orig;
   logic ExternalStall = 1'b0;
 
@@ -380,7 +389,7 @@ module testbench_cvwsoc #(
     .AXI_DMAIntr(AXI_DMAIntr),
     .AXI_USBIntr(AXI_USBIntr),
     .AXI_EthIntr(AXI_EthIntr),
-    .AXI_SDHCIIntr(1'b0),
+    .AXI_SDHCIIntr(AXI_SDHCIIntr),
     .AXI_DummyIntr(AXI_DummyIntr)
   );
 
@@ -599,56 +608,7 @@ module testbench_cvwsoc #(
     .s_axi_rready  (mst_req[0].r_ready)
   );
 
-`ifdef SIM_AXI_RAM
-  axi_ram #(
-    .DATA_WIDTH(BUSW),
-    .ADDR_WIDTH(PERIPH_ADDR_WIDTH),
-    .STRB_WIDTH(BUSW/8),
-    .ID_WIDTH(AXI_MST_ID_WIDTH),
-    .PIPELINE_OUTPUT(0)
-  ) periph_ram_i (
-    .clk           (bus_clk),
-    .rst           (bus_reset),
-    .s_axi_awid    (mst_req[1].aw.id),
-    .s_axi_awaddr  (mst_req[1].aw.addr[PERIPH_ADDR_WIDTH-1:0]),
-    .s_axi_awlen   (mst_req[1].aw.len),
-    .s_axi_awsize  (mst_req[1].aw.size),
-    .s_axi_awburst (mst_req[1].aw.burst),
-    .s_axi_awlock  (mst_req[1].aw.lock),
-    .s_axi_awcache (mst_req[1].aw.cache),
-    .s_axi_awprot  (mst_req[1].aw.prot),
-    .s_axi_awvalid (mst_req[1].aw_valid),
-    .s_axi_awready (mst_resp[1].aw_ready),
-    .s_axi_wdata   (mst_req[1].w.data),
-    .s_axi_wstrb   (mst_req[1].w.strb),
-    .s_axi_wlast   (mst_req[1].w.last),
-    .s_axi_wvalid  (mst_req[1].w_valid),
-    .s_axi_wready  (mst_resp[1].w_ready),
-    .s_axi_bid     (mst_resp[1].b.id),
-    .s_axi_bresp   (mst_resp[1].b.resp),
-    .s_axi_bvalid  (mst_resp[1].b_valid),
-    .s_axi_bready  (mst_req[1].b_ready),
-    .s_axi_arid    (mst_req[1].ar.id),
-    .s_axi_araddr  (mst_req[1].ar.addr[PERIPH_ADDR_WIDTH-1:0]),
-    .s_axi_arlen   (mst_req[1].ar.len),
-    .s_axi_arsize  (mst_req[1].ar.size),
-    .s_axi_arburst (mst_req[1].ar.burst),
-    .s_axi_arlock  (mst_req[1].ar.lock),
-    .s_axi_arcache (mst_req[1].ar.cache),
-    .s_axi_arprot  (mst_req[1].ar.prot),
-    .s_axi_arvalid (mst_req[1].ar_valid),
-    .s_axi_arready (mst_resp[1].ar_ready),
-    .s_axi_rid     (mst_resp[1].r.id),
-    .s_axi_rdata   (mst_resp[1].r.data),
-    .s_axi_rresp   (mst_resp[1].r.resp),
-    .s_axi_rlast   (mst_resp[1].r.last),
-    .s_axi_rvalid  (mst_resp[1].r_valid),
-    .s_axi_rready  (mst_req[1].r_ready)
-  );
-
-  assign AXI_DummyIntr = 1'b0;
-
-`elsif SIM_AXI_SDHCI
+`ifdef SIM_AXI_SDHCI
 
   //-------------------------------------------------------------------------
 
@@ -792,34 +752,34 @@ module testbench_cvwsoc #(
   // ---------------------------------------------------------------------------
   // Optional but very useful: correlate SW reads of SDHCI buffer port 0x20
   // ---------------------------------------------------------------------------
-  logic dbg_sdhci_mmio_bufport_read_fire;
-  logic dbg_sdhci_mmio_bufport_write_fire;
+//   logic dbg_sdhci_mmio_bufport_read_fire;
+//   logic dbg_sdhci_mmio_bufport_write_fire;
 
-  assign dbg_sdhci_mmio_bufport_read_fire =
-      mst_req[1].ar_valid && mst_resp[1].ar_ready &&
-      (mst_req[1].ar.addr[15:0] == 16'h0020);
+//   assign dbg_sdhci_mmio_bufport_read_fire =
+//       mst_req[1].ar_valid && mst_resp[1].ar_ready &&
+//       (mst_req[1].ar.addr[15:0] == 16'h0020);
 
-  assign dbg_sdhci_mmio_bufport_write_fire =
-      mst_req[1].aw_valid && mst_resp[1].aw_ready &&
-      (mst_req[1].aw.addr[15:0] == 16'h0020);
+//   assign dbg_sdhci_mmio_bufport_write_fire =
+//       mst_req[1].aw_valid && mst_resp[1].aw_ready &&
+//       (mst_req[1].aw.addr[15:0] == 16'h0020);
 
-  logic dbg_sdhci_mmio_intstat_read_fire;
-  logic dbg_sdhci_mmio_intstat_aw_fire;
-  logic dbg_sdhci_mmio_w_fire;
-  logic [63:0] dbg_sdhci_mmio_wdata;
+//   logic dbg_sdhci_mmio_intstat_read_fire;
+//   logic dbg_sdhci_mmio_intstat_aw_fire;
+//   logic dbg_sdhci_mmio_w_fire;
+//   logic [63:0] dbg_sdhci_mmio_wdata;
 
-  assign dbg_sdhci_mmio_intstat_read_fire =
-    mst_req[1].ar_valid && mst_resp[1].ar_ready &&
-    (mst_req[1].ar.addr[15:0] == 16'h0030);
+//   assign dbg_sdhci_mmio_intstat_read_fire =
+//     mst_req[1].ar_valid && mst_resp[1].ar_ready &&
+//     (mst_req[1].ar.addr[15:0] == 16'h0030);
 
-  assign dbg_sdhci_mmio_intstat_aw_fire =
-    mst_req[1].aw_valid && mst_resp[1].aw_ready &&
-    (mst_req[1].aw.addr[15:0] == 16'h0030);
+//   assign dbg_sdhci_mmio_intstat_aw_fire =
+//     mst_req[1].aw_valid && mst_resp[1].aw_ready &&
+//     (mst_req[1].aw.addr[15:0] == 16'h0030);
 
-  assign dbg_sdhci_mmio_w_fire =
-    mst_req[1].w_valid && mst_resp[1].w_ready;
+//   assign dbg_sdhci_mmio_w_fire =
+//     mst_req[1].w_valid && mst_resp[1].w_ready;
 
-  assign dbg_sdhci_mmio_wdata = mst_req[1].w.data;
+//   assign dbg_sdhci_mmio_wdata = mst_req[1].w.data;
   //-------------------------------------------------------------------------
 
   logic       sd_clk_o;
@@ -831,7 +791,12 @@ module testbench_cvwsoc #(
   logic [3:0] sd_dat_o;
   logic [3:0] sd_dat_i;
 
-  axi_sdhci_wrap sdhci_i(
+  axi_sdhci_wrap #(
+    .AXI_ADDR_W ( PERIPH_ADDR_WIDTH ),
+    .AXI_DATA_W ( BUSW              ),
+    .AXI_ID_W   ( AXI_MST_ID_WIDTH  ),
+    .AXI_USER_W ( 1                 )
+  ) sdhci_i (
       // For simplicity we use same clock as the bus
       .aclk(bus_clk),
       //.aclk(sdhci_clk),
@@ -885,7 +850,7 @@ module testbench_cvwsoc #(
     .sd_dat_en_o(sd_dat_en),
 
     //.interrupt_o(AXI_DummyIntr)
-    .interrupt_o(AXI_DummyIntr_orig)
+    .interrupt_o(AXI_SDHCIIntr_orig)
   );
 
     // This might not be necessary on simulation
@@ -894,8 +859,8 @@ module testbench_cvwsoc #(
     ) i_sync (
         .clk_i    ( clk ),
         .rst_ni   ( ~reset ),
-        .serial_i ( AXI_DummyIntr_orig ),
-        .serial_o ( AXI_DummyIntr )
+        .serial_i ( AXI_SDHCIIntr_orig ),
+        .serial_o ( AXI_SDHCIIntr )
     );
 
   ////////////////////
@@ -913,7 +878,65 @@ module testbench_cvwsoc #(
   );
 
   assign sd_cd_ni = '0;
+  assign mst_resp[1].b.user = '0;
+  assign mst_resp[1].r.user = '0;
 
+`else
+  assign mst_resp[1] = '0;
+  assign AXI_DummyIntr = 1'b0;
+`endif
+
+`ifdef SIM_AXI_RAM
+  axi_ram #(
+    .DATA_WIDTH(BUSW),
+    .ADDR_WIDTH(PERIPH_ADDR_WIDTH),
+    .STRB_WIDTH(BUSW/8),
+    .ID_WIDTH(AXI_MST_ID_WIDTH),
+    .PIPELINE_OUTPUT(0)
+  ) axi_dummy_ram_i (
+    .clk           (bus_clk),
+    .rst           (bus_reset),
+    .s_axi_awid    (mst_req[2].aw.id),
+    .s_axi_awaddr  (mst_req[2].aw.addr[PERIPH_ADDR_WIDTH-1:0]),
+    .s_axi_awlen   (mst_req[2].aw.len),
+    .s_axi_awsize  (mst_req[2].aw.size),
+    .s_axi_awburst (mst_req[2].aw.burst),
+    .s_axi_awlock  (mst_req[2].aw.lock),
+    .s_axi_awcache (mst_req[2].aw.cache),
+    .s_axi_awprot  (mst_req[2].aw.prot),
+    .s_axi_awvalid (mst_req[2].aw_valid),
+    .s_axi_awready (mst_resp[2].aw_ready),
+    .s_axi_wdata   (mst_req[2].w.data),
+    .s_axi_wstrb   (mst_req[2].w.strb),
+    .s_axi_wlast   (mst_req[2].w.last),
+    .s_axi_wvalid  (mst_req[2].w_valid),
+    .s_axi_wready  (mst_resp[2].w_ready),
+    .s_axi_bid     (mst_resp[2].b.id),
+    .s_axi_bresp   (mst_resp[2].b.resp),
+    .s_axi_bvalid  (mst_resp[2].b_valid),
+    .s_axi_bready  (mst_req[2].b_ready),
+    .s_axi_arid    (mst_req[2].ar.id),
+    .s_axi_araddr  (mst_req[2].ar.addr[PERIPH_ADDR_WIDTH-1:0]),
+    .s_axi_arlen   (mst_req[2].ar.len),
+    .s_axi_arsize  (mst_req[2].ar.size),
+    .s_axi_arburst (mst_req[2].ar.burst),
+    .s_axi_arlock  (mst_req[2].ar.lock),
+    .s_axi_arcache (mst_req[2].ar.cache),
+    .s_axi_arprot  (mst_req[2].ar.prot),
+    .s_axi_arvalid (mst_req[2].ar_valid),
+    .s_axi_arready (mst_resp[2].ar_ready),
+    .s_axi_rid     (mst_resp[2].r.id),
+    .s_axi_rdata   (mst_resp[2].r.data),
+    .s_axi_rresp   (mst_resp[2].r.resp),
+    .s_axi_rlast   (mst_resp[2].r.last),
+    .s_axi_rvalid  (mst_resp[2].r_valid),
+    .s_axi_rready  (mst_req[2].r_ready)
+  );
+  assign mst_resp[2].b.user = '0;
+  assign mst_resp[2].r.user = '0;
+
+`else
+  assign mst_resp[2] = '0;
 `endif
 
   // ---------------------------------------------------------------------------
@@ -970,8 +993,6 @@ module testbench_cvwsoc #(
 
   assign mst_resp[0].b.user = '0;
   assign mst_resp[0].r.user = '0;
-  assign mst_resp[1].b.user = '0;
-  assign mst_resp[1].r.user = '0;
 
   // ---------------------------------------------------------------------------
   // Runtime controls

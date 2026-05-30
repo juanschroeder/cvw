@@ -18,7 +18,9 @@ BOOL_TRUE := 1 yes YES true TRUE
 RV32 ?= 0
 CVWSOC_RV32 := $(filter $(BOOL_TRUE),$(RV32))
 SDHCI ?= 0
-CVWSOC_SIM_SDHCI := $(filter $(BOOL_TRUE),$(SDHCI))
+BOOTROM ?= 0
+CVWSOC_BOOTROM := $(filter $(BOOL_TRUE),$(BOOTROM))
+CVWSOC_SIM_SDHCI := $(if $(CVWSOC_BOOTROM),1,$(filter $(BOOL_TRUE),$(SDHCI)))
 WALLYCONF ?= fpgagenesys2soc
 CONFIG ?= $(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF))
 CVWSOC_SIM_AXI_RAM ?= $(if $(CVWSOC_SIM_SDHCI),0,1)
@@ -191,6 +193,10 @@ PARAM_ARGS ?=
 DEFINE_ARGS ?=
 BOOTROM_BIN ?=
 EXT_RAM_BIN ?=
+CVWSOC_BOOTROM_MEMH ?= $(WALLY)/fpga/src/boot.mem
+CVWSOC_DATA_MEMH ?= $(WALLY)/fpga/src/data.mem
+CVWSOC_BOOTROM_MEMH_DEPS := $(if $(CVWSOC_BOOTROM),$(CVWSOC_BOOTROM_MEMH) $(CVWSOC_DATA_MEMH))
+CVWSOC_BOOTROM_PLUS_ARGS := $(if $(CVWSOC_BOOTROM),+BOOTROM_MEMH=$(CVWSOC_BOOTROM_MEMH) +UNCORE_RAM_MEMH=$(CVWSOC_DATA_MEMH))
 UART_LOG ?=
 TRACE ?= 0
 TRACE_MODE ?= runtime
@@ -228,6 +234,8 @@ COMMON_CELLS_SOURCES := \
 	$(PULP_COMMON_CELLS_ROOT)/src/delta_counter.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/counter.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/lzc.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/id_queue.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/onehot_to_bin.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/fifo_v3.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/spill_register_flushable.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/spill_register.sv \
@@ -252,6 +260,9 @@ AXI_SOURCES := \
 	$(PULP_AXI_ROOT)/src/axi_pkg.sv \
 	$(PULP_AXI_ROOT)/src/axi_intf.sv \
 	$(PULP_AXI_ROOT)/src/axi_atop_filter.sv \
+	$(PULP_AXI_ROOT)/src/axi_burst_splitter_gran.sv \
+	$(PULP_AXI_ROOT)/src/axi_burst_splitter.sv \
+	$(PULP_AXI_ROOT)/src/axi_to_axi_lite.sv \
 	$(PULP_AXI_ROOT)/src/axi_cdc_dst.sv \
 	$(PULP_AXI_ROOT)/src/axi_cdc_src.sv \
 	$(PULP_AXI_ROOT)/src/axi_cut.sv \
@@ -291,6 +302,7 @@ SDHCI_PERIPH_SOURCES := \
 	$(wildcard $(COPIED_ROOT)/pulp/tech_cells/src/rtl/*.sv) \
     $(wildcard $(COPIED_ROOT)/sdhci/target/sim/model/*.sv) \
 	$(wildcard $(COPIED_ROOT)/cvwsoc/axi64_mmio_to_axilite32_v2.sv) \
+	$(wildcard $(COPIED_ROOT)/cvwsoc/axi_mmio_to_axilite32_v3.sv) \
 	$(wildcard $(COPIED_ROOT)/sdhci/hw/reg/sdhci_reg_pkg.sv) \
 	$(wildcard $(COPIED_ROOT)/sdhci/hw/sdhci_pkg.sv) \
 	$(wildcard $(COPIED_ROOT)/sdhci/hw/autocmd_wrap.sv) \
@@ -357,7 +369,7 @@ VERILATOR_USER_CPPFLAGS ?= -DsetBit=set
 
 define RUN_VERILATOR
 	mkdir -p $(VERILATOR_DIR)/logs
-	args='$(PLUS_ARGS) $(EXTRA_PLUS_ARGS) +VERILATOR_THREADS=$(THREADS) +UART_STDOUT=$(UART_STDOUT) +UART_TIMESTAMP=$(UART_TIMESTAMP) +UART_SHELL_TAGS=$(UART_SHELL_TAGS) +HEARTBEAT_SPEED_INTERVAL_CYCLES=$(HEARTBEAT_SPEED_INTERVAL_CYCLES) +UART_PTY_TX=$(UART_PTY_TX)'; \
+	args='$(PLUS_ARGS) $(EXTRA_PLUS_ARGS) $(CVWSOC_BOOTROM_PLUS_ARGS) +VERILATOR_THREADS=$(THREADS) +UART_STDOUT=$(UART_STDOUT) +UART_TIMESTAMP=$(UART_TIMESTAMP) +UART_SHELL_TAGS=$(UART_SHELL_TAGS) +HEARTBEAT_SPEED_INTERVAL_CYCLES=$(HEARTBEAT_SPEED_INTERVAL_CYCLES) +UART_PTY_TX=$(UART_PTY_TX)'; \
 	if [[ -n "$(BOOTROM_BIN)" ]]; then args="$$args +BOOTROM_BIN=$(BOOTROM_BIN)"; fi; \
 	if [[ -n "$(EXT_RAM_BIN)" ]]; then args="$$args +EXT_RAM_BIN=$(EXT_RAM_BIN)"; fi; \
 	if [[ -n "$(CVWSOC_SD_IMAGE_DEPS)" ]]; then args="$$args +SD_IMAGE=$(CVWSOC_SD_IMAGE)"; fi; \
@@ -885,43 +897,49 @@ qemu-uboot: $(CVWSOC_QEMU_UBOOT_HELPERS)
 		-device loader,file=$(CVWSOC_QEMU_UBOOT_INITRD),addr=$(INITRD_ADDR) \
 		-cpu "$(CPU_ARGS)"
 
-run-cvwsoc-linux: BOOTROM_BIN := $(CVWSOC_LINUX_BOOTROM_BIN)
-run-cvwsoc-linux: EXT_RAM_BIN := $(CVWSOC_LINUX_RUN_EXT_RAM_BIN)
+CVWSOC_LINUX_RUN_DEPS := $(or $(CVWSOC_BOOTROM_MEMH_DEPS),$(CVWSOC_LINUX_RUN_PRELOAD_BINS))
+CVWSOC_LINUX_FAST_RUN_DEPS := $(or $(CVWSOC_BOOTROM_MEMH_DEPS),$(CVWSOC_LINUX_FAST_PRELOAD_BINS))
+CVWSOC_UBOOT_RUN_DEPS := $(or $(CVWSOC_BOOTROM_MEMH_DEPS),$(CVWSOC_UBOOT_RUN_PRELOAD_BINS))
+CVWSOC_LINUX_RUNCMD_DEPS := $(or $(CVWSOC_BOOTROM_MEMH_DEPS),$(CVWSOC_LINUX_PRELOAD_BINS))
+CVWSOC_UBOOT_RUNCMD_DEPS := $(or $(CVWSOC_BOOTROM_MEMH_DEPS),$(CVWSOC_UBOOT_PRELOAD_BINS))
+
+run-cvwsoc-linux: BOOTROM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_LINUX_BOOTROM_BIN))
+run-cvwsoc-linux: EXT_RAM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_LINUX_RUN_EXT_RAM_BIN))
 run-cvwsoc-linux: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_linux_uart.out
-run-cvwsoc-linux: $(CVWSOC_LINUX_RUN_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
+run-cvwsoc-linux: $(CVWSOC_LINUX_RUN_DEPS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
 	$(RUN_VERILATOR)
 
-run-cvwsoc-linux-fast: BOOTROM_BIN := $(CVWSOC_LINUX_FAST_BOOTROM_BIN)
-run-cvwsoc-linux-fast: EXT_RAM_BIN := $(CVWSOC_LINUX_FAST_EXT_RAM_BIN)
+run-cvwsoc-linux-fast: BOOTROM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_LINUX_FAST_BOOTROM_BIN))
+run-cvwsoc-linux-fast: EXT_RAM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_LINUX_FAST_EXT_RAM_BIN))
 run-cvwsoc-linux-fast: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_linux_fast_uart.out
-run-cvwsoc-linux-fast: $(CVWSOC_LINUX_FAST_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
+run-cvwsoc-linux-fast: $(CVWSOC_LINUX_FAST_RUN_DEPS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
 	$(RUN_VERILATOR)
 
 run-cvwsoc-linxu-fast: run-cvwsoc-linux-fast
 
-run-cvwsoc-uboot: BOOTROM_BIN := $(CVWSOC_UBOOT_BOOTROM_BIN)
-run-cvwsoc-uboot: EXT_RAM_BIN := $(CVWSOC_UBOOT_RUN_EXT_RAM_BIN)
+run-cvwsoc-uboot: BOOTROM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_UBOOT_BOOTROM_BIN))
+run-cvwsoc-uboot: EXT_RAM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_UBOOT_RUN_EXT_RAM_BIN))
 run-cvwsoc-uboot: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_uboot_uart.out
-run-cvwsoc-uboot: $(CVWSOC_UBOOT_RUN_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
+run-cvwsoc-uboot: $(CVWSOC_UBOOT_RUN_DEPS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
 	$(RUN_VERILATOR)
 
 # FIXME: this serial autorun path was copied forward conceptually from the old
 # bridge bench but has not been revalidated end-to-end on the new cvwsoc setup.
-runcmd-cvwsoc-linux: BOOTROM_BIN := $(CVWSOC_LINUX_BOOTROM_BIN)
-runcmd-cvwsoc-linux: EXT_RAM_BIN := $(CVWSOC_LINUX_EXT_RAM_BIN)
+runcmd-cvwsoc-linux: BOOTROM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_LINUX_BOOTROM_BIN))
+runcmd-cvwsoc-linux: EXT_RAM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_LINUX_EXT_RAM_BIN))
 runcmd-cvwsoc-linux: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_linux_uart.out
 runcmd-cvwsoc-linux: EXTRA_PLUS_ARGS += +UART_AUTORUNCMD=1 +UART_RUNCMD_FILE=$(RUNCMD_FILE)
-runcmd-cvwsoc-linux: $(CVWSOC_LINUX_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
+runcmd-cvwsoc-linux: $(CVWSOC_LINUX_RUNCMD_DEPS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
 	test -n "$(RUNCMD)"
 	mkdir -p $(VERILATOR_DIR)/logs
 	printf '%s\r' "$(RUNCMD)" > $(RUNCMD_FILE)
 	$(RUN_VERILATOR)
 
-runcmd-cvwsoc-uboot: BOOTROM_BIN := $(CVWSOC_UBOOT_BOOTROM_BIN)
-runcmd-cvwsoc-uboot: EXT_RAM_BIN := $(CVWSOC_UBOOT_EXT_RAM_BIN)
+runcmd-cvwsoc-uboot: BOOTROM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_UBOOT_BOOTROM_BIN))
+runcmd-cvwsoc-uboot: EXT_RAM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_UBOOT_EXT_RAM_BIN))
 runcmd-cvwsoc-uboot: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_uboot_uart.out
 runcmd-cvwsoc-uboot: EXTRA_PLUS_ARGS += +UART_AUTORUNCMD=1 +UART_RUNCMD_FILE=$(RUNCMD_FILE)
-runcmd-cvwsoc-uboot: $(CVWSOC_UBOOT_PRELOAD_BINS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
+runcmd-cvwsoc-uboot: $(CVWSOC_UBOOT_RUNCMD_DEPS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
 	test -n "$(RUNCMD)"
 	mkdir -p $(VERILATOR_DIR)/logs
 	printf '%s\r' "$(RUNCMD)" > $(RUNCMD_FILE)

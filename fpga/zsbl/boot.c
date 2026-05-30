@@ -37,6 +37,10 @@
 #include "riscv.h"
 #include "fail.h"
 
+#if (SDHCI_SUPPORTED == 1)
+    #include "sdhci_boot.h"
+#endif
+
 #if (LITEDRAM_SUPPORTED == 1)
     #include <generated/sdram_phy.h>
     #include <sdram.h>
@@ -228,8 +232,10 @@ void copyFlash(QWORD address, QWORD * Dst, DWORD numBlocks) {
   /* print_uart_dec(SYSTEMCLOCK); */
   /* print_uart("\r\n"); */
 
+#if (SDHCI_SUPPORTED != 1)
   // Initialize the SD card
   init_sd(SYSTEMCLOCK, SDCCLOCK);
+#endif
 
 #if (LITEDRAM_SUPPORTED == 1)
     print_uart("\r\n          INITIALIZING DDR....\r\n");
@@ -239,5 +245,13 @@ void copyFlash(QWORD address, QWORD * Dst, DWORD numBlocks) {
     #pragma message "NO LITEDRAM ENABLED"
 #endif
 
+#if (SDHCI_SUPPORTED == 1)
+  ret = sdhci_load_partitions();
+#else
   ret = gpt_load_partitions();
+#endif
+
+  if (ret < 0) {
+    fail();
+  }
 }
