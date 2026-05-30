@@ -53,6 +53,7 @@ genesys2soc: export board := genesys2soc
 genesys2soc: export SYSTEMCLOCK := 40000000
 genesys2soc: export MAXSDCCLOCK  := 5000000
 genesys2soc: export MIG_ADDR_WIDTH  :=  30
+genesys2soc: export MEM_WIDTH  :=  64
 genesys2soc: FPGA_GENESYS2SOC
 
 genesys2socxlnx: export XILINX_PART := xc7k325tffg900-2
