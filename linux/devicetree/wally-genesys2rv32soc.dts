@@ -10,6 +10,11 @@
     bootargs = "root=/dev/mmcblk1p5 rw console=ttyS0,115200 loglevel=7 init=/sbin/init rootwait ";
     stdout-path = "/soc/uart@10000000";
 
+    // needed for the FB
+    #address-cells = <2>;
+    #size-cells = <2>;
+    ranges;
+
     //320 x 240
     framebuffer0: framebuffer@BFF00000 {
       compatible = "simple-framebuffer";

@@ -5,6 +5,7 @@ FAMILY        ?= kintex7
 BOARD         ?= genesys2
 DERIV         ?= fpgagenesys2soc
 RUN_DERIV     ?= 0
+MEM_WIDTH     ?= 64
 
 BUILD_DIR     ?= build
 SRC_COPY      := $(BUILD_DIR)/src
@@ -37,6 +38,7 @@ LITEDRAM_BASE ?= $(shell grep 'LITEDRAM_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:a
 UNCORE_RAM_BASE ?= $(shell grep 'UNCORE_RAM_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 UNCORE_RAM_RANGE ?= $(shell grep 'UNCORE_RAM_RANGE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
 UBERDDR3_SUPPORTED ?= $(shell grep 'UBERDDR3_SUPPORTED' $(CONFIG_VH) | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
+BOOTROM_BASE = $(shell grep 'BOOTROM_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 REBUILD_ZSBL  ?= 0
 PULP_AXI_CDC_SRCS := \
 	../../addins/pulp/axi/src/axi_pkg.sv \
@@ -165,7 +167,7 @@ ZSBL_PREREQ := $(BOOTROM_MEM)
 endif
 
 zsblsoc:
-	PATH=$(RISCV_BIN):../../bin:$$PATH RISCV=$(RISCV) SYSTEMCLOCK=$(SYSTEMCLOCK) MAXSDCCLOCK=$(MAXSDCCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) LITEDRAM_SUPPORTED=$(LITEDRAM_SUPPORTED) LITEDRAM_BASE=$(LITEDRAM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE) UBERDDR3_SUPPORTED=$(UBERDDR3_SUPPORTED) $(MAKE) -C ../../fpga/zsbl clean all
+	PATH=$(RISCV_BIN):../../bin:$$PATH RISCV=$(RISCV) SYSTEMCLOCK=$(SYSTEMCLOCK) MAXSDCCLOCK=$(MAXSDCCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) LITEDRAM_SUPPORTED=$(LITEDRAM_SUPPORTED) LITEDRAM_BASE=$(LITEDRAM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE) UBERDDR3_SUPPORTED=$(UBERDDR3_SUPPORTED) BOOTROM_BASE=$(BOOTROM_BASE) MEM_WIDTH=$(MEM_WIDTH) $(MAKE) -C ../../fpga/zsbl clean all
 
 $(PREPROCESS_STAMP): $(RTL_INPUTS) $(PULP_AXI_CDC_SRCS) $(TOP_SV) $(MANTA_SRC) $(ZSBL_PREREQ) $(DATA_MEM) | $(BUILD_DIR)
 	if [ "$(RUN_DERIV)" = "1" ]; then WALLY=$(abspath ../..) PATH=$(abspath ../../bin):$$PATH $(MAKE) -C ../../sim deriv; fi
