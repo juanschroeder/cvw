@@ -103,24 +103,17 @@ module fpgaTopXc7Genesys2SoC
   assign ddr_ready_raw = init_calib_complete & ui_aresetn & ~ui_clk_sync_rst;
   assign soc_reset_ext = rst_req | ~ddr_ready_cpuclk;
 
-  logic [3:0] cpuclk_div;
-  logic       cpuclk_slow;
+  logic [4:0] cpuclk_div;
 
-//   always_ff @(posedge clk200 or posedge rst_req) begin
-//     if (rst_req) cpuclk_div <= '0;
-//     else         cpuclk_div <= cpuclk_div + 1'b1;
-//   end
-
-  always_ff @(posedge clk200) begin
-    cpuclk_div <= cpuclk_div + 1'b1;
+  always_ff @(posedge clk200 or posedge rst_req) begin
+    if (rst_req) cpuclk_div <= '0;
+    else         cpuclk_div <= cpuclk_div + 1'b1;
   end
 
   BUFG cpuclk_slow_bufg (
-    .I(cpuclk_div[3]),
-    .O(cpuclk_slow)
+    .I(cpuclk_div[4]),
+    .O(CPUCLK)
   );
-
-  assign CPUCLK = cpuclk_slow;
 
   always_ff @(posedge CPUCLK or posedge rst_req) begin
     if (rst_req) begin

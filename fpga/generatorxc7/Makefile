@@ -29,7 +29,7 @@ DATA_MEM      ?= ../../fpga/src/data.mem
 #MANTA_V       ?= manta_cvw_debug_spi.v
 MANTA_V        ?= manta_cvw_debug_startup.v
 MANTA_SRC     := debug/manta/$(MANTA_V)
-SYSTEMCLOCK   ?= 12500000
+SYSTEMCLOCK   ?= 6250000
 MAXSDCCLOCK   ?= 1000000
 EXT_MEM_BASE  ?= $(shell grep 'EXT_MEM_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 EXT_MEM_RANGE ?= $(shell grep 'EXT_MEM_RANGE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
@@ -194,21 +194,32 @@ $(PREPROCESS_STAMP): $(RTL_INPUTS) $(PULP_AXI_CDC_SRCS) $(TOP_SV) $(MANTA_SRC) $
 	mv $(SRC_COPY)/pulp/axi/src/spill_register_flushable.sv $(SRC_COPY)/pulp/common_cells/src/
 	cp rom1p1r_xc7.sv $(SRC_COPY)/generic/mem/rom1p1r.sv
 	cp ram1p1rwbe_xc7.sv $(SRC_COPY)/generic/mem/ram1p1rwbe.sv
+	# Generate an OpenXC7-friendly boot ROM case table from boot.mem.
 	awk 'NR <= 8192 { printf "          13'\''h%03x: dout <= 64'\''h%s;\n", NR-1, $$1 }' $(BOOTROM_MEM) > $(SRC_COPY)/generic/mem/bootrom_case_xc7.svh
+	# Generate a bounded data RAM initialization include from data.mem.
 	awk 'NR <= 4096 { printf "          %d: 64'\''h%s,\n", NR-1, $$1 }' $(DATA_MEM) > $(SRC_COPY)/generic/mem/dataram_init_xc7.svh
+	# Resolve template $WALLY paths after copying replacement memory models into build/src.
 	sed -i 's/$$WALLY/\.\.\/\.\./g' $(SRC_COPY)/generic/mem/rom1p1r.sv
 	sed -i 's/$$WALLY/\.\.\/\.\./g' $(SRC_COPY)/generic/mem/ram1p1rwbe.sv
-	perl -0pi -e 's/localparam PRELOAD_START = P\.BOOTROM_BASE >> 3;/localparam PRELOAD_START = 0;\n  localparam logic [ADDR_WIDTH-1:0] ROM_BASE_INDEX = P.BOOTROM_BASE[ADDR_WIDTH+OFFSET-1:OFFSET];/' $(SRC_COPY)/uncore/rom_ahb.sv
+	# Make ROM preload indexing relative to the copied ROM image instead of BOOTROM_BASE.
+	sed -i -E 's/localparam PRELOAD_START = P\.BOOTROM_BASE >> OFFSET;/localparam PRELOAD_START = 0;\n  localparam logic [ADDR_WIDTH-1:0] ROM_BASE_INDEX = P.BOOTROM_BASE[ADDR_WIDTH+OFFSET-1:OFFSET];/' $(SRC_COPY)/uncore/rom_ahb.sv
+	# Subtract the ROM base index so accesses land in the generated ROM array.
 	sed -i 's/\.addr(HADDR\[ADDR_WIDTH+OFFSET-1:OFFSET\])/.addr(HADDR[ADDR_WIDTH+OFFSET-1:OFFSET] - ROM_BASE_INDEX)/' $(SRC_COPY)/uncore/rom_ahb.sv
-	perl -0pi -e 's/localparam\s+ADDR_WIDTH = \$$clog2\(RANGE\/8\);/localparam                   RAM_DEPTH = (RANGE + 1)\/8;\n  localparam                   ADDR_WIDTH = \$$clog2(RAM_DEPTH);/' $(SRC_COPY)/uncore/ram_ahb.sv
+	# Size AHB RAM from RANGE+1 bytes so non-power-of-two ranges elaborate cleanly.
+	sed -i -E 's/localparam[[:space:]]+ADDR_WIDTH = \$$clog2\(RANGE\/8\);/localparam                   RAM_DEPTH = (RANGE + 1)\/8;\n  localparam                   ADDR_WIDTH = \$$clog2(RAM_DEPTH);/' $(SRC_COPY)/uncore/ram_ahb.sv
+	# Use the computed RAM depth when instantiating the (replacement) RAM model.
 	sed -i 's/ram1p1rwbe #(P.USE_SRAM, RANGE\/8, P.XLEN, PRELOAD)/ram1p1rwbe #(P.USE_SRAM, RAM_DEPTH, P.XLEN, PRELOAD)/' $(SRC_COPY)/uncore/ram_ahb.sv
+	# Leave the Wishbone MDIO port unconnected because this OpenXC7 build disables Wishbone.
 	sed -i 's/\.WB_RMII_MDIO,/\.WB_RMII_MDIO(),/' $(SRC_COPY)/wally/wallypipelinedsoc.sv
-	perl -0pi -e 's/\n`default_nettype wire\nendmodule\n/\nendmodule\n\n`default_nettype wire\n/' $(SRC_COPY)/ahb-to-axi/rtl/ahb_to_axi4_burst.sv
-	perl -0pi -e 's|assign TransmitDataEndian = Format\[0\] \? \{<<\{TransmitReadData\[7:0\]\}\} : TransmitReadData\[7:0\];|// yosys-slang rejects streaming operators in ternaries; this is the same 8-bit bit reversal as {<<{TransmitReadData[7:0]}}.\n  assign TransmitDataEndian = Format[0] ? {TransmitReadData[0], TransmitReadData[1], TransmitReadData[2], TransmitReadData[3], TransmitReadData[4], TransmitReadData[5], TransmitReadData[6], TransmitReadData[7]} : TransmitReadData[7:0];|' $(SRC_COPY)/uncore/spi_apb.sv
-	perl -0pi -e 's|assign ReceiveShiftRegEndian = Format\[0\] \? \{<<\{ASR\[7:0\]\}\} : ASR\[7:0\];|// yosys-slang rejects streaming operators in ternaries; this is the same 8-bit bit reversal as {<<{ASR[7:0]}}.\n  assign ReceiveShiftRegEndian = Format[0] ? {ASR[0], ASR[1], ASR[2], ASR[3], ASR[4], ASR[5], ASR[6], ASR[7]} : ASR[7:0];|' $(SRC_COPY)/uncore/spi_apb.sv
+	# yosys-slang rejects streaming operators in ternaries; this is the same 8-bit bit reversal as {<<{TransmitReadData[7:0]}}.
+	sed -i 's|assign TransmitDataEndian = Format\[0\] ? {<<{TransmitReadData\[7:0\]}} : TransmitReadData\[7:0\];|  assign TransmitDataEndian = Format[0] ? {TransmitReadData[0], TransmitReadData[1], TransmitReadData[2], TransmitReadData[3], TransmitReadData[4], TransmitReadData[5], TransmitReadData[6], TransmitReadData[7]} : TransmitReadData[7:0];|' $(SRC_COPY)/uncore/spi_apb.sv
+	# yosys-slang rejects streaming operators in ternaries; this is the same 8-bit bit reversal as {<<{ASR[7:0]}}.
+	sed -i 's|assign ReceiveShiftRegEndian = Format\[0\] ? {<<{ASR\[7:0\]}} : ASR\[7:0\];|  assign ReceiveShiftRegEndian = Format[0] ? {ASR[0], ASR[1], ASR[2], ASR[3], ASR[4], ASR[5], ASR[6], ASR[7]} : ASR[7:0];|' $(SRC_COPY)/uncore/spi_apb.sv
+	# Disable Wishbone fabrics and stubs that are not present in this OpenXC7 SoC build.
 	sed -i -E 's/(localparam logic WISHBONE_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
 	sed -i -E 's/(localparam logic WISHBONE_UART_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
 	sed -i -E 's/(localparam logic WISHBONE_STUB_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
+	# Disable optional AXI peripherals that are not routed in this OpenXC7 bitstream.
 	sed -i -E 's/(localparam logic AXI_SDHCI_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
 	sed -i -E 's/(localparam logic AXI_DMA_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
 	sed -i -E 's/(localparam logic AXI_VGA_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh

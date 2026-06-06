@@ -72046,18 +72046,18 @@ module \manta.interface.uart_rx (clk, rst, valid_o, data_o, rx);
   reg \$11 ;
   reg \$12 ;
   reg [3:0] \$13 ;
-  reg [5:0] \$14 ;
+  reg [4:0] \$14 ;
   reg [7:0] \$15 ;
   wire \$2 ;
   wire \$3 ;
   wire \$4 ;
   wire \$5 ;
   wire [4:0] \$6 ;
-  wire [6:0] \$7 ;
+  wire [5:0] \$7 ;
   reg \$8 ;
   reg \$9 ;
   (* src = "/yocto/fpga/cvw_g2test/fpga/generatorxc7/.venv-manta/lib/python3.10/site-packages/manta/uart/receiver.py:21" *)
-  reg [5:0] _baud_counter = 6'h00;
+  reg [4:0] _baud_counter = 5'h00;
   (* src = "/yocto/fpga/cvw_g2test/fpga/generatorxc7/.venv-manta/lib/python3.10/site-packages/manta/uart/receiver.py:20" *)
   reg [3:0] _bit_index = 4'h0;
   (* src = "/yocto/fpga/cvw_g2test/fpga/generatorxc7/.venv-manta/lib/python3.10/site-packages/manta/uart/receiver.py:19" *)
@@ -72198,23 +72198,23 @@ module \manta.interface.uart_rx (clk, rst, valid_o, data_o, rx);
     (* full_case = 32'd1 *)
     if (\$1 ) begin
       if (\$3 ) begin
-        \$14  = 6'h23;
+        \$14  = 5'h10;
       end
     end else begin
       (* full_case = 32'd1 *)
       if (\$4 ) begin
         (* full_case = 32'd1 *)
         if (\$5 ) begin
-          \$14  = 6'h00;
+          \$14  = 5'h00;
         end else begin
-          \$14  = 6'h18;
+          \$14  = 5'h0b;
         end
       end else begin
-        \$14  = \$7 [5:0];
+        \$14  = \$7 [4:0];
       end
     end
     if (rst) begin
-      \$14  = 6'h00;
+      \$14  = 5'h00;
     end
   end
   always @* begin
@@ -72243,13 +72243,13 @@ module \manta.interface.uart_tx (rst, data_i, start_i, done_o, tx, clk);
   reg \$auto$verilog_backend.cc:2355:dump_module$101  = 0;
   wire \$1 ;
   wire [4:0] \$10 ;
-  reg [4:0] \$11 ;
+  reg [3:0] \$11 ;
   reg [8:0] \$12 ;
   reg [3:0] \$13 ;
   reg \$14 ;
   reg \$15 ;
   wire \$2 ;
-  wire [5:0] \$3 ;
+  wire [4:0] \$3 ;
   wire \$4 ;
   wire \$5 ;
   wire \$6 ;
@@ -72257,7 +72257,7 @@ module \manta.interface.uart_tx (rst, data_i, start_i, done_o, tx, clk);
   wire \$8 ;
   wire \$9 ;
   (* src = "/yocto/fpga/cvw_g2test/fpga/generatorxc7/.venv-manta/lib/python3.10/site-packages/manta/uart/transmitter.py:21" *)
-  reg [4:0] _baud_counter = 5'h00;
+  reg [3:0] _baud_counter = 4'h0;
   (* src = "/yocto/fpga/cvw_g2test/fpga/generatorxc7/.venv-manta/lib/python3.10/site-packages/manta/uart/transmitter.py:23" *)
   reg [3:0] _bit_index = 4'h0;
   (* src = "/yocto/fpga/cvw_g2test/fpga/generatorxc7/.venv-manta/lib/python3.10/site-packages/manta/uart/transmitter.py:22" *)
@@ -72309,15 +72309,15 @@ module \manta.interface.uart_tx (rst, data_i, start_i, done_o, tx, clk);
     if (\$auto$verilog_backend.cc:2355:dump_module$101 ) begin end
     \$11  = _baud_counter;
     if (\$1 ) begin
-      \$11  = 5'h18;
+      \$11  = 4'hb;
     end else if (\$2 ) begin
-      \$11  = \$3 [4:0];
+      \$11  = \$3 [3:0];
       if (\$7 ) begin
-        \$11  = 5'h18;
+        \$11  = 4'hb;
       end
     end
     if (rst) begin
-      \$11  = 5'h00;
+      \$11  = 4'h0;
     end
   end
   always @* begin

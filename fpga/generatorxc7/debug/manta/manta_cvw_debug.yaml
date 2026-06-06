@@ -178,6 +178,6 @@ cores:
 uart:
   port: "/dev/ttyUSB2"
   baudrate: 500000
-  clock_freq: 12500000
+  clock_freq: 6250000
   stall_interval: 8
   chunk_size: 64
