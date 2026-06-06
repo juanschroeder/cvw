@@ -70,7 +70,8 @@ module testbench_cvwsoc #(
       tmp.AXI_ETH_SUPPORTED = 1'b0;
       tmp.LITEDRAM_SUPPORTED = 1'b0;
       tmp.UBERDDR3_SUPPORTED = 1'b0;
-      tmp.BOOTROM_RANGE = 64'h3FFFF; // 256 KB
+      // Veri-lator $readmemh complains when boot.mem is bigger than size
+      tmp.BOOTROM_RANGE = 64'h1FFFF;
       tmp.AXI_DUMMY_SUPPORTED = 1'b1;
       cvwsoc_sim_cfg = tmp;
     end
@@ -193,6 +194,53 @@ module testbench_cvwsoc #(
   logic                 StallM;
   logic                 FlushM;
 
+  // Top-level debug aliases. The focused FST dump only keeps signals that are
+  // reachable from this testbench scope, so keep the fault/debug path here.
+  logic [19:0]          dbg_uncore_hselregions;
+  logic                 dbg_uncore_hsel_ram;
+  logic                 dbg_uncore_hsel_ram_d;
+  logic                 dbg_uncore_hsel_axisdhci;
+  logic                 dbg_uncore_hsel_axisdhci_d;
+  logic [P.PA_BITS-1:0] dbg_uncore_haddr;
+  logic [P.AHBW-1:0]    dbg_uncore_hwdata;
+  logic [P.AHBW/8-1:0]  dbg_uncore_hwstrb;
+  logic                 dbg_uncore_hwrite;
+  logic [2:0]           dbg_uncore_hsize;
+  logic [2:0]           dbg_uncore_hburst;
+  logic [1:0]           dbg_uncore_htrans;
+  logic                 dbg_uncore_hready;
+  logic [P.AHBW-1:0]    dbg_uncore_hrdata;
+  logic [P.AHBW-1:0]    dbg_uncore_hread_ram;
+  logic                 dbg_uncore_hresp_ram;
+  logic                 dbg_uncore_hready_ram;
+  logic                 dbg_load_misaligned_fault_m;
+  logic                 dbg_load_access_fault_m;
+  logic                 dbg_load_page_fault_m;
+  logic                 dbg_store_amo_misaligned_fault_m;
+  logic                 dbg_store_amo_access_fault_m;
+  logic                 dbg_store_amo_page_fault_m;
+  logic                 dbg_instr_misaligned_fault_m;
+  logic                 dbg_instr_access_fault_m;
+  logic                 dbg_instr_page_fault_m;
+  logic [3:0]           dbg_trap_cause_m;
+  logic                 dbg_trap_exception_m;
+  logic                 dbg_trap_interrupt_m;
+  logic [P.XLEN-1:0]    dbg_trap_epc_m;
+  logic [P.XLEN-1:0]    dbg_trap_vector_m;
+  logic [P.XLEN-1:0]    dbg_trap_tval_src_m;
+  logic [P.XLEN-1:0]    dbg_gpr_ra;
+  logic [P.XLEN-1:0]    dbg_gpr_sp;
+  logic [P.XLEN-1:0]    dbg_gpr_s1;
+  logic [P.XLEN-1:0]    dbg_gpr_a0;
+  logic [P.XLEN-1:0]    dbg_gpr_a1;
+  logic [P.XLEN-1:0]    dbg_gpr_a2;
+  logic [P.XLEN-1:0]    dbg_gpr_s2;
+  logic [P.XLEN-1:0]    dbg_gpr_s3;
+  logic [P.XLEN-1:0]    dbg_gpr_s4;
+  logic                 dbg_gpr_regwrite_w;
+  logic [4:0]           dbg_gpr_rd_w;
+  logic [P.XLEN-1:0]    dbg_gpr_result_w;
+
   // Other SoC internal signals
   logic [P.AHBW-1:0]    HRDATAINT;
 
@@ -309,6 +357,52 @@ module testbench_cvwsoc #(
   assign TrapM          = soc.core.TrapM;
   assign StallM         = soc.core.StallM;
   assign FlushM         = soc.core.FlushM;
+
+  assign dbg_uncore_hselregions             = soc.uncoregen.uncore.HSELRegions;
+  assign dbg_uncore_hsel_axisdhci           = soc.uncoregen.uncore.HSELAXISDHCI;
+  assign dbg_uncore_hsel_axisdhci_d         = soc.uncoregen.uncore.HSELAXISDHCID;
+  assign dbg_load_misaligned_fault_m        = soc.core.LoadMisalignedFaultM;
+  assign dbg_load_access_fault_m            = soc.core.LoadAccessFaultM;
+  assign dbg_load_page_fault_m              = soc.core.LoadPageFaultM;
+  assign dbg_store_amo_misaligned_fault_m   = soc.core.StoreAmoMisalignedFaultM;
+  assign dbg_store_amo_access_fault_m       = soc.core.StoreAmoAccessFaultM;
+  assign dbg_store_amo_page_fault_m         = soc.core.StoreAmoPageFaultM;
+  assign dbg_instr_misaligned_fault_m       = soc.core.InstrMisalignedFaultM;
+  assign dbg_instr_access_fault_m           = soc.core.priv.priv.InstrAccessFaultM;
+  assign dbg_instr_page_fault_m             = soc.core.priv.priv.InstrPageFaultM;
+  assign dbg_trap_cause_m                   = soc.core.priv.priv.CauseM;
+  assign dbg_trap_exception_m               = soc.core.priv.priv.ExceptionM;
+  assign dbg_trap_interrupt_m               = soc.core.priv.priv.InterruptM;
+  assign dbg_trap_epc_m                     = soc.core.EPCM;
+  assign dbg_trap_vector_m                  = soc.core.TrapVectorM;
+  assign dbg_trap_tval_src_m                = soc.core.IEUAdrxTvalM;
+  assign dbg_gpr_ra                         = soc.core.ieu.dp.regf.rf[1];
+  assign dbg_gpr_sp                         = soc.core.ieu.dp.regf.rf[2];
+  assign dbg_gpr_s1                         = soc.core.ieu.dp.regf.rf[9];
+  assign dbg_gpr_a0                         = soc.core.ieu.dp.regf.rf[10];
+  assign dbg_gpr_a1                         = soc.core.ieu.dp.regf.rf[11];
+  assign dbg_gpr_a2                         = soc.core.ieu.dp.regf.rf[12];
+  assign dbg_gpr_s2                         = soc.core.ieu.dp.regf.rf[18];
+  assign dbg_gpr_s3                         = soc.core.ieu.dp.regf.rf[19];
+  assign dbg_gpr_s4                         = soc.core.ieu.dp.regf.rf[20];
+  assign dbg_gpr_regwrite_w                 = soc.core.ieu.RegWriteW;
+  assign dbg_gpr_rd_w                       = soc.core.ieu.RdW;
+  assign dbg_gpr_result_w                   = soc.core.ieu.dp.ResultW;
+
+  assign dbg_uncore_hsel_ram       = soc.uncoregen.uncore.HSELRam;
+  assign dbg_uncore_hsel_ram_d     = soc.uncoregen.uncore.HSELRamD;
+  assign dbg_uncore_haddr          = soc.uncoregen.uncore.HADDR;
+  assign dbg_uncore_hwdata         = soc.uncoregen.uncore.HWDATA;
+  assign dbg_uncore_hwstrb         = soc.uncoregen.uncore.HWSTRB;
+  assign dbg_uncore_hwrite         = soc.uncoregen.uncore.HWRITE;
+  assign dbg_uncore_hsize          = soc.uncoregen.uncore.HSIZE;
+  assign dbg_uncore_hburst         = soc.uncoregen.uncore.HBURST;
+  assign dbg_uncore_htrans         = soc.uncoregen.uncore.HTRANS;
+  assign dbg_uncore_hready         = soc.uncoregen.uncore.HREADY;
+  assign dbg_uncore_hrdata         = soc.uncoregen.uncore.HRDATA;
+  assign dbg_uncore_hread_ram      = soc.uncoregen.uncore.HREADRam;
+  assign dbg_uncore_hresp_ram      = soc.uncoregen.uncore.HRESPRam;
+  assign dbg_uncore_hready_ram     = soc.uncoregen.uncore.HREADYRam;
 
   assign HRDATAINT      = soc.core.HRDATA;
 
@@ -749,37 +843,6 @@ module testbench_cvwsoc #(
   assign dbg_sdhci_sram_empty_o        = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.empty_o;
   assign dbg_sdhci_sram_length_o       = sdhci_i.i_axi_sdhci.i_dat_wrap.i_dat_buffer.i_sram_shift_reg.length_o;
 
-  // ---------------------------------------------------------------------------
-  // Optional but very useful: correlate SW reads of SDHCI buffer port 0x20
-  // ---------------------------------------------------------------------------
-//   logic dbg_sdhci_mmio_bufport_read_fire;
-//   logic dbg_sdhci_mmio_bufport_write_fire;
-
-//   assign dbg_sdhci_mmio_bufport_read_fire =
-//       mst_req[1].ar_valid && mst_resp[1].ar_ready &&
-//       (mst_req[1].ar.addr[15:0] == 16'h0020);
-
-//   assign dbg_sdhci_mmio_bufport_write_fire =
-//       mst_req[1].aw_valid && mst_resp[1].aw_ready &&
-//       (mst_req[1].aw.addr[15:0] == 16'h0020);
-
-//   logic dbg_sdhci_mmio_intstat_read_fire;
-//   logic dbg_sdhci_mmio_intstat_aw_fire;
-//   logic dbg_sdhci_mmio_w_fire;
-//   logic [63:0] dbg_sdhci_mmio_wdata;
-
-//   assign dbg_sdhci_mmio_intstat_read_fire =
-//     mst_req[1].ar_valid && mst_resp[1].ar_ready &&
-//     (mst_req[1].ar.addr[15:0] == 16'h0030);
-
-//   assign dbg_sdhci_mmio_intstat_aw_fire =
-//     mst_req[1].aw_valid && mst_resp[1].aw_ready &&
-//     (mst_req[1].aw.addr[15:0] == 16'h0030);
-
-//   assign dbg_sdhci_mmio_w_fire =
-//     mst_req[1].w_valid && mst_resp[1].w_ready;
-
-//   assign dbg_sdhci_mmio_wdata = mst_req[1].w.data;
   //-------------------------------------------------------------------------
 
   logic       sd_clk_o;

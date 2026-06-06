@@ -68,7 +68,7 @@ static void print_time32(void)
   uint32_t ms = get_time_ms32();
 
   print_uart("[");
-  println_with_int("", ms);   // or print_uint_decimal(ms)
+  print_uart_dec(ms);
   print_uart(" ms] ");
 }
 
@@ -90,7 +90,7 @@ static int sdhci_init_card(void) {
   debug_funcs = 0;
 #endif
 
-  print_time();
+  print_time32();
 
   ret = sdhc_init(&hp, SDHCI_BASE_ADDR, 0, 0);
   if (ret != 0) {

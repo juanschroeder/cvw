@@ -117,7 +117,9 @@ CVWSOC_SD_IMAGE_ENABLE ?= $(if $(CVWSOC_SIM_SDHCI),1,0)
 CVWSOC_SD_IMAGE_DEPS := $(if $(filter $(BOOL_TRUE),$(CVWSOC_SD_IMAGE_ENABLE)),$(CVWSOC_SD_IMAGE))
 SD_IMAGE := $(CVWSOC_SD_IMAGE)
 
-CVWSOC_VERILATOR_DTB ?=
+CVWSOC_VERILATOR_SDHCI_DTS ?= $(CVWSOC_PRELOAD_DIR)/wally-virt$(if $(filter 32,$(CVWSOC_XLEN)),32,)soc-verilator-sdhci.dts
+CVWSOC_VERILATOR_SDHCI_DTB ?= $(CVWSOC_PRELOAD_DIR)/wally-virt$(if $(filter 32,$(CVWSOC_XLEN)),32,)soc-verilator-sdhci.dtb
+CVWSOC_VERILATOR_DTB ?= $(if $(filter $(BOOL_TRUE),$(SDHCI)),$(CVWSOC_VERILATOR_SDHCI_DTB))
 CVWSOC_LINUX_RUN_EXT_RAM_BIN ?= $(if $(CVWSOC_VERILATOR_DTB),$(CVWSOC_PRELOAD_DIR)/ram-cvwsoc-linux-run.bin,$(CVWSOC_LINUX_EXT_RAM_BIN))
 CVWSOC_UBOOT_RUN_EXT_RAM_BIN ?= $(if $(CVWSOC_VERILATOR_DTB),$(CVWSOC_PRELOAD_DIR)/ram-cvwsoc-uboot-run.bin,$(CVWSOC_UBOOT_EXT_RAM_BIN))
 CVWSOC_LINUX_RUN_PRELOAD_BINS := $(CVWSOC_LINUX_BOOTROM_BIN) $(CVWSOC_LINUX_RUN_EXT_RAM_BIN)
@@ -125,6 +127,7 @@ CVWSOC_UBOOT_RUN_PRELOAD_BINS := $(CVWSOC_UBOOT_BOOTROM_BIN) $(CVWSOC_UBOOT_RUN_
 
 CVWSOC_LINUX_BOOTARGS_BASE ?= earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 ignore_loglevel loglevel=8 rdinit=/bin/busybox.nosuid -- sh
 CVWSOC_LINUX_BOOTARGS_EXT2 ?= earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 ignore_loglevel loglevel=8 root=/dev/ram0 rootfstype=ext2 init=/bin/busybox.nosuid -- sh
+CVWSOC_LINUX_BOOTARGS_SDHCI ?= earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 ignore_loglevel loglevel=8 root=/dev/mmcblk0p5 rootfstype=ext2 rw rootwait init=/bin/busybox.nosuid -- sh
 CVWSOC_LINUX_BOOTARGS ?= $(if $(CVWSOC_USE_EXT2),$(CVWSOC_LINUX_BOOTARGS_EXT2),$(CVWSOC_LINUX_BOOTARGS_BASE))
 CVWSOC_LINUX_TINY_INIT ?= /bin/busybox.nosuid -- sh
 CVWSOC_LINUX_DOOM_INIT ?= /sbin/init
@@ -360,7 +363,7 @@ DEPENDENCIES := \
 
 $(COPIED_ROOT)/config/config.vh: $(CONFIG_VH) FORCE
 	mkdir -p $(dir $@)
-	cp $< $@
+	@if ! cmp -s "$<" "$@"; then cp "$<" "$@"; fi
 
 # this is for GCC
 OPT_GEN ?= VM_PARALLEL_BUILDS=1 OPT_FAST="-O4 -march=native" OPT_GLOBAL="-O3 -march=native" OPT_SLOW="-O0"
@@ -429,16 +432,26 @@ $(CVWSOC_UBOOT_STUB_ELF): $(VERILATOR_DIR)/uboot_replacement_stub.S | $(CVWSOC_P
 $(CVWSOC_UBOOT_STUB_BIN): $(CVWSOC_UBOOT_STUB_ELF)
 	$(RISCV_OBJCOPY_BIN) -O binary $< $@
 
-$(CVWSOC_SD_IMAGE): $(CVWSOC_SD_IMAGE_SRC) $(CVWSOC_VERILATOR_DTB) FORCE
+$(CVWSOC_VERILATOR_SDHCI_DTS): $(CVWSOC_DTS_SRC) FORCE | $(CVWSOC_PRELOAD_DIR)
+	@tmp="$@.tmp"; \
+	sed \
+		-e '/^[[:space:]]*linux,initrd-start[[:space:]]*=/d' \
+		-e '/^[[:space:]]*linux,initrd-end[[:space:]]*=/d' \
+		-e 's|^[[:space:]]*bootargs[[:space:]]*=.*|    bootargs = "$(CVWSOC_LINUX_BOOTARGS_SDHCI)";|' \
+		-e '/mmc@10090000[[:space:]]*{/,/^[[:space:]]*};/ s/status[[:space:]]*=[[:space:]]*"disabled"/status = "okay"/' \
+		"$<" > "$$tmp"; \
+	if ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
+
+$(CVWSOC_VERILATOR_SDHCI_DTB): $(CVWSOC_VERILATOR_SDHCI_DTS)
+	$(DTC_BIN) -I dts -O dtb $< -o $@
+
+$(CVWSOC_SD_IMAGE): $(CVWSOC_SD_IMAGE_SRC) FORCE
 	test -n "$(CVWSOC_SD_IMAGE_SRC)"
 	mkdir -p $(dir $@)
 	if gzip -t $< >/dev/null 2>&1; then \
 		gzip -dc $< > $@.tmp; \
 	else \
 		cp $< $@.tmp; \
-	fi
-	if [[ -n "$(CVWSOC_VERILATOR_DTB)" ]]; then \
-		python3 -c 'import pathlib, struct, sys; image_path = pathlib.Path(sys.argv[1]); dtb_path = pathlib.Path(sys.argv[2]); sector_size = 512; image = image_path.open("r+b"); image.seek(sector_size); header = image.read(sector_size); header[0:8] == b"EFI PART" or (_ for _ in ()).throw(SystemExit(f"{image_path}: missing GPT header")); part_entry_lba = struct.unpack_from("<Q", header, 72)[0]; part_entry_size = struct.unpack_from("<I", header, 84)[0]; image.seek(part_entry_lba * sector_size); entry = image.read(part_entry_size); first_lba = struct.unpack_from("<Q", entry, 32)[0]; last_lba = struct.unpack_from("<Q", entry, 40)[0]; part_offset = first_lba * sector_size; part_size = (last_lba - first_lba + 1) * sector_size; dtb = dtb_path.read_bytes(); len(dtb) <= part_size or (_ for _ in ()).throw(SystemExit(f"{dtb_path}: DTB is {len(dtb)} bytes, partition 1 is only {part_size} bytes")); image.seek(part_offset); image.write(dtb); image.write(bytes(part_size - len(dtb))); image.close(); print(f"Patched SD image partition 1 with {dtb_path} ({len(dtb)} bytes at 0x{part_offset:x})")' "$@.tmp" "$(CVWSOC_VERILATOR_DTB)"; \
 	fi
 	mv $@.tmp $@
 
@@ -968,8 +981,8 @@ $(WORKDIR)/V$(TESTBENCH).mk: $(DEPENDENCIES)
 
 clean:
 	rm -rf \
-		$(VERILATOR_DIR)/wkdir/$(WALLYCONF)_cvwsoc \
-		$(VERILATOR_DIR)/wkdir/$(WALLYCONF)_cvwsoc_trace \
+		$(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc \
+		$(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc_trace \
 		$(VERILATOR_DIR)/logs/testbench_cvwsoc*.out \
 		$(VERILATOR_DIR)/logs/testbench_cvwsoc*.pid \
 		$(RUNCMD_FILE) \
@@ -979,6 +992,8 @@ clean:
 		$(CVWSOC_LINUX_PRELOAD_CFG) \
 		$(CVWSOC_UBOOT_PRELOAD_CFG) \
 		$(CVWSOC_LINUX_FAST_PRELOAD_CFG) \
+		$(CVWSOC_VERILATOR_SDHCI_DTS) \
+		$(CVWSOC_VERILATOR_SDHCI_DTB) \
 		$(CVWSOC_LINUX_QEMU_ASSETS) \
 		$(CVWSOC_UBOOT_QEMU_ASSETS) \
 		$(CVWSOC_LINUX_FAST_QEMU_ASSETS) \
