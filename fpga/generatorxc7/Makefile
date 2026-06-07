@@ -4,16 +4,16 @@ PART          ?= xc7k325tffg900-2
 FAMILY        ?= kintex7
 BOARD         ?= genesys2
 DERIV         ?= fpgagenesys2soc
-RUN_DERIV     ?= 0
 MEM_WIDTH     ?= 64
 
 BUILD_DIR     ?= build
 SRC_COPY      := $(BUILD_DIR)/src
 PREPROCESS_STAMP := $(BUILD_DIR)/.preprocess.stamp
+GENERATED_CONFIG_VH := $(BUILD_DIR)/config/deriv/$(DERIV)/config.vh
 TOP_SV        := fpgaTopXc7Genesys2SoC.sv
 #TOP_SV        := fpgaTopXc7Genesys2SoC_v6.sv
 XDC           ?= constraints-genesys2soc-xc7.xdc
-CONFIG_VH     ?= ../../config/deriv/$(DERIV)/config.vh
+CONFIG_VH     ?= $(GENERATED_CONFIG_VH)
 CHIPDB        ?= $(BUILD_DIR)/chipdb
 BITFILE       ?= $(BUILD_DIR)/$(PROJECT).bit
 JSONFILE      ?= $(BUILD_DIR)/$(PROJECT).json
@@ -80,7 +80,8 @@ NEXTPNR_XILINX_PYTHON_DIR ?= $(NEXTPNR_XILINX_DIR)/python
 PRJXRAY_DB_DIR ?= $(NEXTPNR_XILINX_DIR)/external/prjxray-db
 
 DBPART     := $(shell echo $(PART) | sed -e 's/-[0-9]//g')
-RTL_INPUTS := $(shell find ../../src ../../addins/cvwsoc ../../addins/ahb-to-axi/rtl ../../addins/uberddr3 ../../addins/verilog-axi/rtl ../../config/deriv/$(DERIV) -type f \( -name '*.sv' -o -name '*.v' -o -name '*.vh' \) 2>/dev/null)
+DERIVGEN_INPUTS := ../../bin/derivgen.pl $(shell find ../../config -type f ! -path '../../config/deriv/*' ! -name '*.orig')
+RTL_INPUTS := $(shell find ../../src ../../addins/cvwsoc ../../addins/ahb-to-axi/rtl ../../addins/uberddr3 ../../addins/verilog-axi/rtl -type f \( -name '*.sv' -o -name '*.v' -o -name '*.vh' \) 2>/dev/null)
 READ_FLAGS := -sv -DSYNTHESIS \
 	-I$(SRC_COPY)/config \
 	-I../../config/shared \
@@ -106,7 +107,7 @@ ifeq ($(YOSYS_NODSP),1)
 SYNTH_XILINX_FLAGS += -nodsp
 endif
 
-.PHONY: all synth pnr bit pnr-json bit-json bit-from-fasm check-json-fresh check-fasm-fresh program flash flash-local post-synth-existing check-dataram-init preprocess zsblsoc clean distclean docker-shell docker-synth docker-synth-force docker-pnr docker-pnr-json docker-bit docker-bit-json docker-bit-from-fasm docker-post-synth-existing docker-program docker-flash
+.PHONY: all synth pnr bit pnr-json bit-json bit-from-fasm check-json-fresh check-fasm-fresh program flash flash-local post-synth-existing check-dataram-init deriv-config preprocess zsblsoc clean distclean docker-shell docker-synth docker-synth-force docker-pnr docker-pnr-json docker-bit docker-bit-json docker-bit-from-fasm docker-post-synth-existing docker-program docker-flash
 
 all: synth
 
@@ -158,6 +159,15 @@ check-dataram-init: $(JSONFILE)
 $(BUILD_DIR):
 	mkdir -p $@
 
+deriv-config: $(CONFIG_VH)
+
+$(GENERATED_CONFIG_VH): $(DERIVGEN_INPUTS) | $(BUILD_DIR)
+	rm -rf $(BUILD_DIR)/config
+	mkdir -p $(BUILD_DIR)/config
+	find ../../config -mindepth 1 -maxdepth 1 ! -name deriv -exec cp -r {} $(BUILD_DIR)/config/ \;
+	WALLY=$(abspath $(BUILD_DIR)) PATH=$(abspath ../../bin):$$PATH derivgen.pl
+	test -f $@
+
 preprocess: $(PREPROCESS_STAMP)
 
 ifeq ($(REBUILD_ZSBL),1)
@@ -166,15 +176,14 @@ else
 ZSBL_PREREQ := $(BOOTROM_MEM)
 endif
 
-zsblsoc:
+zsblsoc: $(CONFIG_VH)
 	PATH=$(RISCV_BIN):../../bin:$$PATH RISCV=$(RISCV) SYSTEMCLOCK=$(SYSTEMCLOCK) MAXSDCCLOCK=$(MAXSDCCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) LITEDRAM_SUPPORTED=$(LITEDRAM_SUPPORTED) LITEDRAM_BASE=$(LITEDRAM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE) UBERDDR3_SUPPORTED=$(UBERDDR3_SUPPORTED) BOOTROM_BASE=$(BOOTROM_BASE) MEM_WIDTH=$(MEM_WIDTH) $(MAKE) -C ../../fpga/zsbl clean all
 
-$(PREPROCESS_STAMP): $(RTL_INPUTS) $(PULP_AXI_CDC_SRCS) $(TOP_SV) $(MANTA_SRC) $(ZSBL_PREREQ) $(DATA_MEM) | $(BUILD_DIR)
-	if [ "$(RUN_DERIV)" = "1" ]; then WALLY=$(abspath ../..) PATH=$(abspath ../../bin):$$PATH $(MAKE) -C ../../sim deriv; fi
+$(PREPROCESS_STAMP): $(CONFIG_VH) $(RTL_INPUTS) $(PULP_AXI_CDC_SRCS) $(TOP_SV) $(MANTA_SRC) $(ZSBL_PREREQ) $(DATA_MEM) | $(BUILD_DIR)
 	rm -rf $(SRC_COPY)
 	mkdir -p $(SRC_COPY)/config
 	cp -r ../../src/* $(SRC_COPY)/
-	cp ../../config/deriv/$(DERIV)/config.vh $(SRC_COPY)/config/config.vh
+	cp $(CONFIG_VH) $(SRC_COPY)/config/config.vh
 	cp -r ../../addins/cvwsoc $(SRC_COPY)/
 	cp $(MANTA_SRC) $(SRC_COPY)/manta.v
 	mkdir -p $(SRC_COPY)/ahb-to-axi/rtl
