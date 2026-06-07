@@ -1,0 +1,52 @@
+diff --git a/sw/lib/inc/types.h b/sw/lib/inc/types.h
+index 1f63d0c..e85765e 100644
+--- a/sw/lib/inc/types.h
++++ b/sw/lib/inc/types.h
+@@ -4,7 +4,7 @@
+ #include <stddef.h>
+ #include <string.h>
+ 
+-#include "printf.h"
++#include "cheshire_lib_stub.h"
+ 
+ 
+ #define SDHC_DEBUG
+diff --git a/sw/lib/src/sdhc.c b/sw/lib/src/sdhc.c
+index 3442f25..05b629d 100644
+--- a/sw/lib/src/sdhc.c
++++ b/sw/lib/src/sdhc.c
+@@ -22,7 +22,7 @@
+  */
+ 
+ #include "types.h"
+-#include "util.h"
++#include "cheshire_lib_stub.h"
+ #include "sdhcreg.h"
+ #include "sdhcvar.h"
+ #include "sdmmcchip.h"
+diff --git a/sw/lib/src/sdmmc.c b/sw/lib/src/sdmmc.c
+index 4cab699..9327a93 100644
+--- a/sw/lib/src/sdmmc.c
++++ b/sw/lib/src/sdmmc.c
+@@ -26,7 +26,7 @@
+ #include "sdmmcreg.h"
+ #include "sdmmcvar.h"
+ 
+-#include "dif/clint.h"
++#include "cheshire_lib_stub.h"
+ 
+ int	sdmmc_enable(struct sdmmc_softc *);
+ void	sdmmc_disable(struct sdmmc_softc *);
+diff --git a/sw/lib/src/sdmmc_mem.c b/sw/lib/src/sdmmc_mem.c
+index 716b874..99b9fe8 100644
+--- a/sw/lib/src/sdmmc_mem.c
++++ b/sw/lib/src/sdmmc_mem.c
+@@ -22,7 +22,7 @@
+ #include "sdmmcreg.h"
+ #include "sdmmcvar.h"
+ 
+-#include "util.h"
++#include "cheshire_lib_stub.h"
+ 
+ typedef struct { uint32_t _bits[512/32]; } __packed __aligned(4) sdmmc_bitfield512_t;
+ 
