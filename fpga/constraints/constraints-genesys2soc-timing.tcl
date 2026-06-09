@@ -56,6 +56,9 @@ if {[llength $p]} { set_false_path -to $p }
 set p [get_pins -hier -quiet -regexp {.*dma_irq_sync_reg\[0\]/D}]
 if {[llength $p]} { set_false_path -to $p }
 
+# LiteEth IRQ synchronizer (LiteDRAM clock -> bus clock)
+set_false_path -to [must_get_pins {(^|.*/)liteeth_irq_ff1_reg/D$}]
+
 # 4) DO NOT use broad clock_groups unless you really mean it.
 # If you still want it, do it here (and only if both clocks exist):
 #set a [get_clocks -quiet -include_generated_clocks clk_pll_i]
@@ -157,7 +160,28 @@ foreach ila {u_ila_axi u_ila_spi} {
   }
 }
 
-# SDHCI
+# AXI CDC constraints from the cdc_fifo_gray.sv header:
+#   set_max_delay min(T_src, T_dst) <async crossings>
+#   set_false_path -hold            <async crossings>
+# Vivado does not preserve RTL (* async *) attribute as a pin property
+set axi_cdc_async [get_nets -hier -quiet -regexp {.*u_axi_cdc/(.*/)?async_data_(aw|w|b|ar|r)_(data|wptr|rptr).*}]
+set axi_cdc_start [get_pins -hier -quiet -regexp {.*u_axi_cdc/.*/i_cdc_fifo_gray_(src|dst)_(aw|w|b|ar|r)/(data_q_reg.*|wptr_q_reg.*|rptr_q_reg.*)/C$}]
+set axi_cdc_end [concat \
+  [get_pins -hier -quiet -regexp {.*u_axi_cdc/.*/i_cdc_fifo_gray_(src|dst)_(aw|w|b|ar|r)/gen_sync.*reg_q_reg\[0\]/D$}] \
+  [get_pins -hier -quiet -regexp {.*u_axi_cdc/.*/i_cdc_fifo_gray_(src|dst)_(aw|w|b|ar|r)/i_spill_register/.*a_data_q_reg.*\/D$}]]
+
+# Derive min(T_src, T_dst) from the clocks on the AXI CDC source registers.
+# This avoids depending on generated clock names from LiteDRAM or UberDDR3.
+set axi_cdc_clocks [get_clocks -quiet -of_objects $axi_cdc_start]
+if {[llength $axi_cdc_clocks] != 2} {
+  error "Expected two AXI CDC clocks, got [llength $axi_cdc_clocks]: $axi_cdc_clocks"
+}
+set T_fast [lindex [lsort -real [get_property PERIOD $axi_cdc_clocks]] 0]
+set_max_delay $T_fast -datapath_only -from $axi_cdc_start -through $axi_cdc_async -to $axi_cdc_end
+set_false_path -hold  -from $axi_cdc_start -through $axi_cdc_async -to $axi_cdc_end
+
+
+## SDHCI ##
 set sdhci_io_ports [get_ports -quiet {SD_CMD SD_DAT[*]}]
 set sdclk_obuf_o [get_pins -hier -quiet -regexp {.*SD_CLK.*OBUF.*\/O$}]
 
@@ -176,3 +200,6 @@ set_input_delay  -clock [get_clocks SDHCIDClk] -min  5.000 $sdhci_io_ports
 # FPGA -> Card
 set_output_delay -clock [get_clocks SDHCIDClk] -max -3.000 $sdhci_io_ports
 set_output_delay -clock [get_clocks SDHCIDClk] -min  3.000 $sdhci_io_ports
+
+# SDHCI CDC (IRQ signal)
+set_false_path -to [must_get_pins {(^|.*/)sdhci_irq_ff1_reg(\[[01]\])?/D$}]

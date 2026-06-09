@@ -234,6 +234,8 @@ DCACHE_NUMWAYS          32'd1
 ICACHE_NUMWAYS          32'd1
 BPRED_SIZE              32'd5
 BTB_SIZE                32'd5
+UBERDDR3_SUPPORTED          0
+LITEDRAM_SUPPORTED          1
 
 # RV32 (XLEN=32) with AHBW=64
 deriv fpgagenesys2rv32w64soc fpgagenesys2rv32soc
