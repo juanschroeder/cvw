@@ -1,0 +1,21 @@
+diff --git a/src/axi_burst_splitter.sv b/src/axi_burst_splitter.sv
+--- a/src/axi_burst_splitter.sv
++++ b/src/axi_burst_splitter.sv
+@@ -33,6 +33,8 @@ module axi_burst_splitter #(
+   parameter int unsigned MaxWriteTxns = 32'd0,
+   // Internal ID queue can work in two bandwidth modes: see id_queue.sv for details
+   parameter bit          FullBW       = 0,
++  // Maximum number of beats in each downstream burst
++  parameter int unsigned MaxBurstBeats = 1,
+   // AXI Bus Types
+   parameter int unsigned AddrWidth    = 32'd0,
+   parameter int unsigned DataWidth    = 32'd0,
+@@ -88,7 +90,7 @@ module axi_burst_splitter #(
+   ) i_axi_burst_splitter_gran (
+     .clk_i,
+     .rst_ni,
+-    .len_limit_i ( 8'h00 ),
++    .len_limit_i ( axi_pkg::len_t'(MaxBurstBeats - 1) ),
+     .slv_req_i,
+     .slv_resp_o,
+     .mst_req_o,

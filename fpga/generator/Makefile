@@ -277,11 +277,13 @@ PreProcessFilesSoC: PreProcessFiles
 	# 2) rename instantiations that look like: lzc #( ... )
 	find $(PULP_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
 	  xargs -0 sed -i -E 's/\<lzc\>([[:space:]]*#[[:space:]]*\()/lzc_pulp\1/g'
-	# 3) patch AXI VGA
+	# 3) patch AXI
+	patch -d "$(PULP_DIR)/axi" -p1 -N --forward < "$(PULP_DIR)/0001-axi-burst-splitter-max-burst-beats.patch"
+	# 4) patch AXI VGA
 	patchdir="$(PULP_DIR)/axi-vga"; \
 	find "$(PULP_DIR)" -type f -name "*vga*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
-	# 4) patch USB OHCI
+	# 5) patch USB OHCI
 	patchdir="../src/CopiedFiles_do_not_add_to_repo"; \
 	find ../../addins/cvwsoc/usb -type f -name "*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
