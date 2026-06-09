@@ -39,6 +39,9 @@ nexysa7: export SYSTEMCLOCK := 20000000
 nexysa7: export MAXSDCCLOCK  :=  10000000
 nexysa7: FPGA_NEXYSA7
 
+boardconfig = $(board)
+litedramconfig = genesys2soc
+
 nexysa7soc: export XILINX_PART := xc7a100tcsg324-1
 nexysa7soc: export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
 nexysa7soc: export board := nexysa7soc
@@ -71,16 +74,19 @@ genesys2rv32soc: export SYSTEMCLOCK := 55000000
 genesys2rv32soc: export MAXSDCCLOCK  := 5000000
 genesys2rv32soc: export MIG_ADDR_WIDTH  :=  30
 genesys2rv32soc: export MEM_WIDTH  :=  32
+genesys2rv32soc: export litedramconfig := genesys2w32soc
 genesys2rv32soc: FPGA_GENESYS2RV32SOC
 
 # same build as rv32soc but different config (no changes beyond this)
 genesys2rv32minsoc: export XILINX_PART := xc7k325tffg900-2
 genesys2rv32minsoc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 genesys2rv32minsoc: export board := genesys2rv32soc
+genesys2rv32minsoc: export boardconfig := genesys2rv32minsoc
 genesys2rv32minsoc: export SYSTEMCLOCK := 55000000
 genesys2rv32minsoc: export MAXSDCCLOCK  := 5000000
 genesys2rv32minsoc: export MIG_ADDR_WIDTH  :=  30
 genesys2rv32minsoc: export MEM_WIDTH  :=  32
+genesys2rv32minsoc: export litedramconfig := genesys2w32soc
 genesys2rv32minsoc: FPGA_GENESYS2RV32SOC
 
 # same FPGA build as rv32 with different config
@@ -94,19 +100,19 @@ genesys2rv32w64soc: export MEM_WIDTH  :=  64
 genesys2rv32w64soc: FPGA_GENESYS2RV32SOC
 
 
+CONFIG_VH = ../../config/deriv/fpga$(boardconfig)/config.vh
 
 # variables computed from config
-EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
-
-EXT_MEM_RANGE = $(shell grep 'EXT_MEM_RANGE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
-_LITEDRAM_SUPPORTED = $(shell grep 'LITEDRAM_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
-_SDHCI_SUPPORTED = $(shell grep 'AXI_SDHCI_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
-LITEDRAM_BASE = $(shell grep 'LITEDRAM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
-SDHCI_BASE = $(shell grep 'AXI_SDHCI_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
-BOOTROM_BASE = $(shell grep 'BOOTROM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
-UNCORE_RAM_BASE = $(shell grep 'UNCORE_RAM_BASE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
-UNCORE_RAM_RANGE = $(shell grep 'UNCORE_RAM_RANGE' ../../config/deriv/fpga$(board)/config.vh | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
-_UBERDDR3_SUPPORTED = $(shell grep 'UBERDDR3_SUPPORTED' ../../config/deriv/fpga$(board)/config.vh | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
+EXT_MEM_BASE = $(shell grep 'EXT_MEM_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
+EXT_MEM_RANGE = $(shell grep 'EXT_MEM_RANGE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
+_LITEDRAM_SUPPORTED = $(shell grep 'LITEDRAM_SUPPORTED' $(CONFIG_VH) | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
+_SDHCI_SUPPORTED = $(shell grep 'AXI_SDHCI_SUPPORTED' $(CONFIG_VH) | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
+LITEDRAM_BASE = $(shell grep 'LITEDRAM_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
+SDHCI_BASE = $(shell grep 'AXI_SDHCI_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
+BOOTROM_BASE = $(shell grep 'BOOTROM_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
+UNCORE_RAM_BASE = $(shell grep 'UNCORE_RAM_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
+UNCORE_RAM_RANGE = $(shell grep 'UNCORE_RAM_RANGE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
+_UBERDDR3_SUPPORTED = $(shell grep 'UBERDDR3_SUPPORTED' $(CONFIG_VH) | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
 genesys2soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
 genesys2soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
 genesys2soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
@@ -152,7 +158,7 @@ FPGA_GENESYS2SOC: PreProcessFilesSoC IP_GENESYS2SOC liblitedram zsblsoc
 FPGA_GENESYS2SOCXLNX: PreProcessFilesSoC IP_GENESYS2SOCXLNX zsbl
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
-FPGA_GENESYS2RV32SOC: PreProcessFilesSoC IP_GENESYS2RV32SOC liblitedram zsbl32soc
+FPGA_GENESYS2RV32SOC: PreProcessFilesSoC IP_GENESYS2RV32SOC liblitedram32 zsbl32soc
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
 # Generate IP Blocks
@@ -248,6 +254,7 @@ PULP_DIR := ../src/CopiedFiles_do_not_add_to_repo/pulp
 PULP_LZC := $(PULP_DIR)/common_cells/src/lzc.sv
 .PHONY: PreProcessFilesSoC
 PreProcessFilesSoC: PreProcessFiles
+	cp ../../config/deriv/fpga$(boardconfig)/config.vh ../src/CopiedFiles_do_not_add_to_repo/config/config.vh
 	# Copy Wishbone stuff
 	# ahb3lite_wb_bridge
 	mkdir ../src/CopiedFiles_do_not_add_to_repo/ahb3lite_wb_bridge
@@ -270,11 +277,13 @@ PreProcessFilesSoC: PreProcessFiles
 	# 2) rename instantiations that look like: lzc #( ... )
 	find $(PULP_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
 	  xargs -0 sed -i -E 's/\<lzc\>([[:space:]]*#[[:space:]]*\()/lzc_pulp\1/g'
-	# 3) patch AXI VGA
+	# 3) patch AXI
+	patch -d "$(PULP_DIR)/axi" -p1 -N --forward < "$(PULP_DIR)/0001-axi-burst-splitter-max-burst-beats.patch"
+	# 4) patch AXI VGA
 	patchdir="$(PULP_DIR)/axi-vga"; \
 	find "$(PULP_DIR)" -type f -name "*vga*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
-	# 4) patch USB OHCI
+	# 5) patch USB OHCI
 	patchdir="../src/CopiedFiles_do_not_add_to_repo"; \
 	find ../../addins/cvwsoc/usb -type f -name "*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
@@ -304,15 +313,15 @@ zsbl:
 		BOOTROM_BASE=$(BOOTROM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) $(MAKE) -C ../zsbl
 
 export LIBLITEDRAM_SRC_DIR =  $(PWD)/../../addins/litex/litex/soc/software/liblitedram
-LITEDRAM_INC_DIRS = "$(PWD)/../../addins/cvwsoc/litedram/$(board)/include \
-					$(PWD)/../../addins/cvwsoc/litedram/$(board)          \
+LITEDRAM_INC_DIRS = "$(PWD)/../../addins/cvwsoc/litedram/$(litedramconfig)/include \
+					$(PWD)/../../addins/cvwsoc/litedram/$(litedramconfig)          \
 					$(PWD)/../../addins/cvwsoc/litedram                   \
 					$(LIBLITEDRAM_DIRECTORY)/../include                   \
 					$(LIBLITEDRAM_DIRECTORY)/.. $(LIBLITEDRAM_SRC_DIR)"
 LIBS = "-L$(PWD)/../../addins/cvwsoc/litedram -llitedram"
 SDHCI_SRC_DIR = ../src/CopiedFiles_do_not_add_to_repo/sdhci/sw
 # build the Zero stage boot loader (ZSBL)
-.PHONY: zsblsoc zsbl32soc liblitedram
+.PHONY: zsblsoc zsbl32soc liblitedram liblitedram32
 zsblsoc:
 	$(MAKE) -C ../zsbl clean
 	SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
@@ -349,8 +358,15 @@ zsbl32soc:
 LIBLITEDRAM_DIRECTORY = $(LIBLITEDRAM_SRC_DIR)
 liblitedram:
 	$(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk clean
-	EXT_MEM_BASE=$(EXT_MEM_BASE) LITEDRAM_BASE=$(LITEDRAM_BASE) LIBLITEDRAM_DIRECTORY=$(LIBLITEDRAM_DIRECTORY) $(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk
+	$(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk EXT_MEM_BASE=$(EXT_MEM_BASE) LITEDRAM_BASE=$(LITEDRAM_BASE) \
+		LIBLITEDRAM_DIRECTORY=$(LIBLITEDRAM_DIRECTORY) LITEDRAM_CONFIG=$(litedramconfig)
 
+
+liblitedram32:
+	$(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk clean
+	$(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk EXT_MEM_BASE=$(EXT_MEM_BASE) LITEDRAM_BASE=$(LITEDRAM_BASE) \
+		LIBLITEDRAM_DIRECTORY=$(LIBLITEDRAM_DIRECTORY) LITEDRAM_CONFIG=$(litedramconfig) \
+		MARCH=$(ZSBL32SOC_MARCH) MABI=$(ZSBL32SOC_MABI)
 
 # Generate Individual IP Blocks
 $(dst)/%.log: %.tcl

@@ -330,6 +330,9 @@ if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" |
     # WARNING: maybe this option also made it crash?? same option as above?
     #set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]
 
+    # This power optimization step was taking REALLY long in some builds
+    set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE NoBramPowerOpt [get_runs impl_1]
+
     # needed to be able to set STEPS.INIT_DESIGN.TCL.POST?
     reset_runs impl_1
 }

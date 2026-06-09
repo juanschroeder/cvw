@@ -136,6 +136,12 @@ set_property -dict { PACKAGE_PIN P29   IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [ge
 set_property -dict { PACKAGE_PIN T30   IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_DAT[3] }]; #IO_L9N_T1_DQS_D13_14 Sch=sd_dat[3]
 set_property -dict { PACKAGE_PIN R28   IOSTANDARD LVCMOS33 } [get_ports { SD_CLK }];                    #IO_L11P_T1_SRCC_14 Sch=sd_sclk
 
+# Divided clock used by SDHCI
+create_generated_clock -name sdhci_sd_clk_div4 \
+  -source [get_pins gen_axi_sdhci.sdhci_i/i_axi_sdhci/aclk] \
+  -divide_by 4 \
+  [get_pins gen_axi_sdhci.sdhci_i/i_axi_sdhci/i_sd_clk_generator/i_clk_int_div/i_clk_mux/i_BUFGMUX/O]
+
 
 
 # *********************************

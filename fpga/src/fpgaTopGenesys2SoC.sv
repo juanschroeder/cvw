@@ -3176,12 +3176,16 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     logic          wb_ctrl_we;
 
 
-    // litedram_axi_* are declared at module level (driven by u_axi64_to_axil_dram below)
+    // litedram_axi_* are declared at module level for the crossbar response path.
 
     logic   litedram_reset_unused;
 
 
-    axi64_mmio_to_axilite32_v2 u_axi64_to_axil_dram (
+    axi_mmio_to_axilite32_v3 #(
+        .AXI_ADDR_WIDTH(ADDR_W),
+        .AXI_DATA_WIDTH(DATA_W),
+        .AXI_ID_WIDTH  (MST_ID_W)
+    ) u_axi_to_axil_dram (
         .aclk          (BUSCLK),
         .aresetn(BUSCORERSTn),
 
@@ -3286,7 +3290,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
             .i_wb_err(wb_ctrl_err)
         );
 
-    litedram_genesys2_fixed ddr3(
+    if (DATA_W == 64) begin
+      litedram_genesys2_fixed ddr3(
         .clk      (clk200),          // external 200 MHz board clock
         .rst(rst_req),
 
@@ -3312,14 +3317,14 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
         .user_clk (BUSCLK),
         .user_rst (ui_clk_sync_rst),
 
-        .user_port_axi_0_araddr(BUS_cb_axi_araddr),
+        .user_port_axi_0_araddr(BUS_cb_axi_araddr[29:0]),
         .user_port_axi_0_arburst(BUS_cb_axi_arburst),
         .user_port_axi_0_arid(BUS_cb_axi_arid),
         .user_port_axi_0_arlen(BUS_cb_axi_arlen),
         .user_port_axi_0_arready(BUS_cb_axi_arready),
         .user_port_axi_0_arsize(BUS_cb_axi_arsize),
         .user_port_axi_0_arvalid(BUS_cb_axi_arvalid),
-        .user_port_axi_0_awaddr(BUS_cb_axi_awaddr),
+        .user_port_axi_0_awaddr(BUS_cb_axi_awaddr[29:0]),
         .user_port_axi_0_awburst(BUS_cb_axi_awburst),
         .user_port_axi_0_awid(BUS_cb_axi_awid),
         .user_port_axi_0_awlen(BUS_cb_axi_awlen),
@@ -3354,7 +3359,77 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
         .wb_ctrl_stb(wb_ctrl_stb),
         .wb_ctrl_we(wb_ctrl_we)
 
-    );
+      );
+    end else begin
+      litedram_genesys2w32 ddr3(
+        .clk      (clk200),
+        .rst      (rst_req),
+
+        .ddram_a(ddr3_addr),
+        .ddram_ba(ddr3_ba),
+        .ddram_cas_n(ddr3_cas_n),
+        .ddram_cke(ddr3_cke),
+        .ddram_clk_n(ddr3_ck_n),
+        .ddram_clk_p(ddr3_ck_p),
+        .ddram_cs_n(ddr3_cs_n),
+        .ddram_dm(ddr3_dm),
+        .ddram_dq(ddr3_dq),
+        .ddram_dqs_n(ddr3_dqs_n),
+        .ddram_dqs_p(ddr3_dqs_p),
+        .ddram_odt(ddr3_odt),
+        .ddram_ras_n(ddr3_ras_n),
+        .ddram_reset_n(ddr3_reset_n),
+        .ddram_we_n(ddr3_we_n),
+
+        .init_done(c0_init_calib_complete),
+        .init_error(init_error),
+        .pll_locked(mmcm_locked),
+        .user_clk(BUSCLK),
+        .user_rst(ui_clk_sync_rst),
+
+        .user_port_axi_0_araddr(BUS_cb_axi_araddr[29:0]),
+        .user_port_axi_0_arburst(BUS_cb_axi_arburst),
+        .user_port_axi_0_arid(BUS_cb_axi_arid),
+        .user_port_axi_0_arlen(BUS_cb_axi_arlen),
+        .user_port_axi_0_arready(BUS_cb_axi_arready),
+        .user_port_axi_0_arsize(BUS_cb_axi_arsize),
+        .user_port_axi_0_arvalid(BUS_cb_axi_arvalid),
+        .user_port_axi_0_awaddr(BUS_cb_axi_awaddr[29:0]),
+        .user_port_axi_0_awburst(BUS_cb_axi_awburst),
+        .user_port_axi_0_awid(BUS_cb_axi_awid),
+        .user_port_axi_0_awlen(BUS_cb_axi_awlen),
+        .user_port_axi_0_awready(BUS_cb_axi_awready),
+        .user_port_axi_0_awsize(BUS_cb_axi_awsize),
+        .user_port_axi_0_awvalid(BUS_cb_axi_awvalid),
+        .user_port_axi_0_bid(BUS_cb_axi_bid),
+        .user_port_axi_0_bready(BUS_cb_axi_bready),
+        .user_port_axi_0_bresp(BUS_cb_axi_bresp),
+        .user_port_axi_0_bvalid(BUS_cb_axi_bvalid),
+        .user_port_axi_0_rdata(BUS_cb_axi_rdata),
+        .user_port_axi_0_rid(BUS_cb_axi_rid),
+        .user_port_axi_0_rlast(BUS_cb_axi_rlast),
+        .user_port_axi_0_rready(BUS_cb_axi_rready),
+        .user_port_axi_0_rresp(BUS_cb_axi_rresp),
+        .user_port_axi_0_rvalid(BUS_cb_axi_rvalid),
+        .user_port_axi_0_wdata(BUS_cb_axi_wdata),
+        .user_port_axi_0_wlast(BUS_cb_axi_wlast),
+        .user_port_axi_0_wready(BUS_cb_axi_wready),
+        .user_port_axi_0_wstrb(BUS_cb_axi_wstrb),
+        .user_port_axi_0_wvalid(BUS_cb_axi_wvalid),
+
+        .wb_ctrl_ack(wb_ctrl_ack),
+        .wb_ctrl_adr(wb_ctrl_adr),
+        .wb_ctrl_bte(2'b00),
+        .wb_ctrl_cti(3'b000),
+        .wb_ctrl_cyc(wb_ctrl_cyc),
+        .wb_ctrl_dat_r(wb_ctrl_dat_r),
+        .wb_ctrl_dat_w(wb_ctrl_dat_w),
+        .wb_ctrl_err(wb_ctrl_err),
+        .wb_ctrl_sel(wb_ctrl_sel),
+        .wb_ctrl_stb(wb_ctrl_stb),
+        .wb_ctrl_we(wb_ctrl_we)
+      );
+    end
   end else begin
 
     logic dummy_rstn;

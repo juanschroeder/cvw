@@ -1,0 +1,36 @@
+diff --git a/src/axi_vga.sv b/src/axi_vga.sv
+--- a/src/axi_vga.sv
++++ b/src/axi_vga.sv
+@@ -193,6 +193,7 @@ module axi_vga #(
+       .MaxReadTxns  ( MaxReadTxns   ),
+       .MaxWriteTxns ( 32'd1         ), // technically 0, but not supported
+       .FullBW       ( 1'b1          ),
++      .MaxBurstBeats( BufferDepth / 2 ),
+       .AddrWidth    ( AXIAddrWidth  ),
+       .DataWidth    ( AXIDataWidth  ),
+       .IdWidth      ( AXIIdWidth    ),
+@@ -293,8 +294,8 @@ module axi_vga #(
+     .oup_ready_i ( axi_resp_i.ar_ready                     )
+   );
+
+-  // read is completed on valid and ready r.last being popped from FIFO
+-  assign read_completed = axi_resp_split.r.last & axi_req_split.r_ready & axi_resp_split.r_valid;
++  // Return one credit for every beat popped from the response FIFO.
++  assign read_completed = axi_req_split.r_ready & axi_resp_split.r_valid;
+
+   // simple credit counter
+   always_comb begin : proc_credit_counter
+@@ -305,10 +306,10 @@ module axi_vga #(
+     if (read_completed) begin
+       counter_d = counter_d - 32'd1;
+     end
+-    // possible issue?
+-    if (counter_d < BufferDepth) begin
++    // Accept a fragment only when the FIFO can hold all of its beats.
++    if (counter_d + axi_req_o.ar.len + 1 <= BufferDepth) begin
+       credit_valid = 1'b1;
+-      counter_d = credit_ready ? counter_d + 32'd1 : counter_d;
++      counter_d = credit_ready ? counter_d + axi_req_o.ar.len + 1 : counter_d;
+     end
+   end
+
