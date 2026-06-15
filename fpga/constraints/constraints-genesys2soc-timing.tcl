@@ -203,3 +203,6 @@ set_output_delay -clock [get_clocks SDHCIDClk] -min  3.000 $sdhci_io_ports
 
 # SDHCI CDC (IRQ signal)
 set_false_path -to [must_get_pins {(^|.*/)sdhci_irq_ff1_reg(\[[01]\])?/D$}]
+
+## VGA ##
+set_false_path -to [must_get_pins {(^|.*/)axi_vga_wrap_i/i_axi_to_reg/.*spill_register_flushable_i.*/(CLR|R)$}]

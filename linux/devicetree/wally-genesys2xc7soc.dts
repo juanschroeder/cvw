@@ -201,6 +201,7 @@
         interrupt-parent = <&plic>;
         interrupts = <14>;
         dma-noncoherent;
+        memory-region = <&uncached_memory_usb>;
         status = "disabled";
     };
 
@@ -225,12 +226,18 @@
     #address-cells = <2>;
     #size-cells = <2>;
     ranges;
-    /*
-    framebuffer@BFF00000 {
-        reg = <0x0 0xBFF00000 0x0 0x00096000>; // 640 KiB reserved
+    uncached_memory_usb: uncached-memory@84000000 {
+        reg = <0x0 0x84000000 0x0 0x00040000>; // 256 KiB uncached DDR
         no-map;
     };
 
+    // Prevent Linux from using this region
+    framebuffer@84040000 {
+        reg = <0x0 0x84040000 0x0 0x000C0000>;
+        no-map;
+    };
+
+    /*
     dmabuffer@BFE00000 {
         compatible = "shared-dma-pool";
         reg = <0x0 0xBFE00000 0x0 0x00100000>; // 1 MiB reserved
