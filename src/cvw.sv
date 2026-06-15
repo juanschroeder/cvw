@@ -182,6 +182,9 @@ typedef struct packed {
   logic         AXI_DUMMY_SUPPORTED;
   logic [63:0]  AXI_DUMMY_BASE;
   logic [63:0]  AXI_DUMMY_RANGE;
+  logic         UNCACHED_MEM_SUPPORTED;
+  logic [63:0]  UNCACHED_MEM_BASE;
+  logic [63:0]  UNCACHED_MEM_RANGE;
 
 // Test modes
 
