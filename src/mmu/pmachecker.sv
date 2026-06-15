@@ -49,6 +49,7 @@ module pmachecker import cvw::*;  #(parameter cvw_t P) (
   logic [19:0]                 SelRegions;
   logic                        AtomicAllowed;
   logic                        CacheableRegion, IdempotentRegion;
+  logic                        UncachedMemRegion;
 
   // Determine what type of access is being made
   assign AccessRW  = ReadAccessM | WriteAccessM;
@@ -58,8 +59,12 @@ module pmachecker import cvw::*;  #(parameter cvw_t P) (
   // Determine which region of physical memory (if any) is being accessed
   adrdecs #(P) adrdecs(PhysicalAddress, AccessRW, AccessRX, AccessRWXC, Size, SelRegions);
 
+  // Cacheability override region
+  localparam logic [3:0]       SUPPORTED_SIZE = (P.LLEN == 32 ? 4'b0111 : 4'b1111);
+  adrdec #(P.PA_BITS) uncacheddrdec(PhysicalAddress, P.UNCACHED_MEM_BASE[P.PA_BITS-1:0], P.UNCACHED_MEM_RANGE[P.PA_BITS-1:0], P.UNCACHED_MEM_SUPPORTED, AccessRWXC, Size, SUPPORTED_SIZE, UncachedMemRegion);
+
   // Only non-core RAM/ROM memory regions are cacheable. PBMT can override cacheable; NC and IO are uncachable
-  assign CacheableRegion = SelRegions[3] | SelRegions[4] | SelRegions[5];  // exclusion-tag: unused-cacheable
+  assign CacheableRegion = (SelRegions[3] | SelRegions[4] | SelRegions[5]) & ~UncachedMemRegion; // exclusion-tag: unused-cacheable
   assign Cacheable = (PBMemoryType == 2'b00) ? CacheableRegion : 1'b0;
 
   // Nonidemdempotent means access could have side effect and must not be done speculatively or redundantly

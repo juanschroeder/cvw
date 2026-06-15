@@ -225,6 +225,9 @@ localparam logic [63:0] AXI_ETH_RANGE   = 64'h0001FFFF;
 localparam logic AXI_DUMMY_SUPPORTED = 0;
 localparam logic [63:0] AXI_DUMMY_BASE    = 64'h20000000;
 localparam logic [63:0] AXI_DUMMY_RANGE   = 64'h0003FFFF;
+localparam logic UNCACHED_MEM_SUPPORTED = 0;
+localparam logic [63:0] UNCACHED_MEM_BASE     = 64'h84000000;
+localparam logic [63:0] UNCACHED_MEM_RANGE    = 64'h0FFFFF;
 
 // Bus Interface width
 localparam AHBW = (XLEN);
