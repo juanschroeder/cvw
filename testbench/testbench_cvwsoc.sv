@@ -5,8 +5,6 @@
 //   Wally SoC -> external AHB -> AHB/AXI bridge -> AXI CDC -> AXI xbar
 //              -> functional AXI RAM + small AXI peripheral RAM
 //
-// This keeps the bridge-focused setup intact while adding the missing base
-// bus components used by the cvwsoc virtual platform.
 ///////////////////////////////////////////
 
 `timescale 1ns / 1ps
@@ -26,7 +24,8 @@ import cvw::*;
 module testbench_cvwsoc #(
   parameter int unsigned CLK_PERIOD_NS       = 10,
   //parameter int unsigned BUS_CLK_PERIOD_NS   = 7,
-  parameter int unsigned BUS_CLK_PERIOD_NS   = 5, //a bit faster simulation?
+  // busclk value affects simulation speed
+  parameter int unsigned BUS_CLK_PERIOD_NS   = 10,
   parameter int unsigned RESET_CYCLES        = 32,
   parameter int unsigned BUS_RESET_CYCLES    = 64,
   parameter int unsigned EXT_MEM_ADDR_WIDTH  = 30,
@@ -1448,7 +1447,7 @@ module testbench_cvwsoc #(
       $display("Loaded boot ROM hex from %s", bootrom_memh);
     end
 
-    if (P.UNCORE_RAM_SUPPORTED) begin
+    if (SOC_P.UNCORE_RAM_SUPPORTED) begin
       if (uncore_ram_memh.len() != 0) begin
         $readmemh(uncore_ram_memh,
                   soc.uncoregen.uncore.ram.ram.memory.ram.RAM,
@@ -1601,7 +1600,7 @@ module testbench_cvwsoc #(
 
   // Mirror the internal UART character stream into a log file.  This keeps the
   // bridge-era debug flow intact while allowing lightweight scripted input.
-  if (P.UART_SUPPORTED) begin : uart_logger
+  if (SOC_P.UART_SUPPORTED) begin : uart_logger
     string uart_char_str;
     string uart_prefix_str;
     string uart_wallclock_str;
