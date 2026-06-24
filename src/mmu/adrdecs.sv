@@ -33,7 +33,7 @@ module adrdecs import cvw::*;  #(parameter cvw_t P) (
   input  logic [P.PA_BITS-1:0] PhysicalAddress,
   input  logic                 AccessRW, AccessRX, AccessRWXC,
   input  logic [1:0]           Size,
-  output logic [19:0]          SelRegions
+  output logic [21:0]          SelRegions
 );
 
   localparam logic [3:0]       SUPPORTED_SIZE = (P.LLEN == 32 ? 4'b0111 : 4'b1111);
@@ -50,15 +50,17 @@ module adrdecs import cvw::*;  #(parameter cvw_t P) (
   adrdec #(P.PA_BITS) sdcdec(PhysicalAddress, P.SDC_BASE[P.PA_BITS-1:0], P.SDC_RANGE[P.PA_BITS-1:0], P.SDC_SUPPORTED, AccessRW, Size, SUPPORTED_SIZE & 4'b1100, SelRegions[10]);
   adrdec #(P.PA_BITS) spidec(PhysicalAddress, P.SPI_BASE[P.PA_BITS-1:0], P.SPI_RANGE[P.PA_BITS-1:0], P.SPI_SUPPORTED, AccessRW, Size, 4'b0100, SelRegions[11]);
   adrdec #(P.PA_BITS) wbdec(PhysicalAddress, P.WISHBONE_BASE[P.PA_BITS-1:0], P.WISHBONE_RANGE[P.PA_BITS-1:0], P.WISHBONE_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[12]);
-  adrdec #(P.PA_BITS) axidmadec(PhysicalAddress, P.AXI_DMA_BASE[P.PA_BITS-1:0], P.AXI_DMA_RANGE[P.PA_BITS-1:0], P.AXI_DMA_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[13]);
+  adrdec #(P.PA_BITS) axicdmadec(PhysicalAddress, P.XILINX_AXI_DMA_BASE[P.PA_BITS-1:0], P.XILINX_AXI_DMA_RANGE[P.PA_BITS-1:0], P.XILINX_AXI_DMA_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[13]);
   adrdec #(P.PA_BITS) axivgadec(PhysicalAddress, P.AXI_VGA_BASE[P.PA_BITS-1:0], P.AXI_VGA_RANGE[P.PA_BITS-1:0], P.AXI_VGA_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[14]);
   adrdec #(P.PA_BITS) axiusbdec(PhysicalAddress, P.AXI_USB_BASE[P.PA_BITS-1:0], P.AXI_USB_RANGE[P.PA_BITS-1:0], P.AXI_USB_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[15]);
   adrdec #(P.PA_BITS) axiethdec(PhysicalAddress, P.AXI_ETH_BASE[P.PA_BITS-1:0], P.AXI_ETH_RANGE[P.PA_BITS-1:0], P.AXI_ETH_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[16]);
   adrdec #(P.PA_BITS) axilddec(PhysicalAddress, P.LITEDRAM_BASE[P.PA_BITS-1:0], P.LITEDRAM_RANGE[P.PA_BITS-1:0], P.LITEDRAM_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[17]);
   adrdec #(P.PA_BITS) axidummydec(PhysicalAddress, P.AXI_DUMMY_BASE[P.PA_BITS-1:0], P.AXI_DUMMY_RANGE[P.PA_BITS-1:0], P.AXI_DUMMY_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[18]);
   adrdec #(P.PA_BITS) axisdhcidec(PhysicalAddress, P.AXI_SDHCI_BASE[P.PA_BITS-1:0], P.AXI_SDHCI_RANGE[P.PA_BITS-1:0], P.AXI_SDHCI_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[19]);
+  adrdec #(P.PA_BITS) axiidmadec(PhysicalAddress, P.AXI_IDMA_BASE[P.PA_BITS-1:0], P.AXI_IDMA_RANGE[P.PA_BITS-1:0], P.AXI_IDMA_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[20]);
+  adrdec #(P.PA_BITS) axiidmareg64dec(PhysicalAddress, P.AXI_IDMA_REG64_BASE[P.PA_BITS-1:0], P.AXI_IDMA_REG64_RANGE[P.PA_BITS-1:0], P.AXI_IDMA_REG64_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[21]);
 
-  assign SelRegions[0] = ~|(SelRegions[19:1]); // none of the regions are selected
+  assign SelRegions[0] = ~|(SelRegions[21:1]); // none of the regions are selected
 endmodule
 
   // verilator lint_on UNOPTFLAT

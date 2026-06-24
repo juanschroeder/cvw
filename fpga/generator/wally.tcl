@@ -65,7 +65,7 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
     # FIXME: remove later
     # import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
-    import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
+    # import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
 } elseif {$board=="genesys2socxlnx" } {
     import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
@@ -155,8 +155,10 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" 
         ../src/CopiedFiles_do_not_add_to_repo/sdhci/hw/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/axi/include \
+        ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/common_cells/include} [current_fileset]
 
+    # cvwsoc stuff
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/*/*.v ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/*/*.sv]
     # Pulp files
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/*/src/*.sv]
@@ -184,6 +186,27 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" 
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/sdhci/hw/*.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/sdhci/hw/*/*.sv \
         ]
+
+    # iDMA stuff
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/idma_pkg.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/backend/*.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/idma_transfer_id_gen.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_ar_gen.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_reader.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_reader_gater.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_reshaper.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_reg_wrapper.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_top.sv]
+    # iDMA: generated RTL
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_transport_layer_rw_axi.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_legalizer_rw_axi.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_backend_rw_axi.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_desc64_reg_pkg.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_desc64_reg_top.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_reg64_1d_reg_pkg.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_reg64_1d_reg_top.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_reg64_1d_top.sv]
 
     report_compile_order -constraints > reports/compile_order.rpt
 }

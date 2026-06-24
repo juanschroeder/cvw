@@ -230,7 +230,7 @@ $(PREPROCESS_STAMP): $(CONFIG_VH) $(RTL_INPUTS) $(PULP_AXI_CDC_SRCS) $(TOP_SV) $
 	sed -i -E 's/(localparam logic WISHBONE_STUB_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
 	# Disable optional AXI peripherals that are not routed in this OpenXC7 bitstream.
 	sed -i -E 's/(localparam logic AXI_SDHCI_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
-	sed -i -E 's/(localparam logic AXI_DMA_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
+	sed -i -E 's/(localparam logic XILINX_AXI_DMA_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
 	sed -i -E 's/(localparam logic AXI_VGA_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
 	sed -i -E 's/(localparam logic AXI_USB_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh
 	sed -i -E 's/(localparam logic AXI_ETH_SUPPORTED[[:space:]]*=[[:space:]]*)1;/\10;/' $(SRC_COPY)/config/config.vh

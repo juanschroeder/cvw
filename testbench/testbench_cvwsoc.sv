@@ -63,7 +63,7 @@ module testbench_cvwsoc #(
 `else
       tmp.AXI_SDHCI_SUPPORTED = 1'b0;
 `endif
-      tmp.AXI_DMA_SUPPORTED = 1'b0;
+      tmp.XILINX_AXI_DMA_SUPPORTED = 1'b0;
       tmp.AXI_VGA_SUPPORTED = 1'b0;
       tmp.AXI_USB_SUPPORTED = 1'b0;
       tmp.AXI_ETH_SUPPORTED = 1'b0;
@@ -72,6 +72,8 @@ module testbench_cvwsoc #(
       // Veri-lator $readmemh complains when boot.mem is bigger than size
       tmp.BOOTROM_RANGE = 64'h1FFFF;
       tmp.AXI_DUMMY_SUPPORTED = 1'b1;
+      tmp.AXI_IDMA_SUPPORTED = 1'b0; // enable to have iDMA
+      tmp.AXI_IDMA_REG64_SUPPORTED = 1'b1;
       cvwsoc_sim_cfg = tmp;
     end
   endfunction
@@ -79,14 +81,18 @@ module testbench_cvwsoc #(
   localparam BUSW = P.AHBW; // AXI width = AHB width
   localparam cvw_t SOC_P = cvwsoc_sim_cfg(P);
   localparam int unsigned AXI_ID_WIDTH = 4;
-  localparam int unsigned XBAR_NUM_SLV_PORTS = 2;
-  localparam int unsigned XBAR_NUM_MST_PORTS = 3;
-  localparam int unsigned XBAR_NUM_ADDR_RULES = 3;
+  localparam int unsigned XBAR_NUM_SLV_PORTS = 3;
+  localparam int unsigned XBAR_NUM_MST_PORTS = 5;
+  localparam int unsigned XBAR_NUM_ADDR_RULES = 5;
   localparam int unsigned AXI_MST_ID_WIDTH = AXI_ID_WIDTH + $clog2(XBAR_NUM_SLV_PORTS);
   localparam logic [31:0] EXT_RAM_BASE_ADDR = 32'h8000_0000;
   localparam logic [31:0] EXT_RAM_END_ADDR = EXT_RAM_BASE_ADDR + (32'd1 << EXT_MEM_ADDR_WIDTH);
   localparam logic [31:0] SDHCI_BASE_ADDR = SOC_P.AXI_SDHCI_BASE[31:0];
   localparam logic [31:0] SDHCI_END_ADDR = SDHCI_BASE_ADDR + SOC_P.AXI_SDHCI_RANGE[31:0] + 32'd1;
+  localparam logic [31:0] AXI_IDMA_BASE_ADDR = SOC_P.AXI_IDMA_BASE[31:0];
+  localparam logic [31:0] AXI_IDMA_END_ADDR = AXI_IDMA_BASE_ADDR + SOC_P.AXI_IDMA_RANGE[31:0] + 32'd1;
+  localparam logic [31:0] AXI_IDMA_REG64_BASE_ADDR = SOC_P.AXI_IDMA_REG64_BASE[31:0];
+  localparam logic [31:0] AXI_IDMA_REG64_END_ADDR = AXI_IDMA_REG64_BASE_ADDR + SOC_P.AXI_IDMA_REG64_RANGE[31:0] + 32'd1;
   localparam logic [31:0] AXI_DUMMY_BASE_ADDR = SOC_P.AXI_DUMMY_BASE[31:0];
   localparam logic [31:0] AXI_DUMMY_END_ADDR = AXI_DUMMY_BASE_ADDR + SOC_P.AXI_DUMMY_RANGE[31:0] + 32'd1;
   localparam longint unsigned HEARTBEAT_CYCLES = 10_000_000;
@@ -142,7 +148,9 @@ module testbench_cvwsoc #(
   localparam axi_pkg::xbar_rule_32_t [XBAR_NUM_ADDR_RULES-1:0] XBAR_ADDR_MAP = '{
     '{ idx: 0, start_addr: EXT_RAM_BASE_ADDR, end_addr: EXT_RAM_END_ADDR },
     '{ idx: 1, start_addr: SDHCI_BASE_ADDR, end_addr: SDHCI_END_ADDR },
-    '{ idx: 2, start_addr: AXI_DUMMY_BASE_ADDR, end_addr: AXI_DUMMY_END_ADDR }
+    '{ idx: 2, start_addr: AXI_DUMMY_BASE_ADDR, end_addr: AXI_DUMMY_END_ADDR },
+    '{ idx: 3, start_addr: AXI_IDMA_BASE_ADDR, end_addr: AXI_IDMA_END_ADDR },
+    '{ idx: 4, start_addr: AXI_IDMA_REG64_BASE_ADDR, end_addr: AXI_IDMA_REG64_END_ADDR }
   };
 
   // ---------------------------------------------------------------------------
@@ -195,11 +203,13 @@ module testbench_cvwsoc #(
 
   // Top-level debug aliases. The focused FST dump only keeps signals that are
   // reachable from this testbench scope, so keep the fault/debug path here.
-  logic [19:0]          dbg_uncore_hselregions;
+  logic [21:0]          dbg_uncore_hselregions;
   logic                 dbg_uncore_hsel_ram;
   logic                 dbg_uncore_hsel_ram_d;
   logic                 dbg_uncore_hsel_axisdhci;
   logic                 dbg_uncore_hsel_axisdhci_d;
+  logic                 dbg_uncore_hsel_axidma;
+  logic                 dbg_uncore_hsel_axidma_d;
   logic [P.PA_BITS-1:0] dbg_uncore_haddr;
   logic [P.AHBW-1:0]    dbg_uncore_hwdata;
   logic [P.AHBW/8-1:0]  dbg_uncore_hwstrb;
@@ -284,14 +294,17 @@ module testbench_cvwsoc #(
   logic WB_RMII_RST_N;
   logic WB_RMII_PHY_IRQ = 1'b0;
 
-  logic AXI_DMAIntr = 1'b0;
+  //logic AXI_DMAIntr;
+  logic AXI_IDMAIntr;
   logic AXI_USBIntr = 1'b0;
   logic AXI_EthIntr = 1'b0;
   logic AXI_SDHCIIntr;
   logic AXI_SDHCIIntr_orig;
-  logic AXI_DummyIntr = 1'b0;
+  logic AXI_DummyIntr;
   logic AXI_DummyIntr_orig;
   logic ExternalStall = 1'b0;
+
+  //assign AXI_DMAIntr = AXI_IDMAIntr;
 
   // ---------------------------------------------------------------------------
   // Bridge AXI master signals
@@ -360,6 +373,8 @@ module testbench_cvwsoc #(
   assign dbg_uncore_hselregions             = soc.uncoregen.uncore.HSELRegions;
   assign dbg_uncore_hsel_axisdhci           = soc.uncoregen.uncore.HSELAXISDHCI;
   assign dbg_uncore_hsel_axisdhci_d         = soc.uncoregen.uncore.HSELAXISDHCID;
+  assign dbg_uncore_hsel_axidma             = soc.uncoregen.uncore.HSELAXIDMA;
+  assign dbg_uncore_hsel_axidma_d           = soc.uncoregen.uncore.HSELAXIDMAD;
   assign dbg_load_misaligned_fault_m        = soc.core.LoadMisalignedFaultM;
   assign dbg_load_access_fault_m            = soc.core.LoadAccessFaultM;
   assign dbg_load_page_fault_m              = soc.core.LoadPageFaultM;
@@ -479,7 +494,7 @@ module testbench_cvwsoc #(
     .WB_RMII_MDIO(WB_RMII_MDIO),
     .WB_RMII_RST_N(WB_RMII_RST_N),
     .WB_RMII_PHY_IRQ(WB_RMII_PHY_IRQ),
-    .AXI_DMAIntr(AXI_DMAIntr),
+    .AXI_DMAIntr(AXI_IDMAIntr),
     .AXI_USBIntr(AXI_USBIntr),
     .AXI_EthIntr(AXI_EthIntr),
     .AXI_SDHCIIntr(AXI_SDHCIIntr),
@@ -617,12 +632,405 @@ module testbench_cvwsoc #(
     .dst_resp_i (cdc_axi_resp)
   );
 
-  // Slave port 0 is the real SoC traffic coming through the CDC.  Slave port 1
-  // is an always-idle dummy master so the xbar is instantiated with more than
-  // one requester.
+  // Slave port 0 is CPU traffic through the CDC. Slave port 1 is desc64
+  // descriptor-fetch traffic. Slave port 2 is the shared iDMA backend master.
   assign slv_req[0] = cdc_axi_req;
   assign cdc_axi_resp = slv_resp[0];
-  assign slv_req[1] = '0;
+
+  logic dbg_idmar64_irq_pending;
+  logic dbg_idmar64_irq_enable;
+  logic dbg_idmar64_irq_clear_wr;
+  logic dbg_idmar64_irq_enable_wr;
+  logic dbg_idmar64_sel_irq_status;
+  logic dbg_idmar64_sel_irq_enable;
+  logic dbg_idmar64_sel_irq;
+  logic dbg_idmar64_axi_aw_valid;
+  logic dbg_idmar64_axi_aw_ready;
+  logic [31:0] dbg_idmar64_axi_aw_addr;
+  logic dbg_idmar64_axi_w_valid;
+  logic dbg_idmar64_axi_w_ready;
+  logic [BUSW-1:0] dbg_idmar64_axi_w_data;
+  logic [BUSW/8-1:0] dbg_idmar64_axi_w_strb;
+  logic dbg_idmar64_axi_b_valid;
+  logic dbg_idmar64_axi_b_ready;
+  logic [1:0] dbg_idmar64_axi_b_resp;
+  logic dbg_idmar64_reg_req_valid;
+  logic dbg_idmar64_reg_req_write;
+  logic [31:0] dbg_idmar64_reg_req_addr;
+  logic [31:0] dbg_idmar64_reg_req_wdata;
+  logic [3:0] dbg_idmar64_reg_req_wstrb;
+  logic dbg_idmar64_reg_rsp_ready;
+  logic dbg_idmar64_reg_rsp_error;
+  logic [31:0] dbg_idmar64_reg_rsp_rdata;
+  logic dbg_idmar64_idma_reg_req_valid;
+  logic dbg_idmar64_idma_reg_req_write;
+  logic [31:0] dbg_idmar64_idma_reg_req_addr;
+  logic [31:0] dbg_idmar64_idma_reg_req_wdata;
+  logic [3:0] dbg_idmar64_idma_reg_req_wstrb;
+  logic dbg_idmar64_idma_reg_rsp_ready;
+  logic dbg_idmar64_idma_reg_rsp_error;
+  logic [31:0] dbg_idmar64_idma_reg_rsp_rdata;
+  logic dbg_idmad64_irq;
+  logic dbg_idmad64_irq_pending;
+  logic dbg_idmad64_irq_enable;
+  logic dbg_idmad64_irq_clear_wr;
+  logic dbg_idmad64_irq_enable_wr;
+  logic dbg_idmad64_mmio_aw_valid;
+  logic dbg_idmad64_mmio_aw_ready;
+  logic [31:0] dbg_idmad64_mmio_aw_addr;
+  logic dbg_idmad64_mmio_w_valid;
+  logic dbg_idmad64_mmio_w_ready;
+  logic [BUSW-1:0] dbg_idmad64_mmio_w_data;
+  logic [BUSW/8-1:0] dbg_idmad64_mmio_w_strb;
+  logic dbg_idmad64_mmio_b_valid;
+  logic dbg_idmad64_mmio_b_ready;
+  logic [1:0] dbg_idmad64_mmio_b_resp;
+  logic dbg_idmad64_mmio_ar_valid;
+  logic dbg_idmad64_mmio_ar_ready;
+  logic [31:0] dbg_idmad64_mmio_ar_addr;
+  logic dbg_idmad64_mmio_r_valid;
+  logic dbg_idmad64_mmio_r_ready;
+  logic [BUSW-1:0] dbg_idmad64_mmio_r_data;
+  logic [1:0] dbg_idmad64_mmio_r_resp;
+  logic dbg_idmad64_desc_ar_valid;
+  logic dbg_idmad64_desc_ar_ready;
+  logic [31:0] dbg_idmad64_desc_ar_addr;
+  logic [7:0] dbg_idmad64_desc_ar_len;
+  logic dbg_idmad64_desc_r_valid;
+  logic dbg_idmad64_desc_r_ready;
+  logic [BUSW-1:0] dbg_idmad64_desc_r_data;
+  logic dbg_idmad64_desc_r_last;
+  logic dbg_idmad64_desc_aw_valid;
+  logic dbg_idmad64_desc_aw_ready;
+  logic [31:0] dbg_idmad64_desc_aw_addr;
+  logic dbg_idmad64_desc_w_valid;
+  logic dbg_idmad64_desc_w_ready;
+  logic [BUSW-1:0] dbg_idmad64_desc_w_data;
+  logic [BUSW/8-1:0] dbg_idmad64_desc_w_strb;
+  logic dbg_idmad64_desc_b_valid;
+  logic dbg_idmad64_desc_b_ready;
+  logic dbg_idmad64_be_ar_valid;
+  logic dbg_idmad64_be_ar_ready;
+  logic [31:0] dbg_idmad64_be_ar_addr;
+  logic [7:0] dbg_idmad64_be_ar_len;
+  logic dbg_idmad64_be_r_valid;
+  logic dbg_idmad64_be_r_ready;
+  logic [BUSW-1:0] dbg_idmad64_be_r_data;
+  logic dbg_idmad64_be_r_last;
+  logic dbg_idmad64_be_aw_valid;
+  logic dbg_idmad64_be_aw_ready;
+  logic [31:0] dbg_idmad64_be_aw_addr;
+  logic [7:0] dbg_idmad64_be_aw_len;
+  logic dbg_idmad64_be_w_valid;
+  logic dbg_idmad64_be_w_ready;
+  logic [BUSW-1:0] dbg_idmad64_be_w_data;
+  logic [BUSW/8-1:0] dbg_idmad64_be_w_strb;
+  logic dbg_idmad64_be_b_valid;
+  logic dbg_idmad64_be_b_ready;
+  logic dbg_idmad64_input_addr_valid;
+  logic dbg_idmad64_input_addr_ready;
+  logic [63:0] dbg_idmad64_input_addr;
+  logic dbg_idmad64_queued_addr_valid;
+  logic dbg_idmad64_queued_addr_ready;
+  logic [63:0] dbg_idmad64_queued_addr;
+  logic dbg_idmad64_idma_req_valid;
+  logic dbg_idmad64_idma_req_ready;
+  logic dbg_idmad64_idma_rsp_valid;
+  logic dbg_idmad64_idma_rsp_ready;
+  logic dbg_idmad64_do_irq;
+  logic dbg_idmad64_do_irq_valid;
+  logic dbg_idmad64_do_irq_ready;
+  logic dbg_idmad64_do_irq_out;
+
+  mst_req_t [1:0] idma_slv_req;
+  mst_resp_t [1:0] idma_slv_resp;
+
+  assign idma_slv_req[0] = mst_req[3];
+  assign idma_slv_req[1] = mst_req[4];
+  assign mst_resp[3] = idma_slv_resp[0];
+  assign mst_resp[4] = idma_slv_resp[1];
+
+  if (SOC_P.AXI_IDMA_SUPPORTED || SOC_P.AXI_IDMA_REG64_SUPPORTED) begin : gen_idma
+    idma_wrap #(
+      .AxiAddrWidth      ( 32                   ),
+      .AxiDataWidth      ( BUSW                 ),
+      .AxiIdWidth        ( AXI_ID_WIDTH         ),
+      .AxiUserWidth      ( 1                    ),
+      .AxiSlvIdWidth     ( AXI_MST_ID_WIDTH     ),
+      .AxiMaxReadTxns    ( 4                    ),
+      .AxiMaxWriteTxns   ( 4                    ),
+      .NumAxInFlight     ( 4                    ),
+      .MemSysDepth       ( 0                    ),
+      .JobFifoDepth      ( 2                    ),
+      .RAWCouplingAvail  ( 1'b0                 ),
+      .EnableDesc64      ( SOC_P.AXI_IDMA_SUPPORTED ),
+      .EnableReg64       ( SOC_P.AXI_IDMA_REG64_SUPPORTED ),
+      .EnableReg64TwoD   ( 1'b0                 ),
+      .axi_mst_req_t     ( slv_req_t            ),
+      .axi_mst_rsp_t     ( slv_resp_t           ),
+      .axi_slv_req_t     ( mst_req_t            ),
+      .axi_slv_rsp_t     ( mst_resp_t           )
+    ) idma_i (
+      .clk_i             ( bus_clk       ),
+      .rst_ni            ( ~bus_reset    ),
+      .testmode_i        ( 1'b0          ),
+      .axi_mst_fe_req_o  ( slv_req[1]    ),
+      .axi_mst_fe_rsp_i  ( slv_resp[1]   ),
+      .axi_mst_be_req_o  ( slv_req[2]    ),
+      .axi_mst_be_rsp_i  ( slv_resp[2]   ),
+      .axi_slv_req_i     ( idma_slv_req  ),
+      .axi_slv_rsp_o     ( idma_slv_resp ),
+      .irq_o             ( AXI_IDMAIntr  )
+    );
+
+    assign dbg_idmar64_irq_pending = idma_i.irq_pending;
+    assign dbg_idmar64_irq_enable = idma_i.irq_enable;
+    assign dbg_idmar64_irq_clear_wr = idma_i.irq_clear_wr;
+    assign dbg_idmar64_irq_enable_wr = idma_i.irq_enable_wr;
+    assign dbg_idmar64_sel_irq_status = idma_i.sel_irq_status;
+    assign dbg_idmar64_sel_irq_enable = idma_i.sel_irq_enable;
+    assign dbg_idmar64_sel_irq = idma_i.sel_irq;
+    assign dbg_idmar64_axi_aw_valid = mst_req[4].aw_valid;
+    assign dbg_idmar64_axi_aw_ready = mst_resp[4].aw_ready;
+    assign dbg_idmar64_axi_aw_addr = mst_req[4].aw.addr;
+    assign dbg_idmar64_axi_w_valid = mst_req[4].w_valid;
+    assign dbg_idmar64_axi_w_ready = mst_resp[4].w_ready;
+    assign dbg_idmar64_axi_w_data = mst_req[4].w.data;
+    assign dbg_idmar64_axi_w_strb = mst_req[4].w.strb;
+    assign dbg_idmar64_axi_b_valid = mst_resp[4].b_valid;
+    assign dbg_idmar64_axi_b_ready = mst_req[4].b_ready;
+    assign dbg_idmar64_axi_b_resp = mst_resp[4].b.resp;
+    assign dbg_idmar64_reg_req_valid = idma_i.dma_reg_req.valid;
+    assign dbg_idmar64_reg_req_write = idma_i.dma_reg_req.write;
+    assign dbg_idmar64_reg_req_addr = idma_i.dma_reg_req.addr[31:0];
+    assign dbg_idmar64_reg_req_wdata = idma_i.dma_reg_req.wdata;
+    assign dbg_idmar64_reg_req_wstrb = idma_i.dma_reg_req.wstrb;
+    assign dbg_idmar64_reg_rsp_ready = idma_i.dma_reg_rsp.ready;
+    assign dbg_idmar64_reg_rsp_error = idma_i.dma_reg_rsp.error;
+    assign dbg_idmar64_reg_rsp_rdata = idma_i.dma_reg_rsp.rdata;
+    assign dbg_idmar64_idma_reg_req_valid = idma_i.idma_reg_req.valid;
+    assign dbg_idmar64_idma_reg_req_write = idma_i.idma_reg_req.write;
+    assign dbg_idmar64_idma_reg_req_addr = idma_i.idma_reg_req.addr[31:0];
+    assign dbg_idmar64_idma_reg_req_wdata = idma_i.idma_reg_req.wdata;
+    assign dbg_idmar64_idma_reg_req_wstrb = idma_i.idma_reg_req.wstrb;
+    assign dbg_idmar64_idma_reg_rsp_ready = idma_i.idma_reg_rsp.ready;
+    assign dbg_idmar64_idma_reg_rsp_error = idma_i.idma_reg_rsp.error;
+    assign dbg_idmar64_idma_reg_rsp_rdata = idma_i.idma_reg_rsp.rdata;
+
+    assign dbg_idmad64_irq = AXI_IDMAIntr;
+    assign dbg_idmad64_irq_pending = idma_i.desc64_irq_pending;
+    assign dbg_idmad64_irq_enable = idma_i.desc64_irq_enable;
+    assign dbg_idmad64_irq_clear_wr = idma_i.desc64_irq_clear_wr;
+    assign dbg_idmad64_irq_enable_wr = idma_i.desc64_irq_enable_wr;
+    assign dbg_idmad64_mmio_aw_valid = mst_req[3].aw_valid;
+    assign dbg_idmad64_mmio_aw_ready = mst_resp[3].aw_ready;
+    assign dbg_idmad64_mmio_aw_addr = mst_req[3].aw.addr;
+    assign dbg_idmad64_mmio_w_valid = mst_req[3].w_valid;
+    assign dbg_idmad64_mmio_w_ready = mst_resp[3].w_ready;
+    assign dbg_idmad64_mmio_w_data = mst_req[3].w.data;
+    assign dbg_idmad64_mmio_w_strb = mst_req[3].w.strb;
+    assign dbg_idmad64_mmio_b_valid = mst_resp[3].b_valid;
+    assign dbg_idmad64_mmio_b_ready = mst_req[3].b_ready;
+    assign dbg_idmad64_mmio_b_resp = mst_resp[3].b.resp;
+    assign dbg_idmad64_mmio_ar_valid = mst_req[3].ar_valid;
+    assign dbg_idmad64_mmio_ar_ready = mst_resp[3].ar_ready;
+    assign dbg_idmad64_mmio_ar_addr = mst_req[3].ar.addr;
+    assign dbg_idmad64_mmio_r_valid = mst_resp[3].r_valid;
+    assign dbg_idmad64_mmio_r_ready = mst_req[3].r_ready;
+    assign dbg_idmad64_mmio_r_data = mst_resp[3].r.data;
+    assign dbg_idmad64_mmio_r_resp = mst_resp[3].r.resp;
+    assign dbg_idmad64_desc_ar_valid = slv_req[1].ar_valid;
+    assign dbg_idmad64_desc_ar_ready = slv_resp[1].ar_ready;
+    assign dbg_idmad64_desc_ar_addr = slv_req[1].ar.addr;
+    assign dbg_idmad64_desc_ar_len = slv_req[1].ar.len;
+    assign dbg_idmad64_desc_r_valid = slv_resp[1].r_valid;
+    assign dbg_idmad64_desc_r_ready = slv_req[1].r_ready;
+    assign dbg_idmad64_desc_r_data = slv_resp[1].r.data;
+    assign dbg_idmad64_desc_r_last = slv_resp[1].r.last;
+    assign dbg_idmad64_desc_aw_valid = slv_req[1].aw_valid;
+    assign dbg_idmad64_desc_aw_ready = slv_resp[1].aw_ready;
+    assign dbg_idmad64_desc_aw_addr = slv_req[1].aw.addr;
+    assign dbg_idmad64_desc_w_valid = slv_req[1].w_valid;
+    assign dbg_idmad64_desc_w_ready = slv_resp[1].w_ready;
+    assign dbg_idmad64_desc_w_data = slv_req[1].w.data;
+    assign dbg_idmad64_desc_w_strb = slv_req[1].w.strb;
+    assign dbg_idmad64_desc_b_valid = slv_resp[1].b_valid;
+    assign dbg_idmad64_desc_b_ready = slv_req[1].b_ready;
+    assign dbg_idmad64_be_ar_valid = slv_req[2].ar_valid;
+    assign dbg_idmad64_be_ar_ready = slv_resp[2].ar_ready;
+    assign dbg_idmad64_be_ar_addr = slv_req[2].ar.addr;
+    assign dbg_idmad64_be_ar_len = slv_req[2].ar.len;
+    assign dbg_idmad64_be_r_valid = slv_resp[2].r_valid;
+    assign dbg_idmad64_be_r_ready = slv_req[2].r_ready;
+    assign dbg_idmad64_be_r_data = slv_resp[2].r.data;
+    assign dbg_idmad64_be_r_last = slv_resp[2].r.last;
+    assign dbg_idmad64_be_aw_valid = slv_req[2].aw_valid;
+    assign dbg_idmad64_be_aw_ready = slv_resp[2].aw_ready;
+    assign dbg_idmad64_be_aw_addr = slv_req[2].aw.addr;
+    assign dbg_idmad64_be_aw_len = slv_req[2].aw.len;
+    assign dbg_idmad64_be_w_valid = slv_req[2].w_valid;
+    assign dbg_idmad64_be_w_ready = slv_resp[2].w_ready;
+    assign dbg_idmad64_be_w_data = slv_req[2].w.data;
+    assign dbg_idmad64_be_w_strb = slv_req[2].w.strb;
+    assign dbg_idmad64_be_b_valid = slv_resp[2].b_valid;
+    assign dbg_idmad64_be_b_ready = slv_req[2].b_ready;
+
+    if (SOC_P.AXI_IDMA_SUPPORTED) begin : gen_desc64_dbg
+      assign dbg_idmad64_input_addr_valid =
+          idma_i.gen_desc64.desc64_i.input_addr_valid;
+      assign dbg_idmad64_input_addr_ready =
+          idma_i.gen_desc64.desc64_i.input_addr_ready;
+      assign dbg_idmad64_input_addr =
+          idma_i.gen_desc64.desc64_i.input_addr;
+      assign dbg_idmad64_queued_addr_valid =
+          idma_i.gen_desc64.desc64_i.queued_addr_valid;
+      assign dbg_idmad64_queued_addr_ready =
+          idma_i.gen_desc64.desc64_i.queued_addr_ready;
+      assign dbg_idmad64_queued_addr =
+          idma_i.gen_desc64.desc64_i.queued_addr;
+      assign dbg_idmad64_idma_req_valid =
+          idma_i.gen_desc64.desc64_i.idma_req_valid_o;
+      assign dbg_idmad64_idma_req_ready =
+          idma_i.gen_desc64.desc64_i.idma_req_ready_i;
+      assign dbg_idmad64_idma_rsp_valid =
+          idma_i.gen_desc64.desc64_i.idma_rsp_valid_i;
+      assign dbg_idmad64_idma_rsp_ready =
+          idma_i.gen_desc64.desc64_i.idma_rsp_ready_o;
+      assign dbg_idmad64_do_irq =
+          idma_i.gen_desc64.desc64_i.do_irq;
+      assign dbg_idmad64_do_irq_valid =
+          idma_i.gen_desc64.desc64_i.do_irq_valid;
+      assign dbg_idmad64_do_irq_ready =
+          idma_i.gen_desc64.desc64_i.do_irq_ready;
+      assign dbg_idmad64_do_irq_out =
+          idma_i.gen_desc64.desc64_i.do_irq_out;
+    end else begin : gen_no_desc64_dbg
+      assign dbg_idmad64_input_addr_valid = 1'b0;
+      assign dbg_idmad64_input_addr_ready = 1'b0;
+      assign dbg_idmad64_input_addr = '0;
+      assign dbg_idmad64_queued_addr_valid = 1'b0;
+      assign dbg_idmad64_queued_addr_ready = 1'b0;
+      assign dbg_idmad64_queued_addr = '0;
+      assign dbg_idmad64_idma_req_valid = 1'b0;
+      assign dbg_idmad64_idma_req_ready = 1'b0;
+      assign dbg_idmad64_idma_rsp_valid = 1'b0;
+      assign dbg_idmad64_idma_rsp_ready = 1'b0;
+      assign dbg_idmad64_do_irq = 1'b0;
+      assign dbg_idmad64_do_irq_valid = 1'b0;
+      assign dbg_idmad64_do_irq_ready = 1'b0;
+      assign dbg_idmad64_do_irq_out = 1'b0;
+    end
+
+  end else begin : gen_no_idma
+    assign slv_req[1] = '0;
+    assign slv_req[2] = '0;
+    assign idma_slv_resp = '0;
+    assign AXI_IDMAIntr = 1'b0;
+    assign dbg_idmar64_irq_pending = 1'b0;
+    assign dbg_idmar64_irq_enable = 1'b0;
+    assign dbg_idmar64_irq_clear_wr = 1'b0;
+    assign dbg_idmar64_irq_enable_wr = 1'b0;
+    assign dbg_idmar64_sel_irq_status = 1'b0;
+    assign dbg_idmar64_sel_irq_enable = 1'b0;
+    assign dbg_idmar64_sel_irq = 1'b0;
+    assign dbg_idmar64_axi_aw_valid = 1'b0;
+    assign dbg_idmar64_axi_aw_ready = 1'b0;
+    assign dbg_idmar64_axi_aw_addr = '0;
+    assign dbg_idmar64_axi_w_valid = 1'b0;
+    assign dbg_idmar64_axi_w_ready = 1'b0;
+    assign dbg_idmar64_axi_w_data = '0;
+    assign dbg_idmar64_axi_w_strb = '0;
+    assign dbg_idmar64_axi_b_valid = 1'b0;
+    assign dbg_idmar64_axi_b_ready = 1'b0;
+    assign dbg_idmar64_axi_b_resp = '0;
+    assign dbg_idmar64_reg_req_valid = 1'b0;
+    assign dbg_idmar64_reg_req_write = 1'b0;
+    assign dbg_idmar64_reg_req_addr = '0;
+    assign dbg_idmar64_reg_req_wdata = '0;
+    assign dbg_idmar64_reg_req_wstrb = '0;
+    assign dbg_idmar64_reg_rsp_ready = 1'b0;
+    assign dbg_idmar64_reg_rsp_error = 1'b0;
+    assign dbg_idmar64_reg_rsp_rdata = '0;
+    assign dbg_idmar64_idma_reg_req_valid = 1'b0;
+    assign dbg_idmar64_idma_reg_req_write = 1'b0;
+    assign dbg_idmar64_idma_reg_req_addr = '0;
+    assign dbg_idmar64_idma_reg_req_wdata = '0;
+    assign dbg_idmar64_idma_reg_req_wstrb = '0;
+    assign dbg_idmar64_idma_reg_rsp_ready = 1'b0;
+    assign dbg_idmar64_idma_reg_rsp_error = 1'b0;
+    assign dbg_idmar64_idma_reg_rsp_rdata = '0;
+    assign dbg_idmad64_irq = 1'b0;
+    assign dbg_idmad64_irq_pending = 1'b0;
+    assign dbg_idmad64_irq_enable = 1'b0;
+    assign dbg_idmad64_irq_clear_wr = 1'b0;
+    assign dbg_idmad64_irq_enable_wr = 1'b0;
+    assign dbg_idmad64_mmio_aw_valid = 1'b0;
+    assign dbg_idmad64_mmio_aw_ready = 1'b0;
+    assign dbg_idmad64_mmio_aw_addr = '0;
+    assign dbg_idmad64_mmio_w_valid = 1'b0;
+    assign dbg_idmad64_mmio_w_ready = 1'b0;
+    assign dbg_idmad64_mmio_w_data = '0;
+    assign dbg_idmad64_mmio_w_strb = '0;
+    assign dbg_idmad64_mmio_b_valid = 1'b0;
+    assign dbg_idmad64_mmio_b_ready = 1'b0;
+    assign dbg_idmad64_mmio_b_resp = '0;
+    assign dbg_idmad64_mmio_ar_valid = 1'b0;
+    assign dbg_idmad64_mmio_ar_ready = 1'b0;
+    assign dbg_idmad64_mmio_ar_addr = '0;
+    assign dbg_idmad64_mmio_r_valid = 1'b0;
+    assign dbg_idmad64_mmio_r_ready = 1'b0;
+    assign dbg_idmad64_mmio_r_data = '0;
+    assign dbg_idmad64_mmio_r_resp = '0;
+    assign dbg_idmad64_desc_ar_valid = 1'b0;
+    assign dbg_idmad64_desc_ar_ready = 1'b0;
+    assign dbg_idmad64_desc_ar_addr = '0;
+    assign dbg_idmad64_desc_ar_len = '0;
+    assign dbg_idmad64_desc_r_valid = 1'b0;
+    assign dbg_idmad64_desc_r_ready = 1'b0;
+    assign dbg_idmad64_desc_r_data = '0;
+    assign dbg_idmad64_desc_r_last = 1'b0;
+    assign dbg_idmad64_desc_aw_valid = 1'b0;
+    assign dbg_idmad64_desc_aw_ready = 1'b0;
+    assign dbg_idmad64_desc_aw_addr = '0;
+    assign dbg_idmad64_desc_w_valid = 1'b0;
+    assign dbg_idmad64_desc_w_ready = 1'b0;
+    assign dbg_idmad64_desc_w_data = '0;
+    assign dbg_idmad64_desc_w_strb = '0;
+    assign dbg_idmad64_desc_b_valid = 1'b0;
+    assign dbg_idmad64_desc_b_ready = 1'b0;
+    assign dbg_idmad64_be_ar_valid = 1'b0;
+    assign dbg_idmad64_be_ar_ready = 1'b0;
+    assign dbg_idmad64_be_ar_addr = '0;
+    assign dbg_idmad64_be_ar_len = '0;
+    assign dbg_idmad64_be_r_valid = 1'b0;
+    assign dbg_idmad64_be_r_ready = 1'b0;
+    assign dbg_idmad64_be_r_data = '0;
+    assign dbg_idmad64_be_r_last = 1'b0;
+    assign dbg_idmad64_be_aw_valid = 1'b0;
+    assign dbg_idmad64_be_aw_ready = 1'b0;
+    assign dbg_idmad64_be_aw_addr = '0;
+    assign dbg_idmad64_be_aw_len = '0;
+    assign dbg_idmad64_be_w_valid = 1'b0;
+    assign dbg_idmad64_be_w_ready = 1'b0;
+    assign dbg_idmad64_be_w_data = '0;
+    assign dbg_idmad64_be_w_strb = '0;
+    assign dbg_idmad64_be_b_valid = 1'b0;
+    assign dbg_idmad64_be_b_ready = 1'b0;
+    assign dbg_idmad64_input_addr_valid = 1'b0;
+    assign dbg_idmad64_input_addr_ready = 1'b0;
+    assign dbg_idmad64_input_addr = '0;
+    assign dbg_idmad64_queued_addr_valid = 1'b0;
+    assign dbg_idmad64_queued_addr_ready = 1'b0;
+    assign dbg_idmad64_queued_addr = '0;
+    assign dbg_idmad64_idma_req_valid = 1'b0;
+    assign dbg_idmad64_idma_req_ready = 1'b0;
+    assign dbg_idmad64_idma_rsp_valid = 1'b0;
+    assign dbg_idmad64_idma_rsp_ready = 1'b0;
+    assign dbg_idmad64_do_irq = 1'b0;
+    assign dbg_idmad64_do_irq_valid = 1'b0;
+    assign dbg_idmad64_do_irq_ready = 1'b0;
+    assign dbg_idmad64_do_irq_out = 1'b0;
+  end
 
   axi_xbar #(
     .Cfg           (XBAR_CFG),

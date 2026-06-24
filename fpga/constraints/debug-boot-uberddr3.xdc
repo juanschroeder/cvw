@@ -40,3 +40,36 @@ ila_add_probe u_ila_axi -net ddr3/o_s_axi_arready
 # ila_add_probe u_ila_axi -net ddr3/i_s_axi_bready
 #ila_add_probe u_ila_axi -bus ddr3/main_b_param_id  -msb 3 -lsb 0 -order lsb2msb
 #ila_add_probe u_ila_axi -bus ddr3/main_b_payload_resp  -msb 1 -lsb 0 -order lsb2msb
+
+# UberDDR3 wrapper internal 256-bit AXI adapter output.
+ila_add_probe u_ila_axi -net ddr3/axi256_awvalid
+ila_add_probe u_ila_axi -net ddr3/axi256_awready
+ila_add_probe u_ila_axi -bus ddr3/axi256_awid -msb 4 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/axi256_awaddr_full -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/axi256_awlen -msb 7 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/axi256_awsize -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/axi256_awburst -msb 1 -lsb 0 -order lsb2msb
+
+ila_add_probe u_ila_axi -net ddr3/axi256_wvalid
+ila_add_probe u_ila_axi -net ddr3/axi256_wready
+ila_add_probe u_ila_axi -bus ddr3/axi256_wstrb -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net ddr3/axi256_wlast
+
+ila_add_probe u_ila_axi -net ddr3/axi256_bvalid
+ila_add_probe u_ila_axi -net ddr3/axi256_bready
+ila_add_probe u_ila_axi -bus ddr3/axi256_bid -msb 4 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/axi256_bresp -msb 1 -lsb 0 -order lsb2msb
+
+ila_add_probe u_ila_axi -net ddr3/axi256_arvalid
+ila_add_probe u_ila_axi -net ddr3/axi256_arready
+ila_add_probe u_ila_axi -bus ddr3/axi256_arid -msb 4 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/axi256_araddr_full -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/axi256_arlen -msb 7 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/axi256_arsize -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus ddr3/axi256_arburst -msb 1 -lsb 0 -order lsb2msb
+
+ila_add_probe u_ila_axi -net ddr3/axi256_rvalid
+ila_add_probe u_ila_axi -net ddr3/axi256_rready
+ila_add_probe u_ila_axi -bus ddr3/axi256_rid -msb 4 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net ddr3/axi256_rlast
+ila_add_probe u_ila_axi -bus ddr3/axi256_rresp -msb 1 -lsb 0 -order lsb2msb

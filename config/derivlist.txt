@@ -263,6 +263,10 @@ LITEDRAM_SUPPORTED          1
 # RV32 (XLEN=32) with AHBW=64
 deriv fpgagenesys2rv32w64soc fpgagenesys2rv32soc
 AHBW                    64
+UBERDDR3_SUPPORTED      0
+LITEDRAM_SUPPORTED      1
+AXI_IDMA_SUPPORTED          1
+AXI_IDMA_REG64_SUPPORTED    1
 
 
 # temporary spitest configuration

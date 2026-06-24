@@ -57,6 +57,7 @@ PULP_AXI_ROOT := $(PULP_ROOT)/axi
 PULP_COMMON_CELLS_ROOT := $(PULP_ROOT)/common_cells
 PULP_REGISTER_INTERFACE_ROOT := $(PULP_ROOT)/register_interface
 SDHCI_ROOT := $(COPIED_ROOT)/sdhci/hw
+IDMA_ROOT := $(PULP_ROOT)/idma
 
 CVWSOC_DEPLOY_ROOT ?= /yocto/fpga/kas-cvwsoc/build/tmp/deploy/images
 CVWSOC_MACHINE ?= $(if $(CVWSOC_RV32),cvwsoc-virt32,cvwsoc-virt)
@@ -209,6 +210,7 @@ TRACE_DEPTH ?= 1
 PARAMS ?= --trace-depth $(TRACE_DEPTH) --threads $(THREADS)
 EXTRA_PARAMS ?=
 NONPROF ?= --stats
+#WARN_ARGS ?= -Wno-fatal -Werror-UNOPTFLAT
 WARN_ARGS ?= -Wno-fatal
 PLUS_ARGS ?=
 EXTRA_PLUS_ARGS ?=
@@ -260,9 +262,11 @@ COMMON_CELLS_SOURCES := \
 	$(PULP_COMMON_CELLS_ROOT)/src/id_queue.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/onehot_to_bin.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/fifo_v3.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/passthrough_stream_fifo.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/spill_register_flushable.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/spill_register.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/stream_register.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/fall_through_register.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/addr_decode_dync.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/addr_decode.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/cdc_fifo_gray.sv \
@@ -270,6 +274,7 @@ COMMON_CELLS_SOURCES := \
 	$(PULP_COMMON_CELLS_ROOT)/src/stream_arbiter.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/stream_arbiter_flushable.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/stream_fifo.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_fifo_optimal_wrap.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/stream_fork.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/stream_fork_dynamic.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/stream_join.sv \
@@ -293,6 +298,7 @@ AXI_SOURCES := \
 	$(PULP_AXI_ROOT)/src/axi_id_prepend.sv \
 	$(PULP_AXI_ROOT)/src/axi_multicut.sv \
 	$(PULP_AXI_ROOT)/src/axi_mux.sv \
+	$(PULP_AXI_ROOT)/src/axi_rw_join.sv \
 	$(PULP_AXI_ROOT)/src/axi_err_slv.sv \
 	$(PULP_AXI_ROOT)/src/axi_cdc.sv \
 	$(PULP_AXI_ROOT)/src/axi_demux.sv \
@@ -305,6 +311,30 @@ PULP_REGISTER_INTERFACE_SOURCES := \
 	$(PULP_ROOT)/register_interface/vendor/lowrisc_opentitan/src/*.sv \
 	$(filter-out $(PULP_ROOT)/register_interface/src/reg_test.sv, \
 		$(wildcard $(PULP_ROOT)/register_interface/src/*.sv))
+
+IDMA_GENERATED_SOURCES := \
+	$(IDMA_ROOT)/target/rtl/idma_transport_layer_rw_axi.sv \
+	$(IDMA_ROOT)/target/rtl/idma_legalizer_rw_axi.sv \
+	$(IDMA_ROOT)/target/rtl/idma_backend_rw_axi.sv \
+	$(IDMA_ROOT)/target/rtl/idma_desc64_reg_pkg.sv \
+	$(IDMA_ROOT)/target/rtl/idma_desc64_reg_top.sv \
+	$(IDMA_ROOT)/target/rtl/idma_reg64_1d_reg_pkg.sv \
+	$(IDMA_ROOT)/target/rtl/idma_reg64_1d_reg_top.sv \
+	$(IDMA_ROOT)/target/rtl/idma_reg64_1d_top.sv
+
+IDMA_SOURCES := \
+	$(IDMA_ROOT)/src/idma_pkg.sv \
+	$(wildcard $(IDMA_ROOT)/src/backend/*.sv) \
+	$(IDMA_GENERATED_SOURCES) \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_ar_gen.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_ar_gen_prefetch.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_reader.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_reader_gater.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_reshaper.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_reg_wrapper.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_top.sv \
+	$(IDMA_ROOT)/src/frontend/idma_transfer_id_gen.sv \
+	$(WALLY)/addins/cvwsoc/dma/idma_wrap.sv
 
 
 CORE_SOURCES := $(filter-out \
@@ -359,6 +389,7 @@ INCLUDE_PATH := \
 	-I$(PULP_AXI_ROOT)/include \
 	-I$(PULP_COMMON_CELLS_ROOT)/include \
 	-I$(PULP_REGISTER_INTERFACE_ROOT)/include \
+	-I$(IDMA_ROOT)/src/include \
 	-I$(SDHCI_ROOT)/include
 
 VERILOG_AXI_SOURCES := \
@@ -373,6 +404,7 @@ SOURCES := \
 	$(BRIDGE_RTL) \
 	$(VERILOG_AXI_SOURCES) \
 	$(PULP_REGISTER_INTERFACE_SOURCES) \
+	$(IDMA_SOURCES) \
 	$(PERIPH_SOURCES)
 
 DEPENDENCIES := \
@@ -384,6 +416,12 @@ DEPENDENCIES := \
 $(COPIED_ROOT)/config/config.vh: $(CONFIG_VH) FORCE
 	mkdir -p $(dir $@)
 	@if ! cmp -s "$<" "$@"; then cp "$<" "$@"; fi
+
+$(IDMA_GENERATED_SOURCES):
+	$(MAKE) -C $(IDMA_ROOT) \
+		IDMA_REG_DIR=$(PULP_REGISTER_INTERFACE_ROOT) \
+		IDMA_CC_DIR=$(PULP_COMMON_CELLS_ROOT) \
+		$(patsubst $(IDMA_ROOT)/%,%,$@)
 
 # this is for GCC
 OPT_GEN ?= VM_PARALLEL_BUILDS=1 OPT_FAST="-O3 -march=native" OPT_GLOBAL="-O3 -march=native" OPT_SLOW="-O1"
