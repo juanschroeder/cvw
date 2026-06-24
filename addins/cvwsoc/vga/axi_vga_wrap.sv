@@ -16,6 +16,7 @@ module axi_vga_wrap #(
   parameter int unsigned AXI_ADDR_W = 32,
   parameter int unsigned AXI_DATA_W = 64,
   parameter int unsigned AXI_ID_W   = 4,
+  parameter int unsigned AXI_M_ID_W = AXI_ID_W,
   parameter int unsigned AXI_USER_W = 1
 ) (
   input  logic        aclk,
@@ -69,7 +70,7 @@ module axi_vga_wrap #(
   // ----------------------------
   // AXI MASTER (scanout) to xbar S02
   // ----------------------------
-  output logic [AXI_ID_W-1:0]   m_axi_awid,
+  output logic [AXI_M_ID_W-1:0] m_axi_awid,
   output logic [AXI_ADDR_W-1:0] m_axi_awaddr,
   output logic [7:0]  m_axi_awlen,
   output logic [2:0]  m_axi_awsize,
@@ -86,12 +87,12 @@ module axi_vga_wrap #(
   output logic        m_axi_wvalid,
   input  logic        m_axi_wready,
 
-  input  logic [AXI_ID_W-1:0] m_axi_bid,
+  input  logic [AXI_M_ID_W-1:0] m_axi_bid,
   input  logic [1:0]  m_axi_bresp,
   input  logic        m_axi_bvalid,
   output logic        m_axi_bready,
 
-  output logic [AXI_ID_W-1:0]   m_axi_arid,
+  output logic [AXI_M_ID_W-1:0] m_axi_arid,
   output logic [AXI_ADDR_W-1:0] m_axi_araddr,
   output logic [7:0]  m_axi_arlen,
   output logic [2:0]  m_axi_arsize,
@@ -102,7 +103,7 @@ module axi_vga_wrap #(
   output logic        m_axi_arvalid,
   input  logic        m_axi_arready,
 
-  input  logic [AXI_ID_W-1:0]     m_axi_rid,
+  input  logic [AXI_M_ID_W-1:0]   m_axi_rid,
   input  logic [AXI_DATA_W-1:0]   m_axi_rdata,
   input  logic [1:0]  m_axi_rresp,
   input  logic        m_axi_rlast,
@@ -127,8 +128,18 @@ module axi_vga_wrap #(
   typedef logic [AXI_ADDR_W-1:0] axi_addr_t;
   typedef logic [AXI_DATA_W-1:0] axi_data_t;
   typedef logic [AXI_DATA_W/8-1:0] axi_strb_t;
-  typedef logic [AXI_ID_W-1:0]   axi_id_t;
+  typedef logic [AXI_ID_W-1:0]   cfg_axi_id_t;
+  typedef logic [AXI_M_ID_W-1:0] axi_id_t;
   typedef logic [AXI_USER_W-1:0] axi_user_t;
+
+  `AXI_TYPEDEF_AW_CHAN_T(cfg_aw_chan_t, axi_addr_t, cfg_axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_W_CHAN_T (cfg_w_chan_t,  axi_data_t, axi_strb_t, axi_user_t)
+  `AXI_TYPEDEF_B_CHAN_T (cfg_b_chan_t,  cfg_axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(cfg_ar_chan_t, axi_addr_t, cfg_axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T (cfg_r_chan_t,  axi_data_t, cfg_axi_id_t, axi_user_t)
+
+  `AXI_TYPEDEF_REQ_T (cfg_axi_req_t,  cfg_aw_chan_t, cfg_w_chan_t, cfg_ar_chan_t)
+  `AXI_TYPEDEF_RESP_T(cfg_axi_resp_t, cfg_b_chan_t,  cfg_r_chan_t)
 
   `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, axi_addr_t, axi_id_t, axi_user_t)
   `AXI_TYPEDEF_W_CHAN_T (w_chan_t,  axi_data_t, axi_strb_t, axi_user_t)
@@ -158,8 +169,8 @@ module axi_vga_wrap #(
   // ----------------------------
   // Discrete <-> struct signals
   // ----------------------------
-  axi_req_t  cfg_axi_req;
-  axi_resp_t cfg_axi_resp;
+  cfg_axi_req_t  cfg_axi_req;
+  cfg_axi_resp_t cfg_axi_resp;
 
   axi_req_t  vga_axi_req;
   axi_resp_t vga_axi_resp;
@@ -285,8 +296,8 @@ module axi_vga_wrap #(
     .CutMemReqs   (1'b1), //As in Cheshire project
     //.CutMemRsps   (1'b0),
     .CutMemRsps   (1'b1), //Not set like this in Cheshire project
-    .axi_req_t    (axi_req_t),
-    .axi_rsp_t    (axi_resp_t),
+    .axi_req_t    (cfg_axi_req_t),
+    .axi_rsp_t    (cfg_axi_resp_t),
     .reg_req_t    (reg_req_t),
     .reg_rsp_t    (reg_resp_t)
   )  i_axi_to_reg (
@@ -308,7 +319,7 @@ module axi_vga_wrap #(
     //.BlueWidth(4),
     .AXIAddrWidth ( AXI_ADDR_W ),
     .AXIDataWidth ( AXI_DATA_W ),
-    .AXIIdWidth   ( AXI_ID_W   ),
+    .AXIIdWidth   ( AXI_M_ID_W ),
     .AXIUserWidth ( AXI_USER_W ),
     .AXIStrbWidth ( AXI_DATA_W/8 ),
     .axi_req_t    ( axi_req_t  ),

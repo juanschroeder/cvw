@@ -166,6 +166,12 @@ extern "C" void on_sigusr2(int) {
     g_trace_status_req.store(true, std::memory_order_relaxed);
 }
 
+std::atomic<bool> g_stop_req{false};
+
+extern "C" void on_stop(int) {
+    g_stop_req.store(true, std::memory_order_relaxed);
+}
+
 class UartPtyBridge {
   public:
     static constexpr std::uint64_t kNoTime = std::numeric_limits<std::uint64_t>::max();
@@ -357,7 +363,7 @@ int main(int argc, char** argv, char**) {
     contextp->threads(sim_threads);
     contextp->commandArgs(argc, argv);
 #if VM_TRACE
-    Verilated::traceEverOn(true);
+    contextp->traceEverOn(true);
 #endif
 
     const std::unique_ptr<Vtestbench_cvwsoc> topp{new Vtestbench_cvwsoc{contextp.get(), ""}};
@@ -390,6 +396,9 @@ int main(int argc, char** argv, char**) {
 
     topp->rootp->DUT_UART_RX = 1;
 
+    std::signal(SIGINT, on_stop);
+    std::signal(SIGTERM, on_stop);
+
 #if VM_TRACE
     const std::string trace_prefix =
         get_plusarg_value(argc, argv, "+TRACE_FILE_PREFIX=", "dump");
@@ -414,7 +423,8 @@ int main(int argc, char** argv, char**) {
     }
 #endif
 
-    while (VL_LIKELY(!contextp->gotFinish())) {
+    while (VL_LIKELY(!contextp->gotFinish()
+                    && !g_stop_req.load(std::memory_order_relaxed))) {
 #if VM_TRACE
         if (runtime_trace_control &&
             g_trace_toggle_req.exchange(false, std::memory_order_relaxed)) {
@@ -484,6 +494,16 @@ int main(int argc, char** argv, char**) {
         contextp->time(next_time);
     }
 
+    const bool interrupted = g_stop_req.load(std::memory_order_relaxed);
+
+    if (interrupted) {
+        std::printf("[sim] caught SIGINT/SIGTERM, closing simulation cleanly at time=%llu\n",
+                    static_cast<unsigned long long>(contextp->time()));
+        std::fflush(stdout);
+    }
+
+    topp->final();
+
 #if VM_TRACE
     if (trace_enabled && tfp) {
         tfp->flush();
@@ -496,7 +516,6 @@ int main(int argc, char** argv, char**) {
     }
 #endif
 
-    topp->final();
     contextp->statsPrintSummary();
-    return 0;
+    return interrupted ? 130 : 0;
 }

@@ -90,3 +90,7 @@
   path = addins/pulp/tech_cells
   url = https://github.com/pulp-platform/tech_cells_generic.git
   branch = master
+[submodule "idma"]
+  path = addins/pulp/idma
+  url = https://github.com/juanschroeder/iDMA
+  branch = cvwsoc

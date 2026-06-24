@@ -195,8 +195,7 @@ IP_NEXYSA7SOC: $(dst)/sysrst.log \
 
 IP_GENESYS2SOC: $(dst)/sysrst.log \
 	MEM_GENESYS2 \
-	$(dst)/mmcm-genesys2soc.log \
-	$(dst)/axicdma.log
+	$(dst)/mmcm-genesys2soc.log
 
 IP_GENESYS2SOCXLNX: $(dst)/sysrst.log \
 	MEM_GENESYS2SOCXLNX \
@@ -207,8 +206,7 @@ IP_GENESYS2SOCXLNX: $(dst)/sysrst.log \
 	$(dst)/clkconverter.log
 
 IP_GENESYS2RV32SOC: $(dst)/sysrst.log \
-	$(dst)/mmcm-genesys2soc.log \
-	$(dst)/axicdma.log
+	$(dst)/mmcm-genesys2soc.log
 
 # Generate Memory IP Blocks
 .PHONY: MEM_VCU MEM_Arty

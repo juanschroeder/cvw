@@ -236,6 +236,13 @@ if rootfs_mode == "jffs2":
     erase-size = <{rootfs_erase_size}>;
   }};
 '''
+    rootfs_reserved_node = f'''
+
+    romfs_reserved: rootfs@{rootfs_addr:x} {{
+      reg = <0x{rootfs_addr >> 32:x} 0x{rootfs_addr & 0xffffffff:08x} 0x0 0x{rootfs_size:x}>;
+      no-map;
+    }};
+'''
     reserved_node = f'''
 
   reserved-memory {{
@@ -253,8 +260,9 @@ if rootfs_mode == "jffs2":
         src = re.sub(r'\n\s*(?:romfs|rootfs)@[0-9a-fA-F]+\s*\{.*?\n\s*\};', rootfs_node.rstrip(), src, flags=re.S)
     else:
         src = re.sub(r'\n\s*soc\s*\{', rootfs_node + '\n  soc {', src, count=1)
-    if re.search(r'\n\s*reserved-memory\s*\{.*?\n\s*\};', src, flags=re.S):
-        src = re.sub(r'\n\s*reserved-memory\s*\{.*?\n\s*\};', reserved_node.rstrip(), src, flags=re.S)
+    reserved_close_re = r'\n\s*\};(?=\n\s*cpus\s*\{)'
+    if re.search(r'\n\s*reserved-memory\s*\{', src) and re.search(reserved_close_re, src):
+        src = re.sub(reserved_close_re, rootfs_reserved_node.rstrip() + '\n  };', src, count=1)
     else:
         src = re.sub(r'\n\s*soc\s*\{', reserved_node + '\n  soc {', src, count=1)
 else:

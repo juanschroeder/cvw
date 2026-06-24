@@ -6,15 +6,13 @@
 //                     Build your hardware, easily!
 //                   https://github.com/enjoy-digital/litex
 //
-// Filename   : litedram_genesys2_v6.v
+// Filename   : litedram_genesys2.v
 // Top        : LiteDRAMCore
 // Device     : 
 // Hierarchy  : disabled
 // LiteX sha1 : 777d97377
-// Date       : 2026-03-30 17:34:48
+// Date       : 2026-06-22 19:46:31
 //------------------------------------------------------------------------------
-// Generated from https://github.com/juanschroeder/litedram.git, branch 'wbuf_fix'
-// Config vs default Genesys 2: AXI interface instead of Wishbone/Native.
 
 `timescale 1ns / 1ps
 
@@ -22,7 +20,7 @@
 // Module
 //------------------------------------------------------------------------------
 
-module litedram_genesys2_fixed (
+module litedram_genesys2 (
     input  wire          clk,
     output wire   [14:0] ddram_a,
     output wire    [2:0] ddram_ba,
@@ -46,24 +44,24 @@ module litedram_genesys2_fixed (
     output wire          user_clk,
     input  wire   [29:0] user_port_axi_0_araddr,
     input  wire    [1:0] user_port_axi_0_arburst,
-    input  wire    [3:0] user_port_axi_0_arid,
+    input  wire    [4:0] user_port_axi_0_arid,
     input  wire    [7:0] user_port_axi_0_arlen,
     output wire          user_port_axi_0_arready,
     input  wire    [2:0] user_port_axi_0_arsize,
     input  wire          user_port_axi_0_arvalid,
     input  wire   [29:0] user_port_axi_0_awaddr,
     input  wire    [1:0] user_port_axi_0_awburst,
-    input  wire    [3:0] user_port_axi_0_awid,
+    input  wire    [4:0] user_port_axi_0_awid,
     input  wire    [7:0] user_port_axi_0_awlen,
     output wire          user_port_axi_0_awready,
     input  wire    [2:0] user_port_axi_0_awsize,
     input  wire          user_port_axi_0_awvalid,
-    output wire    [3:0] user_port_axi_0_bid,
+    output wire    [4:0] user_port_axi_0_bid,
     input  wire          user_port_axi_0_bready,
     output wire    [1:0] user_port_axi_0_bresp,
     output wire          user_port_axi_0_bvalid,
     output wire   [63:0] user_port_axi_0_rdata,
-    output wire    [3:0] user_port_axi_0_rid,
+    output wire    [4:0] user_port_axi_0_rid,
     output wire          user_port_axi_0_rlast,
     input  wire          user_port_axi_0_rready,
     output wire    [1:0] user_port_axi_0_rresp,
@@ -194,7 +192,6 @@ LiteDRAMCore
 │    ├── bitslip_71 (BitSlip) [Gen]
 │    ├── tappeddelayline_2 (TappedDelayLine) [Gen]
 │    ├── tappeddelayline_3 (TappedDelayLine) [Gen]
-│    ├── [BB:ISERDESE2]
 │    ├── [BB:ODELAYE2]
 │    ├── [BB:IDELAYE2]
 │    ├── [BB:IOBUF]
@@ -265,11 +262,6 @@ LiteDRAMCore
 │    ├── [BB:IOBUF]
 │    ├── [BB:OSERDESE2]
 │    ├── [BB:ISERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:IDELAYE2]
-│    ├── [BB:IOBUF]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:OSERDESE2]
 │    ├── [BB:ISERDESE2]
 │    ├── [BB:ODELAYE2]
 │    ├── [BB:IDELAYE2]
@@ -334,6 +326,92 @@ LiteDRAMCore
 │    ├── [BB:ODELAYE2]
 │    ├── [BB:IDELAYE2]
 │    ├── [BB:IOBUF]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:IOBUFDS]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:IOBUFDS]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:IOBUFDS]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:IOBUFDS]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ISERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:IDELAYE2]
+│    ├── [BB:IOBUF]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ISERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:IDELAYE2]
+│    ├── [BB:IOBUF]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ISERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:IDELAYE2]
+│    ├── [BB:IOBUF]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ISERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:IDELAYE2]
+│    ├── [BB:IOBUF]
+│    ├── [BB:OSERDESE2]
+│    ├── [BB:ISERDESE2]
+│    ├── [BB:ODELAYE2]
+│    ├── [BB:IDELAYE2]
+│    ├── [BB:IOBUF]
+│    ├── [BB:OSERDESE2]
 │    ├── [BB:OSERDESE2]
 │    ├── [BB:ODELAYE2]
 │    ├── [BB:OBUFDS]
@@ -346,87 +424,7 @@ LiteDRAMCore
 │    ├── [BB:OSERDESE2]
 │    ├── [BB:ODELAYE2]
 │    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:IOBUFDS]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:IOBUFDS]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:IOBUFDS]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:IOBUFDS]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ISERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:IDELAYE2]
-│    ├── [BB:IOBUF]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ISERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:IDELAYE2]
-│    ├── [BB:IOBUF]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ISERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:IDELAYE2]
-│    ├── [BB:IOBUF]
-│    ├── [BB:OSERDESE2]
-│    ├── [BB:ISERDESE2]
-│    ├── [BB:ODELAYE2]
-│    ├── [BB:IDELAYE2]
-│    └── [BB:IOBUF]
+│    └── [BB:ODELAYE2]
 ├── sdram (LiteDRAMCore)
 │    ├── dfii (DFIInjector)
 │    │    ├── pi0 (PhaseInjector)
@@ -995,7 +993,7 @@ wire          iodelay_rst;
 reg           main_ar_first = 1'd0;
 reg           main_ar_last = 1'd0;
 reg           main_ar_param_dest = 1'd0;
-wire    [3:0] main_ar_param_id;
+wire    [4:0] main_ar_param_id;
 reg           main_ar_param_user = 1'd0;
 wire   [29:0] main_ar_payload_addr;
 wire    [1:0] main_ar_payload_burst;
@@ -1011,7 +1009,7 @@ wire          main_ar_valid;
 reg           main_aw_first = 1'd0;
 reg           main_aw_last = 1'd0;
 reg           main_aw_param_dest = 1'd0;
-wire    [3:0] main_aw_param_id;
+wire    [4:0] main_aw_param_id;
 reg           main_aw_param_user = 1'd0;
 wire   [29:0] main_aw_payload_addr;
 wire    [1:0] main_aw_payload_burst;
@@ -1026,10 +1024,10 @@ wire          main_aw_ready;
 wire          main_aw_valid;
 wire          main_b_first;
 wire          main_b_last;
-(* mark_debug = "true" *) wire    [3:0] main_b_param_id;
-(* mark_debug = "true" *) wire    [1:0] main_b_payload_resp;
-(* mark_debug = "true" *) wire          main_b_ready;
-(* mark_debug = "true" *) wire          main_b_valid;
+wire    [4:0] main_b_param_id;
+wire    [1:0] main_b_payload_resp;
+wire          main_b_ready;
+wire          main_b_valid;
 reg           main_bankmachine0_auto_precharge = 1'd0;
 reg    [14:0] main_bankmachine0_cmd_payload_a = 15'd0;
 wire    [2:0] main_bankmachine0_cmd_payload_ba;
@@ -2746,13 +2744,13 @@ wire          main_litedramnativeportconverter_addr_changed;
 reg    [26:0] main_litedramnativeportconverter_cmd_addr = 27'd0;
 reg    [26:0] main_litedramnativeportconverter_cmd_addr_litedramcore_next_value0 = 27'd0;
 reg           main_litedramnativeportconverter_cmd_addr_litedramcore_next_value_ce0 = 1'd0;
-(* mark_debug = "true" *) reg           main_litedramnativeportconverter_cmd_last = 1'd0;
+reg           main_litedramnativeportconverter_cmd_last = 1'd0;
 reg           main_litedramnativeportconverter_cmd_last_litedramcore_next_value2 = 1'd0;
 reg           main_litedramnativeportconverter_cmd_last_litedramcore_next_value_ce2 = 1'd0;
-(* mark_debug = "true" *) reg           main_litedramnativeportconverter_cmd_we = 1'd0;
+reg           main_litedramnativeportconverter_cmd_we = 1'd0;
 reg           main_litedramnativeportconverter_cmd_we_litedramcore_next_value1 = 1'd0;
 reg           main_litedramnativeportconverter_cmd_we_litedramcore_next_value_ce1 = 1'd0;
-(* mark_debug = "true" *) wire          main_litedramnativeportconverter_next_cmd;
+wire          main_litedramnativeportconverter_next_cmd;
 reg     [3:0] main_litedramnativeportconverter_port_to = 4'd0;
 reg     [3:0] main_litedramnativeportconverter_port_to_litedramcore_next_value3 = 4'd0;
 reg           main_litedramnativeportconverter_port_to_litedramcore_next_value_ce3 = 1'd0;
@@ -2848,7 +2846,7 @@ reg           main_litedramnativeportconverter_wdata_buffer_pipe_valid_source_la
 reg   [255:0] main_litedramnativeportconverter_wdata_buffer_pipe_valid_source_payload_data = 256'd0;
 reg    [31:0] main_litedramnativeportconverter_wdata_buffer_pipe_valid_source_payload_we = 32'd0;
 wire          main_litedramnativeportconverter_wdata_buffer_pipe_valid_source_ready;
-(* mark_debug = "true" *) reg           main_litedramnativeportconverter_wdata_buffer_pipe_valid_source_valid = 1'd0;
+reg           main_litedramnativeportconverter_wdata_buffer_pipe_valid_source_valid = 1'd0;
 reg           main_litedramnativeportconverter_wdata_buffer_sink_sink_first = 1'd0;
 reg           main_litedramnativeportconverter_wdata_buffer_sink_sink_last = 1'd0;
 wire  [255:0] main_litedramnativeportconverter_wdata_buffer_sink_sink_payload_data;
@@ -2861,8 +2859,8 @@ wire  [255:0] main_litedramnativeportconverter_wdata_buffer_source_source_payloa
 wire   [31:0] main_litedramnativeportconverter_wdata_buffer_source_source_payload_we;
 wire          main_litedramnativeportconverter_wdata_buffer_source_source_ready;
 wire          main_litedramnativeportconverter_wdata_buffer_source_source_valid;
-(* mark_debug = "true" *) reg     [3:0] main_litedramnativeportconverter_wdata_chunk = 4'd1;
-(* mark_debug = "true" *) wire          main_litedramnativeportconverter_wdata_chunk_valid;
+reg     [3:0] main_litedramnativeportconverter_wdata_chunk = 4'd1;
+wire          main_litedramnativeportconverter_wdata_chunk_valid;
 reg     [1:0] main_litedramnativeportconverter_wdata_converter_converter_demux = 2'd0;
 wire          main_litedramnativeportconverter_wdata_converter_converter_load_part;
 wire          main_litedramnativeportconverter_wdata_converter_converter_sink_first;
@@ -2882,7 +2880,7 @@ reg           main_litedramnativeportconverter_wdata_converter_sink_last = 1'd0;
 reg    [63:0] main_litedramnativeportconverter_wdata_converter_sink_payload_data = 64'd0;
 reg     [7:0] main_litedramnativeportconverter_wdata_converter_sink_payload_we = 8'd0;
 wire          main_litedramnativeportconverter_wdata_converter_sink_ready;
-(* mark_debug = "true" *) reg           main_litedramnativeportconverter_wdata_converter_sink_valid = 1'd0;
+reg           main_litedramnativeportconverter_wdata_converter_sink_valid = 1'd0;
 wire          main_litedramnativeportconverter_wdata_converter_source_first;
 wire          main_litedramnativeportconverter_wdata_converter_source_last;
 reg   [255:0] main_litedramnativeportconverter_wdata_converter_source_payload_data = 256'd0;
@@ -2904,7 +2902,7 @@ wire          main_litedramnativeportconverter_wdata_fifo_fifo_out_first;
 wire          main_litedramnativeportconverter_wdata_fifo_fifo_out_last;
 wire   [63:0] main_litedramnativeportconverter_wdata_fifo_fifo_out_payload_data;
 wire    [7:0] main_litedramnativeportconverter_wdata_fifo_fifo_out_payload_we;
-(* mark_debug = "true" *) reg     [1:0] main_litedramnativeportconverter_wdata_fifo_level = 2'd0;
+reg     [1:0] main_litedramnativeportconverter_wdata_fifo_level = 2'd0;
 reg     [1:0] main_litedramnativeportconverter_wdata_fifo_produce = 2'd0;
 wire    [1:0] main_litedramnativeportconverter_wdata_fifo_rdport_adr;
 wire   [73:0] main_litedramnativeportconverter_wdata_fifo_rdport_dat_r;
@@ -2924,13 +2922,13 @@ wire          main_litedramnativeportconverter_wdata_fifo_source_valid;
 wire   [73:0] main_litedramnativeportconverter_wdata_fifo_syncfifo_din;
 wire   [73:0] main_litedramnativeportconverter_wdata_fifo_syncfifo_dout;
 wire          main_litedramnativeportconverter_wdata_fifo_syncfifo_re;
-(* mark_debug = "true" *) wire          main_litedramnativeportconverter_wdata_fifo_syncfifo_readable;
+wire          main_litedramnativeportconverter_wdata_fifo_syncfifo_readable;
 wire          main_litedramnativeportconverter_wdata_fifo_syncfifo_we;
-(* mark_debug = "true" *) wire          main_litedramnativeportconverter_wdata_fifo_syncfifo_writable;
+wire          main_litedramnativeportconverter_wdata_fifo_syncfifo_writable;
 reg     [1:0] main_litedramnativeportconverter_wdata_fifo_wrport_adr = 2'd0;
 wire   [73:0] main_litedramnativeportconverter_wdata_fifo_wrport_dat_w;
 wire          main_litedramnativeportconverter_wdata_fifo_wrport_we;
-(* mark_debug = "true" *) wire          main_litedramnativeportconverter_wdata_finished;
+wire          main_litedramnativeportconverter_wdata_finished;
 reg    [31:0] main_litedramnativeportconverter_wdata_sel = 32'd0;
 wire          main_locked;
 reg           main_master_p0_act_n = 1'd1;
@@ -2999,11 +2997,11 @@ reg           main_master_p3_wrdata_en = 1'd0;
 reg     [7:0] main_master_p3_wrdata_mask = 8'd0;
 wire          main_max_time0;
 wire          main_max_time1;
-(* mark_debug = "true" *) reg           main_new_port_cmd_last = 1'd0;
-(* mark_debug = "true" *) reg    [26:0] main_new_port_cmd_payload_addr = 27'd0;
-(* mark_debug = "true" *) reg           main_new_port_cmd_payload_we = 1'd0;
-(* mark_debug = "true" *) reg           main_new_port_cmd_ready = 1'd0;
-(* mark_debug = "true" *) reg           main_new_port_cmd_valid = 1'd0;
+reg           main_new_port_cmd_last = 1'd0;
+reg    [26:0] main_new_port_cmd_payload_addr = 27'd0;
+reg           main_new_port_cmd_payload_we = 1'd0;
+reg           main_new_port_cmd_ready = 1'd0;
+reg           main_new_port_cmd_valid = 1'd0;
 reg           main_new_port_flush = 1'd0;
 reg           main_new_port_rdata_first = 1'd0;
 reg           main_new_port_rdata_last = 1'd0;
@@ -3011,11 +3009,11 @@ reg    [63:0] main_new_port_rdata_payload_data = 64'd0;
 wire          main_new_port_rdata_ready;
 reg           main_new_port_rdata_valid = 1'd0;
 reg           main_new_port_wdata_first = 1'd0;
-(* mark_debug = "true" *) (* keep = "true" *) reg           main_new_port_wdata_last = 1'd0;
+reg           main_new_port_wdata_last = 1'd0;
 wire   [63:0] main_new_port_wdata_payload_data;
 wire    [7:0] main_new_port_wdata_payload_we;
-(* mark_debug = "true" *) wire          main_new_port_wdata_ready;
-(* mark_debug = "true" *) wire          main_new_port_wdata_valid;
+wire          main_new_port_wdata_ready;
+wire          main_new_port_wdata_valid;
 reg    [14:0] main_nop_a = 15'd0;
 reg     [2:0] main_nop_ba = 3'd0;
 wire          main_odt;
@@ -3111,21 +3109,21 @@ reg    [63:0] main_phaseinjector3_rddata_status = 64'd0;
 wire          main_phaseinjector3_rddata_we;
 reg           main_phaseinjector3_wrdata_re = 1'd0;
 reg    [63:0] main_phaseinjector3_wrdata_storage = 64'd0;
-(* mark_debug = "true" *) reg    [24:0] main_port_cmd_payload_addr = 25'd0;
-(* mark_debug = "true" *) reg           main_port_cmd_payload_we = 1'd0;
-(* mark_debug = "true" *) wire          main_port_cmd_ready;
-(* mark_debug = "true" *) reg           main_port_cmd_valid = 1'd0;
+reg    [24:0] main_port_cmd_payload_addr = 25'd0;
+reg           main_port_cmd_payload_we = 1'd0;
+wire          main_port_cmd_ready;
+reg           main_port_cmd_valid = 1'd0;
 reg           main_port_rdata_first = 1'd0;
 reg           main_port_rdata_last = 1'd0;
 wire  [255:0] main_port_rdata_payload_data;
 wire          main_port_rdata_ready;
 wire          main_port_rdata_valid;
 wire          main_port_wdata_first;
-(* mark_debug = "true" *) wire          main_port_wdata_last;
+wire          main_port_wdata_last;
 wire  [255:0] main_port_wdata_payload_data;
 wire   [31:0] main_port_wdata_payload_we;
-(* mark_debug = "true" *) wire          main_port_wdata_ready;
-(* mark_debug = "true" *) wire          main_port_wdata_valid;
+wire          main_port_wdata_ready;
+wire          main_port_wdata_valid;
 reg           main_postponer_count = 1'd0;
 wire          main_postponer_req_i;
 reg           main_postponer_req_o = 1'd0;
@@ -3133,7 +3131,7 @@ reg           main_power_down = 1'd0;
 wire          main_r_first;
 wire          main_r_last;
 wire          main_r_param_dest;
-wire    [3:0] main_r_param_id;
+wire    [4:0] main_r_param_id;
 wire          main_r_param_user;
 wire   [63:0] main_r_payload_data;
 reg     [1:0] main_r_payload_resp = 2'd0;
@@ -3143,7 +3141,7 @@ wire          main_ras_allowed;
 reg           main_re = 1'd0;
 wire          main_read_ar_first;
 wire          main_read_ar_last;
-wire    [3:0] main_read_ar_param_id;
+wire    [4:0] main_read_ar_param_id;
 wire   [29:0] main_read_ar_payload_addr;
 reg           main_read_ar_ready = 1'd0;
 wire          main_read_ar_valid;
@@ -3159,38 +3157,38 @@ reg     [3:0] main_read_id_buffer_consume = 4'd0;
 wire          main_read_id_buffer_do_read;
 wire          main_read_id_buffer_fifo_in_first;
 wire          main_read_id_buffer_fifo_in_last;
-wire    [3:0] main_read_id_buffer_fifo_in_payload_id;
+wire    [4:0] main_read_id_buffer_fifo_in_payload_id;
 wire          main_read_id_buffer_fifo_out_first;
 wire          main_read_id_buffer_fifo_out_last;
-wire    [3:0] main_read_id_buffer_fifo_out_payload_id;
+wire    [4:0] main_read_id_buffer_fifo_out_payload_id;
 reg     [4:0] main_read_id_buffer_level = 5'd0;
 reg     [3:0] main_read_id_buffer_produce = 4'd0;
 wire    [3:0] main_read_id_buffer_rdport_adr;
-wire    [5:0] main_read_id_buffer_rdport_dat_r;
+wire    [6:0] main_read_id_buffer_rdport_dat_r;
 reg           main_read_id_buffer_replace = 1'd0;
 reg           main_read_id_buffer_sink_first = 1'd0;
 wire          main_read_id_buffer_sink_last;
-wire    [3:0] main_read_id_buffer_sink_payload_id;
+wire    [4:0] main_read_id_buffer_sink_payload_id;
 wire          main_read_id_buffer_sink_ready;
 wire          main_read_id_buffer_sink_valid;
 wire          main_read_id_buffer_source_first;
 wire          main_read_id_buffer_source_last;
-wire    [3:0] main_read_id_buffer_source_payload_id;
+wire    [4:0] main_read_id_buffer_source_payload_id;
 wire          main_read_id_buffer_source_ready;
 wire          main_read_id_buffer_source_valid;
-wire    [5:0] main_read_id_buffer_syncfifo_din;
-wire    [5:0] main_read_id_buffer_syncfifo_dout;
+wire    [6:0] main_read_id_buffer_syncfifo_din;
+wire    [6:0] main_read_id_buffer_syncfifo_dout;
 wire          main_read_id_buffer_syncfifo_re;
 wire          main_read_id_buffer_syncfifo_readable;
 wire          main_read_id_buffer_syncfifo_we;
 wire          main_read_id_buffer_syncfifo_writable;
 reg     [3:0] main_read_id_buffer_wrport_adr = 4'd0;
-wire    [5:0] main_read_id_buffer_wrport_dat_w;
+wire    [6:0] main_read_id_buffer_wrport_dat_w;
 wire          main_read_id_buffer_wrport_we;
 wire          main_read_pipe_valid_sink_first;
 wire          main_read_pipe_valid_sink_last;
 wire          main_read_pipe_valid_sink_param_dest;
-wire    [3:0] main_read_pipe_valid_sink_param_id;
+wire    [4:0] main_read_pipe_valid_sink_param_id;
 wire          main_read_pipe_valid_sink_param_user;
 wire   [29:0] main_read_pipe_valid_sink_payload_addr;
 wire    [1:0] main_read_pipe_valid_sink_payload_burst;
@@ -3206,7 +3204,7 @@ wire          main_read_pipe_valid_sink_valid;
 reg           main_read_pipe_valid_source_first = 1'd0;
 reg           main_read_pipe_valid_source_last = 1'd0;
 reg           main_read_pipe_valid_source_param_dest = 1'd0;
-reg     [3:0] main_read_pipe_valid_source_param_id = 4'd0;
+reg     [4:0] main_read_pipe_valid_source_param_id = 5'd0;
 reg           main_read_pipe_valid_source_param_user = 1'd0;
 reg    [29:0] main_read_pipe_valid_source_payload_addr = 30'd0;
 reg     [1:0] main_read_pipe_valid_source_payload_burst = 2'd0;
@@ -3225,14 +3223,14 @@ wire          main_read_r_buffer_do_read;
 wire          main_read_r_buffer_fifo_in_first;
 wire          main_read_r_buffer_fifo_in_last;
 wire          main_read_r_buffer_fifo_in_param_dest;
-wire    [3:0] main_read_r_buffer_fifo_in_param_id;
+wire    [4:0] main_read_r_buffer_fifo_in_param_id;
 wire          main_read_r_buffer_fifo_in_param_user;
 wire   [63:0] main_read_r_buffer_fifo_in_payload_data;
 wire    [1:0] main_read_r_buffer_fifo_in_payload_resp;
 wire          main_read_r_buffer_fifo_out_first;
 wire          main_read_r_buffer_fifo_out_last;
 wire          main_read_r_buffer_fifo_out_param_dest;
-wire    [3:0] main_read_r_buffer_fifo_out_param_id;
+wire    [4:0] main_read_r_buffer_fifo_out_param_id;
 wire          main_read_r_buffer_fifo_out_param_user;
 wire   [63:0] main_read_r_buffer_fifo_out_payload_data;
 wire    [1:0] main_read_r_buffer_fifo_out_payload_resp;
@@ -3242,7 +3240,7 @@ reg     [4:0] main_read_r_buffer_level2 = 5'd0;
 reg     [3:0] main_read_r_buffer_produce = 4'd0;
 wire          main_read_r_buffer_queue;
 wire    [3:0] main_read_r_buffer_rdport_adr;
-wire   [73:0] main_read_r_buffer_rdport_dat_r;
+wire   [74:0] main_read_r_buffer_rdport_dat_r;
 wire          main_read_r_buffer_rdport_re;
 wire          main_read_r_buffer_re;
 reg           main_read_r_buffer_readable = 1'd0;
@@ -3250,7 +3248,7 @@ reg           main_read_r_buffer_replace = 1'd0;
 wire          main_read_r_buffer_sink_first;
 wire          main_read_r_buffer_sink_last;
 reg           main_read_r_buffer_sink_param_dest = 1'd0;
-reg     [3:0] main_read_r_buffer_sink_param_id = 4'd0;
+reg     [4:0] main_read_r_buffer_sink_param_id = 5'd0;
 reg           main_read_r_buffer_sink_param_user = 1'd0;
 wire   [63:0] main_read_r_buffer_sink_payload_data;
 reg     [1:0] main_read_r_buffer_sink_payload_resp = 2'd0;
@@ -3259,25 +3257,25 @@ wire          main_read_r_buffer_sink_valid;
 wire          main_read_r_buffer_source_first;
 wire          main_read_r_buffer_source_last;
 wire          main_read_r_buffer_source_param_dest;
-wire    [3:0] main_read_r_buffer_source_param_id;
+wire    [4:0] main_read_r_buffer_source_param_id;
 wire          main_read_r_buffer_source_param_user;
 wire   [63:0] main_read_r_buffer_source_payload_data;
 wire    [1:0] main_read_r_buffer_source_payload_resp;
 wire          main_read_r_buffer_source_ready;
 wire          main_read_r_buffer_source_valid;
-wire   [73:0] main_read_r_buffer_syncfifo_din;
-wire   [73:0] main_read_r_buffer_syncfifo_dout;
+wire   [74:0] main_read_r_buffer_syncfifo_din;
+wire   [74:0] main_read_r_buffer_syncfifo_dout;
 wire          main_read_r_buffer_syncfifo_re;
 wire          main_read_r_buffer_syncfifo_readable;
 wire          main_read_r_buffer_syncfifo_we;
 wire          main_read_r_buffer_syncfifo_writable;
 reg     [3:0] main_read_r_buffer_wrport_adr = 4'd0;
-wire   [73:0] main_read_r_buffer_wrport_dat_w;
+wire   [74:0] main_read_r_buffer_wrport_dat_w;
 wire          main_read_r_buffer_wrport_we;
 wire          main_read_sink_sink_first;
 wire          main_read_sink_sink_last;
 wire          main_read_sink_sink_param_dest;
-wire    [3:0] main_read_sink_sink_param_id;
+wire    [4:0] main_read_sink_sink_param_id;
 wire          main_read_sink_sink_param_user;
 wire   [29:0] main_read_sink_sink_payload_addr;
 wire    [1:0] main_read_sink_sink_payload_burst;
@@ -3293,7 +3291,7 @@ wire          main_read_sink_sink_valid;
 wire          main_read_source_source_first;
 wire          main_read_source_source_last;
 wire          main_read_source_source_param_dest;
-wire    [3:0] main_read_source_source_param_id;
+wire    [4:0] main_read_source_source_param_id;
 wire          main_read_source_source_param_user;
 wire   [29:0] main_read_source_source_payload_addr;
 wire    [1:0] main_read_source_source_payload_burst;
@@ -3420,16 +3418,16 @@ reg     [2:0] main_twtrcon_count = 3'd0;
 (* dont_touch = "true" *)
 reg           main_twtrcon_ready = 1'd0;
 wire          main_twtrcon_valid;
-(* mark_debug = "true" *) reg           main_user_enable = 1'd0;
+reg           main_user_enable = 1'd0;
 reg           main_w_first = 1'd0;
-(* mark_debug = "true" *) wire          main_w_last;
+wire          main_w_last;
 reg           main_w_param_dest = 1'd0;
 reg           main_w_param_id = 1'd0;
 reg           main_w_param_user = 1'd0;
 wire   [63:0] main_w_payload_data;
 wire    [7:0] main_w_payload_strb;
-(* mark_debug = "true" *) reg           main_w_ready = 1'd0;
-(* mark_debug = "true" *) wire          main_w_valid;
+reg           main_w_ready = 1'd0;
+wire          main_w_valid;
 wire          main_wants_refresh;
 wire          main_wants_zqcs;
 wire          main_wb_bus_ack;
@@ -3444,56 +3442,56 @@ wire    [3:0] main_wb_bus_sel;
 wire          main_wb_bus_stb;
 wire          main_wb_bus_we;
 wire          main_write_available;
-(* mark_debug = "true" *) wire          main_write_aw_first;
-(* mark_debug = "true" *) wire          main_write_aw_last;
-wire    [3:0] main_write_aw_param_id;
+wire          main_write_aw_first;
+wire          main_write_aw_last;
+wire    [4:0] main_write_aw_param_id;
 wire   [29:0] main_write_aw_payload_addr;
 reg           main_write_aw_ready = 1'd0;
-(* mark_debug = "true" *) wire          main_write_aw_valid;
+wire          main_write_aw_valid;
 reg           main_write_axi_w_connect = 1'd1;
-(* mark_debug = "true" *) reg     [7:0] main_write_beat_count = 8'd0;
+reg     [7:0] main_write_beat_count = 8'd0;
 reg  signed  [12:0] main_write_beat_offset = 13'd0;
 wire   [11:0] main_write_beat_size;
 wire   [11:0] main_write_beat_wrap;
-(* mark_debug = "true" *) wire          main_write_can_write;
+wire          main_write_can_write;
 wire          main_write_cmd_grant;
 wire          main_write_cmd_request;
 reg     [3:0] main_write_id_buffer_consume = 4'd0;
 wire          main_write_id_buffer_do_read;
 wire          main_write_id_buffer_fifo_in_first;
 wire          main_write_id_buffer_fifo_in_last;
-wire    [3:0] main_write_id_buffer_fifo_in_payload_id;
+wire    [4:0] main_write_id_buffer_fifo_in_payload_id;
 wire          main_write_id_buffer_fifo_out_first;
 wire          main_write_id_buffer_fifo_out_last;
-wire    [3:0] main_write_id_buffer_fifo_out_payload_id;
+wire    [4:0] main_write_id_buffer_fifo_out_payload_id;
 reg     [4:0] main_write_id_buffer_level = 5'd0;
 reg     [3:0] main_write_id_buffer_produce = 4'd0;
 wire    [3:0] main_write_id_buffer_rdport_adr;
-wire    [5:0] main_write_id_buffer_rdport_dat_r;
+wire    [6:0] main_write_id_buffer_rdport_dat_r;
 reg           main_write_id_buffer_replace = 1'd0;
 reg           main_write_id_buffer_sink_first = 1'd0;
 reg           main_write_id_buffer_sink_last = 1'd0;
-wire    [3:0] main_write_id_buffer_sink_payload_id;
+wire    [4:0] main_write_id_buffer_sink_payload_id;
 wire          main_write_id_buffer_sink_ready;
 wire          main_write_id_buffer_sink_valid;
 wire          main_write_id_buffer_source_first;
 wire          main_write_id_buffer_source_last;
-(* mark_debug = "true" *) wire    [3:0] main_write_id_buffer_source_payload_id;
-(* mark_debug = "true" *) reg           main_write_id_buffer_source_ready = 1'd0;
-(* mark_debug = "true" *) wire          main_write_id_buffer_source_valid;
-wire    [5:0] main_write_id_buffer_syncfifo_din;
-wire    [5:0] main_write_id_buffer_syncfifo_dout;
+wire    [4:0] main_write_id_buffer_source_payload_id;
+reg           main_write_id_buffer_source_ready = 1'd0;
+wire          main_write_id_buffer_source_valid;
+wire    [6:0] main_write_id_buffer_syncfifo_din;
+wire    [6:0] main_write_id_buffer_syncfifo_dout;
 wire          main_write_id_buffer_syncfifo_re;
 wire          main_write_id_buffer_syncfifo_readable;
 wire          main_write_id_buffer_syncfifo_we;
 wire          main_write_id_buffer_syncfifo_writable;
 reg     [3:0] main_write_id_buffer_wrport_adr = 4'd0;
-wire    [5:0] main_write_id_buffer_wrport_dat_w;
+wire    [6:0] main_write_id_buffer_wrport_dat_w;
 wire          main_write_id_buffer_wrport_we;
 wire          main_write_pipe_valid_sink_first;
 wire          main_write_pipe_valid_sink_last;
 wire          main_write_pipe_valid_sink_param_dest;
-wire    [3:0] main_write_pipe_valid_sink_param_id;
+wire    [4:0] main_write_pipe_valid_sink_param_id;
 wire          main_write_pipe_valid_sink_param_user;
 wire   [29:0] main_write_pipe_valid_sink_payload_addr;
 wire    [1:0] main_write_pipe_valid_sink_payload_burst;
@@ -3509,7 +3507,7 @@ wire          main_write_pipe_valid_sink_valid;
 reg           main_write_pipe_valid_source_first = 1'd0;
 reg           main_write_pipe_valid_source_last = 1'd0;
 reg           main_write_pipe_valid_source_param_dest = 1'd0;
-reg     [3:0] main_write_pipe_valid_source_param_id = 4'd0;
+reg     [4:0] main_write_pipe_valid_source_param_id = 5'd0;
 reg           main_write_pipe_valid_source_param_user = 1'd0;
 reg    [29:0] main_write_pipe_valid_source_payload_addr = 30'd0;
 reg     [1:0] main_write_pipe_valid_source_payload_burst = 2'd0;
@@ -3526,42 +3524,42 @@ reg     [3:0] main_write_resp_buffer_consume = 4'd0;
 wire          main_write_resp_buffer_do_read;
 wire          main_write_resp_buffer_fifo_in_first;
 wire          main_write_resp_buffer_fifo_in_last;
-wire    [3:0] main_write_resp_buffer_fifo_in_payload_id;
+wire    [4:0] main_write_resp_buffer_fifo_in_payload_id;
 wire    [1:0] main_write_resp_buffer_fifo_in_payload_resp;
 wire          main_write_resp_buffer_fifo_out_first;
 wire          main_write_resp_buffer_fifo_out_last;
-wire    [3:0] main_write_resp_buffer_fifo_out_payload_id;
+wire    [4:0] main_write_resp_buffer_fifo_out_payload_id;
 wire    [1:0] main_write_resp_buffer_fifo_out_payload_resp;
 reg     [4:0] main_write_resp_buffer_level = 5'd0;
 reg     [3:0] main_write_resp_buffer_produce = 4'd0;
 wire    [3:0] main_write_resp_buffer_rdport_adr;
-wire    [7:0] main_write_resp_buffer_rdport_dat_r;
+wire    [8:0] main_write_resp_buffer_rdport_dat_r;
 reg           main_write_resp_buffer_replace = 1'd0;
 reg           main_write_resp_buffer_sink_first = 1'd0;
 reg           main_write_resp_buffer_sink_last = 1'd0;
-(* mark_debug = "true" *) reg     [3:0] main_write_resp_buffer_sink_payload_id = 4'd0;
-(* mark_debug = "true" *) reg     [1:0] main_write_resp_buffer_sink_payload_resp = 2'd0;
+reg     [4:0] main_write_resp_buffer_sink_payload_id = 5'd0;
+reg     [1:0] main_write_resp_buffer_sink_payload_resp = 2'd0;
 wire          main_write_resp_buffer_sink_ready;
-(* mark_debug = "true" *) reg           main_write_resp_buffer_sink_valid = 1'd0;
+reg           main_write_resp_buffer_sink_valid = 1'd0;
 wire          main_write_resp_buffer_source_first;
 wire          main_write_resp_buffer_source_last;
-(* mark_debug = "true" *) wire    [3:0] main_write_resp_buffer_source_payload_id;
-(* mark_debug = "true" *) wire    [1:0] main_write_resp_buffer_source_payload_resp;
-(* mark_debug = "true" *) wire          main_write_resp_buffer_source_ready;
-(* mark_debug = "true" *) wire          main_write_resp_buffer_source_valid;
-wire    [7:0] main_write_resp_buffer_syncfifo_din;
-wire    [7:0] main_write_resp_buffer_syncfifo_dout;
+wire    [4:0] main_write_resp_buffer_source_payload_id;
+wire    [1:0] main_write_resp_buffer_source_payload_resp;
+wire          main_write_resp_buffer_source_ready;
+wire          main_write_resp_buffer_source_valid;
+wire    [8:0] main_write_resp_buffer_syncfifo_din;
+wire    [8:0] main_write_resp_buffer_syncfifo_dout;
 wire          main_write_resp_buffer_syncfifo_re;
 wire          main_write_resp_buffer_syncfifo_readable;
 wire          main_write_resp_buffer_syncfifo_we;
 wire          main_write_resp_buffer_syncfifo_writable;
 reg     [3:0] main_write_resp_buffer_wrport_adr = 4'd0;
-wire    [7:0] main_write_resp_buffer_wrport_dat_w;
+wire    [8:0] main_write_resp_buffer_wrport_dat_w;
 wire          main_write_resp_buffer_wrport_we;
 wire          main_write_sink_sink_first;
 wire          main_write_sink_sink_last;
 wire          main_write_sink_sink_param_dest;
-wire    [3:0] main_write_sink_sink_param_id;
+wire    [4:0] main_write_sink_sink_param_id;
 wire          main_write_sink_sink_param_user;
 wire   [29:0] main_write_sink_sink_payload_addr;
 wire    [1:0] main_write_sink_sink_payload_burst;
@@ -3577,7 +3575,7 @@ wire          main_write_sink_sink_valid;
 wire          main_write_source_source_first;
 wire          main_write_source_source_last;
 wire          main_write_source_source_param_dest;
-wire    [3:0] main_write_source_source_param_id;
+wire    [4:0] main_write_source_source_param_id;
 wire          main_write_source_source_param_user;
 wire   [29:0] main_write_source_source_payload_addr;
 wire    [1:0] main_write_source_source_payload_burst;
@@ -3594,57 +3592,57 @@ reg     [3:0] main_write_w_buffer_consume = 4'd0;
 wire          main_write_w_buffer_dequeue;
 wire          main_write_w_buffer_do_read;
 wire          main_write_w_buffer_fifo_in_first;
-(* mark_debug = "true" *) wire          main_write_w_buffer_fifo_in_last;
+wire          main_write_w_buffer_fifo_in_last;
 wire          main_write_w_buffer_fifo_in_param_dest;
-wire    [3:0] main_write_w_buffer_fifo_in_param_id;
+wire    [4:0] main_write_w_buffer_fifo_in_param_id;
 wire          main_write_w_buffer_fifo_in_param_user;
 wire   [63:0] main_write_w_buffer_fifo_in_payload_data;
 wire    [7:0] main_write_w_buffer_fifo_in_payload_strb;
 wire          main_write_w_buffer_fifo_out_first;
 wire          main_write_w_buffer_fifo_out_last;
 wire          main_write_w_buffer_fifo_out_param_dest;
-wire    [3:0] main_write_w_buffer_fifo_out_param_id;
+wire    [4:0] main_write_w_buffer_fifo_out_param_id;
 wire          main_write_w_buffer_fifo_out_param_user;
 wire   [63:0] main_write_w_buffer_fifo_out_payload_data;
 wire    [7:0] main_write_w_buffer_fifo_out_payload_strb;
-(* mark_debug = "true" *) reg     [4:0] main_write_w_buffer_level0 = 5'd0;
+reg     [4:0] main_write_w_buffer_level0 = 5'd0;
 wire    [4:0] main_write_w_buffer_level1;
-(* mark_debug = "true" *) reg     [4:0] main_write_w_buffer_level2 = 5'd0;
+reg     [4:0] main_write_w_buffer_level2 = 5'd0;
 reg     [3:0] main_write_w_buffer_produce = 4'd0;
 wire          main_write_w_buffer_queue;
 wire    [3:0] main_write_w_buffer_rdport_adr;
-wire   [79:0] main_write_w_buffer_rdport_dat_r;
+wire   [80:0] main_write_w_buffer_rdport_dat_r;
 wire          main_write_w_buffer_rdport_re;
 wire          main_write_w_buffer_re;
 reg           main_write_w_buffer_readable = 1'd0;
 reg           main_write_w_buffer_replace = 1'd0;
 reg           main_write_w_buffer_sink_first = 1'd0;
-(* mark_debug = "true" *) reg           main_write_w_buffer_sink_last = 1'd0;
+reg           main_write_w_buffer_sink_last = 1'd0;
 reg           main_write_w_buffer_sink_param_dest = 1'd0;
-reg     [3:0] main_write_w_buffer_sink_param_id = 4'd0;
+reg     [4:0] main_write_w_buffer_sink_param_id = 5'd0;
 reg           main_write_w_buffer_sink_param_user = 1'd0;
 reg    [63:0] main_write_w_buffer_sink_payload_data = 64'd0;
 reg     [7:0] main_write_w_buffer_sink_payload_strb = 8'd0;
-(* mark_debug = "true" *) wire          main_write_w_buffer_sink_ready;
-(* mark_debug = "true" *) reg           main_write_w_buffer_sink_valid = 1'd0;
+wire          main_write_w_buffer_sink_ready;
+reg           main_write_w_buffer_sink_valid = 1'd0;
 wire          main_write_w_buffer_source_first;
-(* mark_debug = "true" *) wire          main_write_w_buffer_source_last;
+wire          main_write_w_buffer_source_last;
 wire          main_write_w_buffer_source_param_dest;
-wire    [3:0] main_write_w_buffer_source_param_id;
+wire    [4:0] main_write_w_buffer_source_param_id;
 wire          main_write_w_buffer_source_param_user;
-(* mark_debug = "true" *) wire   [63:0] main_write_w_buffer_source_payload_data;
-(* mark_debug = "true" *) wire    [7:0] main_write_w_buffer_source_payload_strb;
-(* mark_debug = "true" *) wire          main_write_w_buffer_source_ready;
-(* mark_debug = "true" *) wire          main_write_w_buffer_source_valid;
-wire   [79:0] main_write_w_buffer_syncfifo_din;
-wire   [79:0] main_write_w_buffer_syncfifo_dout;
+wire   [63:0] main_write_w_buffer_source_payload_data;
+wire    [7:0] main_write_w_buffer_source_payload_strb;
+wire          main_write_w_buffer_source_ready;
+wire          main_write_w_buffer_source_valid;
+wire   [80:0] main_write_w_buffer_syncfifo_din;
+wire   [80:0] main_write_w_buffer_syncfifo_dout;
 wire          main_write_w_buffer_syncfifo_re;
 wire          main_write_w_buffer_syncfifo_readable;
 wire          main_write_w_buffer_syncfifo_we;
 wire          main_write_w_buffer_syncfifo_writable;
 reg     [3:0] main_write_w_buffer_wrport_adr = 4'd0;
-wire   [79:0] main_write_w_buffer_wrport_dat_w;
-(* mark_debug = "true" *) wire          main_write_w_buffer_wrport_we;
+wire   [80:0] main_write_w_buffer_wrport_dat_w;
+wire          main_write_w_buffer_wrport_we;
 reg           main_zqcs_executer_done = 1'd0;
 reg           main_zqcs_executer_start = 1'd0;
 reg     [4:0] main_zqcs_executer_trigger = 5'd0;
@@ -13405,7 +13403,7 @@ always @(*) begin
     end
 end
 always @(*) begin
-    main_write_resp_buffer_sink_payload_id <= 4'd0;
+    main_write_resp_buffer_sink_payload_id <= 5'd0;
     if (((main_write_w_buffer_source_valid & main_write_w_buffer_source_last) & main_write_w_buffer_source_ready)) begin
         main_write_resp_buffer_sink_payload_id <= main_write_id_buffer_source_payload_id;
     end
@@ -13507,7 +13505,7 @@ always @(*) begin
     end
 end
 always @(*) begin
-    main_write_w_buffer_sink_param_id <= 4'd0;
+    main_write_w_buffer_sink_param_id <= 5'd0;
     if (main_write_axi_w_connect) begin
         main_write_w_buffer_sink_param_id <= main_w_param_id;
     end
@@ -25233,12 +25231,12 @@ assign main_litedramnativeportconverter_wdata_fifo_rdport_dat_r = storage_9[main
 
 
 //------------------------------------------------------------------------------
-// Memory storage_10: 16-words x 80-bit
+// Memory storage_10: 16-words x 81-bit
 //------------------------------------------------------------------------------
 // Port 0 | Read: ----  | Write: Sync | Mode: Read-First 
 // Port 1 | Read: Sync  | Write: ---- | 
-reg [79:0] storage_10[0:15];
-reg [79:0] storage_10_dat1;
+reg [80:0] storage_10[0:15];
+reg [80:0] storage_10_dat1;
 always @(posedge sys_clk) begin
 	if (main_write_w_buffer_wrport_we)
 		storage_10[main_write_w_buffer_wrport_adr] <= main_write_w_buffer_wrport_dat_w;
@@ -25251,11 +25249,11 @@ assign main_write_w_buffer_rdport_dat_r = storage_10_dat1;
 
 
 //------------------------------------------------------------------------------
-// Memory storage_11: 16-words x 6-bit
+// Memory storage_11: 16-words x 7-bit
 //------------------------------------------------------------------------------
 // Port 0 | Read: ----  | Write: Sync | Mode: Read-First 
 // Port 1 | Read: Async | Write: ---- | 
-reg [5:0] storage_11[0:15];
+reg [6:0] storage_11[0:15];
 always @(posedge sys_clk) begin
 	if (main_write_id_buffer_wrport_we)
 		storage_11[main_write_id_buffer_wrport_adr] <= main_write_id_buffer_wrport_dat_w;
@@ -25266,11 +25264,11 @@ assign main_write_id_buffer_rdport_dat_r = storage_11[main_write_id_buffer_rdpor
 
 
 //------------------------------------------------------------------------------
-// Memory storage_12: 16-words x 8-bit
+// Memory storage_12: 16-words x 9-bit
 //------------------------------------------------------------------------------
 // Port 0 | Read: ----  | Write: Sync | Mode: Read-First 
 // Port 1 | Read: Async | Write: ---- | 
-reg [7:0] storage_12[0:15];
+reg [8:0] storage_12[0:15];
 always @(posedge sys_clk) begin
 	if (main_write_resp_buffer_wrport_we)
 		storage_12[main_write_resp_buffer_wrport_adr] <= main_write_resp_buffer_wrport_dat_w;
@@ -25281,12 +25279,12 @@ assign main_write_resp_buffer_rdport_dat_r = storage_12[main_write_resp_buffer_r
 
 
 //------------------------------------------------------------------------------
-// Memory storage_13: 16-words x 74-bit
+// Memory storage_13: 16-words x 75-bit
 //------------------------------------------------------------------------------
 // Port 0 | Read: ----  | Write: Sync | Mode: Read-First 
 // Port 1 | Read: Sync  | Write: ---- | 
-reg [73:0] storage_13[0:15];
-reg [73:0] storage_13_dat1;
+reg [74:0] storage_13[0:15];
+reg [74:0] storage_13_dat1;
 always @(posedge sys_clk) begin
 	if (main_read_r_buffer_wrport_we)
 		storage_13[main_read_r_buffer_wrport_adr] <= main_read_r_buffer_wrport_dat_w;
@@ -25299,11 +25297,11 @@ assign main_read_r_buffer_rdport_dat_r = storage_13_dat1;
 
 
 //------------------------------------------------------------------------------
-// Memory storage_14: 16-words x 6-bit
+// Memory storage_14: 16-words x 7-bit
 //------------------------------------------------------------------------------
 // Port 0 | Read: ----  | Write: Sync | Mode: Read-First 
 // Port 1 | Read: Async | Write: ---- | 
-reg [5:0] storage_14[0:15];
+reg [6:0] storage_14[0:15];
 always @(posedge sys_clk) begin
 	if (main_read_id_buffer_wrport_we)
 		storage_14[main_read_id_buffer_wrport_adr] <= main_read_id_buffer_wrport_dat_w;
@@ -25606,5 +25604,5 @@ FDPE #(
 endmodule
 
 // -----------------------------------------------------------------------------
-//  Auto-Generated by LiteX on 2026-03-30 17:34:48.
+//  Auto-Generated by LiteX on 2026-06-22 19:46:31.
 //------------------------------------------------------------------------------

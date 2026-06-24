@@ -7,7 +7,7 @@
   model = "wally-virt,qemu";
 
   chosen {
-    bootargs = "root=/dev/mmcblk1p5 rw console=ttyS0,115200 loglevel=7 init=/sbin/init rootwait ";
+    bootargs = "root=/dev/mmcblk1p5 rw earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 loglevel=7 init=/sbin/init rootwait ";
     stdout-path = "/soc/uart@10000000";
 
     // needed for the FB
@@ -188,8 +188,7 @@
 
         #dma-cells = <1>;
         xlnx,addrwidth = <0x20>; // 32-bit addresses
-        status = "okay";
-
+        status = "disabled";
 
         // DMA visible memory window.
         // For your 128MB DDR at 0x8000_0000..0x87FF_FFFF:

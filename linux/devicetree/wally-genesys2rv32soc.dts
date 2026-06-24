@@ -7,7 +7,7 @@
   model = "wally-virt,qemu";
 
   chosen {
-    bootargs = "root=/dev/mmcblk1p5 rw console=ttyS0,115200 loglevel=7 init=/sbin/init rootwait ";
+    bootargs = "root=/dev/mmcblk1p5 rw earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 loglevel=7 init=/sbin/init rootwait ";
     stdout-path = "/soc/uart@10000000";
 
     // needed for the FB
@@ -17,10 +17,8 @@
 
     //320 x 240
     framebuffer0: framebuffer@85040000 {
-    // framebuffer0: framebuffer@84040000 { // uncached framebuffer (disabled)
       compatible = "simple-framebuffer";
       reg = <0x0 0x85040000 0x0 0x00025800>;
-      // reg = <0x0 0x84040000 0x0 0x00025800>;
       width = <320>;
       height = <240>;
       stride = <640>;  // 320 * 2
@@ -183,13 +181,14 @@
       clock-output-names = "busclk";
     };
 
-    cdma0: dma@100A0000 {
+   /*
+   cdma0: dma@100A0000 {
         compatible = "xlnx,axi-cdma-1.00.a";
         reg = <0x0 0x100A0000 0x0 0x1000>;
 
         #dma-cells = <1>;
         xlnx,addrwidth = <0x20>; // 32-bit addresses
-        status = "okay";
+        status = "disabled";
 
 
         // DMA visible memory window.
@@ -213,6 +212,23 @@
             xlnx,device-id = <0>;
             xlnx,max-burst-len = <0x10>;
         };
+    };
+    */
+
+    idma: dma-controller@10080000  {
+      model = "eth,idma-engine";
+      compatible = "eth,idma-engine";
+      reg = <0x0 0x10080000 0x0 0x1000>;
+      interrupt-parent = <&plic>;
+      //interrupts = <20>;
+      interrupts = <13>;
+      eth,input-slots = <1>;
+      eth,pending-slots = <1>;
+      #dma-cells = <1>;
+      dma-channels = <32>;
+      dma-requests = <127>;
+      dma-noncoherent; // non-default
+      memory-region = <&uncached_memory_idma>;
     };
 
     usb@100C0000 {
@@ -251,31 +267,31 @@
 
   };
 
+  // Remark: u-boot might dynamically add its reserved regions, so they should match
   reserved-memory {
     #address-cells = <2>;
     #size-cells = <2>;
     ranges;
 
+    // 1 MB uncached region: 0x84000000-- 0x840FFFFF
     uncached_memory_usb: uncached-memory@84000000 {
         reg = <0x0 0x84000000 0x0 0x0040000>; // 256 KiB uncached DDR
         no-map;
     };
 
-    // uncached: 0x25800 is needed for 320x240 but we assign the rest of uncached region
-    framebuffer@84040000 {
-        reg = <0x0 0x84040000 0x0 0x000C0000>;
+    uncached_memory_idma: idma-desc@84040000 {
+            reg = <0x0 0x84040000 0x0 0x00004000>; //16 KB
+            no-map;
+    };
+
+    uncached_rest@84044000 {
+        reg = <0x0 0x84044000 0x0 0x000BC000>; // rest of uncached RAM
         no-map;
     };
 
     // cached framebuffer
     framebuffer@85040000 {
         reg = <0x0 0x85040000 0x0 0x000C0000>;
-        no-map;
-    };
-
-    dmabuffer@BFE00000 {
-        compatible = "shared-dma-pool";
-        reg = <0x0 0xBFE00000 0x0 0x00100000>; // 1 MiB reserved
         no-map;
     };
 

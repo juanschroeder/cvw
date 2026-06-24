@@ -204,49 +204,49 @@ module uberddr3_wrapper #(
     // ------------------------------------------------------------------------
     // Internal AXI wiring: external SoC-facing AXI -> axi_adapter -> internal 256-bit AXI
     // ------------------------------------------------------------------------
-    wire [AXI_ID_WIDTH-1:0]         axi256_awid;
-    wire [AXI_ADDR_WIDTH-1:0]       axi256_awaddr_full;
-    wire [7:0]                      axi256_awlen;
-    wire [2:0]                      axi256_awsize;
-    wire [1:0]                      axi256_awburst;
+    (* mark_debug = "true" *) wire [AXI_ID_WIDTH-1:0]         axi256_awid;
+    (* mark_debug = "true" *) wire [AXI_ADDR_WIDTH-1:0]       axi256_awaddr_full;
+    (* mark_debug = "true" *) wire [7:0]                      axi256_awlen;
+    (* mark_debug = "true" *) wire [2:0]                      axi256_awsize;
+    (* mark_debug = "true" *) wire [1:0]                      axi256_awburst;
     wire                            axi256_awlock;
     wire [3:0]                      axi256_awcache;
     wire [2:0]                      axi256_awprot;
     wire [3:0]                      axi256_awqos;
     wire [3:0]                      axi256_awregion;
-    wire                            axi256_awvalid;
-    wire                            axi256_awready;
+    (* mark_debug = "true" *) wire                            axi256_awvalid;
+    (* mark_debug = "true" *) wire                            axi256_awready;
 
     wire [UBER_AXI_DATA_WIDTH-1:0]   axi256_wdata;
-    wire [UBER_AXI_DATA_WIDTH/8-1:0] axi256_wstrb;
-    wire                             axi256_wlast;
-    wire                             axi256_wvalid;
-    wire                             axi256_wready;
+    (* mark_debug = "true" *) wire [UBER_AXI_DATA_WIDTH/8-1:0] axi256_wstrb;
+    (* mark_debug = "true" *) wire                             axi256_wlast;
+    (* mark_debug = "true" *) wire                             axi256_wvalid;
+    (* mark_debug = "true" *) wire                             axi256_wready;
 
-    wire [AXI_ID_WIDTH-1:0]         axi256_bid;
-    wire [1:0]                      axi256_bresp;
-    wire                            axi256_bvalid;
-    wire                            axi256_bready;
+    (* mark_debug = "true" *) wire [AXI_ID_WIDTH-1:0]         axi256_bid;
+    (* mark_debug = "true" *) wire [1:0]                      axi256_bresp;
+    (* mark_debug = "true" *) wire                            axi256_bvalid;
+    (* mark_debug = "true" *) wire                            axi256_bready;
 
-    wire [AXI_ID_WIDTH-1:0]         axi256_arid;
-    wire [AXI_ADDR_WIDTH-1:0]       axi256_araddr_full;
-    wire [7:0]                      axi256_arlen;
-    wire [2:0]                      axi256_arsize;
-    wire [1:0]                      axi256_arburst;
+    (* mark_debug = "true" *) wire [AXI_ID_WIDTH-1:0]         axi256_arid;
+    (* mark_debug = "true" *) wire [AXI_ADDR_WIDTH-1:0]       axi256_araddr_full;
+    (* mark_debug = "true" *) wire [7:0]                      axi256_arlen;
+    (* mark_debug = "true" *) wire [2:0]                      axi256_arsize;
+    (* mark_debug = "true" *) wire [1:0]                      axi256_arburst;
     wire                            axi256_arlock;
     wire [3:0]                      axi256_arcache;
     wire [2:0]                      axi256_arprot;
     wire [3:0]                      axi256_arqos;
     wire [3:0]                      axi256_arregion;
-    wire                            axi256_arvalid;
-    wire                            axi256_arready;
+    (* mark_debug = "true" *) wire                            axi256_arvalid;
+    (* mark_debug = "true" *) wire                            axi256_arready;
 
-    wire [AXI_ID_WIDTH-1:0]         axi256_rid;
+    (* mark_debug = "true" *) wire [AXI_ID_WIDTH-1:0]         axi256_rid;
     wire [UBER_AXI_DATA_WIDTH-1:0]  axi256_rdata;
-    wire [1:0]                      axi256_rresp;
-    wire                            axi256_rlast;
-    wire                            axi256_rvalid;
-    wire                            axi256_rready;
+    (* mark_debug = "true" *) wire [1:0]                      axi256_rresp;
+    (* mark_debug = "true" *) wire                            axi256_rlast;
+    (* mark_debug = "true" *) wire                            axi256_rvalid;
+    (* mark_debug = "true" *) wire                            axi256_rready;
 
     axi_adapter #(
         .ADDR_WIDTH           (AXI_ADDR_WIDTH),
