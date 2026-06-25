@@ -182,6 +182,7 @@
       clock-output-names = "busclk";
     };
 
+    /*
     cdma0: dma@100A0000 {
         compatible = "xlnx,axi-cdma-1.00.a";
         reg = <0x0 0x100A0000 0x0 0x1000>;
@@ -212,6 +213,23 @@
             xlnx,max-burst-len = <0x10>;
         };
     };
+    */
+
+    idma: dma-controller@10080000  {
+      model = "eth,idma-engine";
+      compatible = "eth,idma-engine";
+      reg = <0x0 0x10080000 0x0 0x1000>;
+      interrupt-parent = <&plic>;
+      interrupts = <13>;
+      eth,input-slots = <1>;
+      eth,pending-slots = <1>;
+      #dma-cells = <1>;
+      dma-channels = <32>;
+      dma-requests = <127>;
+      dma-noncoherent; // non-default
+      memory-region = <&uncached_memory_idma>;
+    };
+
 
     usb@100C0000 {
         compatible = "generic-ohci";
@@ -258,9 +276,13 @@
         no-map;
     };
 
-    // uncached: 0x25800 is needed for 320x240 but we assign the rest of uncached region
-    framebuffer@84040000 {
-        reg = <0x0 0x84040000 0x0 0x000C0000>;
+    uncached_memory_idma: idma-desc@84040000 {
+            reg = <0x0 0x84040000 0x0 0x00004000>; //16 KB
+            no-map;
+    };
+
+    uncached_rest@84044000 {
+        reg = <0x0 0x84044000 0x0 0x000BC000>; // rest of uncached RAM
         no-map;
     };
 
@@ -270,11 +292,13 @@
         no-map;
     };
 
+    /*
     dmabuffer@BFE00000 {
         compatible = "shared-dma-pool";
         reg = <0x0 0xBFE00000 0x0 0x00100000>; // 1 MiB reserved
         no-map;
     };
+    */
 
     // Prevent Linux from using this region
     opensbi@80000000 {
