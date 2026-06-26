@@ -25,6 +25,9 @@ CPUSETTINGS ?=
 
 ifneq ($(filter sim-fast sim-fast-uboot,$(MAKECMDGOALS)),)
 PERF_CPU ?= 6
+ifeq ($(RV32),0)
+$(error sim-fast and sim-fast-uboot require RV32=1)
+endif
 RV32 ?= 1
 CONFIG ?= fpgagenesys2rv32w64soc
 CPUSETTINGS ?= taskset -c $(PERF_CPU)
@@ -38,9 +41,12 @@ BOOL_TRUE := 1 yes YES true TRUE
 RV32 ?= 0
 CVWSOC_RV32 := $(filter $(BOOL_TRUE),$(RV32))
 SDHCI ?= 0
+DMA ?= 0
 BOOTROM ?= 0
 CVWSOC_BOOTROM := $(filter $(BOOL_TRUE),$(BOOTROM))
+# Enable SDHCI with bootrom boot (can't do RAM preload)
 CVWSOC_SIM_SDHCI := $(if $(CVWSOC_BOOTROM),1,$(filter $(BOOL_TRUE),$(SDHCI)))
+CVWSOC_SIM_DMA := $(filter $(BOOL_TRUE),$(DMA))
 WALLYCONF ?= fpgagenesys2soc
 CONFIG ?= $(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF))
 CVWSOC_SIM_AXI_RAM ?= $(if $(CVWSOC_SIM_SDHCI),0,1)
@@ -978,6 +984,7 @@ $(WORKDIR)/V$(TESTBENCH).mk: $(DEPENDENCIES)
 	$(DEFINE_ARGS) \
 	$(if $(filter $(BOOL_TRUE),$(CVWSOC_SIM_AXI_RAM)),-DSIM_AXI_RAM,) \
 	$(if $(CVWSOC_SIM_SDHCI),-DSIM_AXI_SDHCI,) \
+	$(if $(CVWSOC_SIM_DMA),-DSIM_AXI_DMA,) \
 	$(EXPANDED_PARAM_ARGS) \
 	$(SOURCES)
 

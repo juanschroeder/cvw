@@ -72,8 +72,13 @@ module testbench_cvwsoc #(
       // Veri-lator $readmemh complains when boot.mem is bigger than size
       tmp.BOOTROM_RANGE = 64'h1FFFF;
       tmp.AXI_DUMMY_SUPPORTED = 1'b1;
-      tmp.AXI_IDMA_SUPPORTED = 1'b0; // enable to have iDMA
+`ifdef SIM_AXI_DMA
+      tmp.AXI_IDMA_SUPPORTED = 1'b1; // enable to have iDMA
       tmp.AXI_IDMA_REG64_SUPPORTED = 1'b1;
+`else
+      tmp.AXI_IDMA_SUPPORTED = 1'b0; // enable to have iDMA
+      tmp.AXI_IDMA_REG64_SUPPORTED = 1'b0;
+`endif
       cvwsoc_sim_cfg = tmp;
     end
   endfunction
