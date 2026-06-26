@@ -57,7 +57,7 @@ module adrdecs import cvw::*;  #(parameter cvw_t P) (
   adrdec #(P.PA_BITS) axilddec(PhysicalAddress, P.LITEDRAM_BASE[P.PA_BITS-1:0], P.LITEDRAM_RANGE[P.PA_BITS-1:0], P.LITEDRAM_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[17]);
   adrdec #(P.PA_BITS) axidummydec(PhysicalAddress, P.AXI_DUMMY_BASE[P.PA_BITS-1:0], P.AXI_DUMMY_RANGE[P.PA_BITS-1:0], P.AXI_DUMMY_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[18]);
   adrdec #(P.PA_BITS) axisdhcidec(PhysicalAddress, P.AXI_SDHCI_BASE[P.PA_BITS-1:0], P.AXI_SDHCI_RANGE[P.PA_BITS-1:0], P.AXI_SDHCI_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[19]);
-  adrdec #(P.PA_BITS) axiidmadec(PhysicalAddress, P.AXI_IDMA_BASE[P.PA_BITS-1:0], P.AXI_IDMA_RANGE[P.PA_BITS-1:0], P.AXI_IDMA_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[20]);
+  adrdec #(P.PA_BITS) axiidmadec(PhysicalAddress, P.AXI_IDMA_BASE[P.PA_BITS-1:0], P.AXI_IDMA_RANGE[P.PA_BITS-1:0], P.AXI_IDMA_SUPPORTED, AccessRW, Size, 4'b1111, SelRegions[20]);
   adrdec #(P.PA_BITS) axiidmareg64dec(PhysicalAddress, P.AXI_IDMA_REG64_BASE[P.PA_BITS-1:0], P.AXI_IDMA_REG64_RANGE[P.PA_BITS-1:0], P.AXI_IDMA_REG64_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[21]);
 
   assign SelRegions[0] = ~|(SelRegions[21:1]); // none of the regions are selected
