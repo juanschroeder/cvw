@@ -33,7 +33,7 @@ module adrdecs import cvw::*;  #(parameter cvw_t P) (
   input  logic [P.PA_BITS-1:0] PhysicalAddress,
   input  logic                 AccessRW, AccessRX, AccessRWXC,
   input  logic [1:0]           Size,
-  output logic [21:0]          SelRegions
+  output logic [22:0]          SelRegions
 );
 
   localparam logic [3:0]       SUPPORTED_SIZE = (P.LLEN == 32 ? 4'b0111 : 4'b1111);
@@ -59,8 +59,9 @@ module adrdecs import cvw::*;  #(parameter cvw_t P) (
   adrdec #(P.PA_BITS) axisdhcidec(PhysicalAddress, P.AXI_SDHCI_BASE[P.PA_BITS-1:0], P.AXI_SDHCI_RANGE[P.PA_BITS-1:0], P.AXI_SDHCI_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[19]);
   adrdec #(P.PA_BITS) axiidmadec(PhysicalAddress, P.AXI_IDMA_BASE[P.PA_BITS-1:0], P.AXI_IDMA_RANGE[P.PA_BITS-1:0], P.AXI_IDMA_SUPPORTED, AccessRW, Size, 4'b1111, SelRegions[20]);
   adrdec #(P.PA_BITS) axiidmareg64dec(PhysicalAddress, P.AXI_IDMA_REG64_BASE[P.PA_BITS-1:0], P.AXI_IDMA_REG64_RANGE[P.PA_BITS-1:0], P.AXI_IDMA_REG64_SUPPORTED, AccessRW, Size, 4'b0111, SelRegions[21]);
+  adrdec #(P.PA_BITS) axisidmadec(PhysicalAddress, P.AXIS_IDMA_BASE[P.PA_BITS-1:0], P.AXIS_IDMA_RANGE[P.PA_BITS-1:0], P.AXIS_IDMA_SUPPORTED, AccessRW, Size, 4'b1111, SelRegions[22]);
 
-  assign SelRegions[0] = ~|(SelRegions[21:1]); // none of the regions are selected
+  assign SelRegions[0] = ~|(SelRegions[22:1]); // none of the regions are selected
 endmodule
 
   // verilator lint_on UNOPTFLAT

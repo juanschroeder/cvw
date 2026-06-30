@@ -266,6 +266,15 @@ PreProcessFilesSoC: PreProcessFiles
 	cp -r ../../addins/pulp/ ../src/CopiedFiles_do_not_add_to_repo/
 	# Copy cvwsoc stuff
 	cp -r ../../addins/cvwsoc/  ../src/CopiedFiles_do_not_add_to_repo
+	# Copy the AXI-Stream audio datapath RTL
+	mkdir -p ../src/CopiedFiles_do_not_add_to_repo/verilog-axis/rtl
+	cp ../../addins/verilog-axis/rtl/axis_adapter.v \
+	   ../../addins/verilog-axis/rtl/axis_async_fifo.v \
+	   ../../addins/verilog-axis/rtl/axis_async_fifo_adapter.v \
+	   ../src/CopiedFiles_do_not_add_to_repo/verilog-axis/rtl/
+	mkdir -p ../src/CopiedFiles_do_not_add_to_repo/digilent-i2s2
+	cp ../../addins/digilent-i2s2/shared/src/hdl/axis_i2s2.v \
+	   ../src/CopiedFiles_do_not_add_to_repo/digilent-i2s2/
 	# Apply patches
 	# modify PULP files to prevent name collision for 'lzc'
 	# 1) rename the module itself (only in the defining file)

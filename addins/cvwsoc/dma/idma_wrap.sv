@@ -17,23 +17,30 @@ module idma_wrap #(
   parameter int unsigned JobFifoDepth      = 2,
   parameter bit          RAWCouplingAvail  = 1'b0,
   parameter bit          EnableDesc64      = 1'b1,
+  parameter bit          EnableDesc64Axis  = 1'b1,
   parameter bit          EnableReg64       = 1'b0,
   parameter bit          EnableReg64TwoD   = 1'b0,
   parameter type         axi_mst_req_t     = logic,
   parameter type         axi_mst_rsp_t     = logic,
   parameter type         axi_slv_req_t     = logic,
-  parameter type         axi_slv_rsp_t     = logic
+  parameter type         axi_slv_rsp_t     = logic,
+  parameter type         axis_t_chan_t     = logic,
+  parameter type         axis_req_t        = logic,
+  parameter type         axis_rsp_t        = logic
 ) (
   input  logic                   clk_i,
   input  logic                   rst_ni,
   input  logic                   testmode_i,
-  output axi_mst_req_t           axi_mst_fe_req_o,
-  input  axi_mst_rsp_t           axi_mst_fe_rsp_i,
+  output axi_mst_req_t  [1:0]    axi_mst_fe_req_o,
+  input  axi_mst_rsp_t  [1:0]    axi_mst_fe_rsp_i,
   output axi_mst_req_t           axi_mst_be_req_o,
   input  axi_mst_rsp_t           axi_mst_be_rsp_i,
-  input  axi_slv_req_t  [1:0]    axi_slv_req_i,
-  output axi_slv_rsp_t [1:0]     axi_slv_rsp_o,
-  output logic                   irq_o
+  input  axi_slv_req_t  [2:0]    axi_slv_req_i,
+  output axi_slv_rsp_t [2:0]     axi_slv_rsp_o,
+  output axis_req_t              axis_write_req_o,
+  input  axis_rsp_t              axis_write_rsp_i,
+  output logic                   irq_o,
+  output logic                   axis_irq_o
 );
 
   `include "axi/typedef.svh"
@@ -41,9 +48,10 @@ module idma_wrap #(
   `include "register_interface/typedef.svh"
 
   localparam int unsigned IdCounterWidth = 32;
-  localparam int unsigned NumFrontends = 2;
-  localparam int unsigned Desc64Idx = 0;
+  localparam int unsigned NumFrontends = 3;
+  localparam int unsigned Desc64MemIdx = 0;
   localparam int unsigned Reg64Idx = 1;
+  localparam int unsigned Desc64AxisIdx = 2;
   localparam int unsigned TfLenWidth = 32;
   localparam int unsigned RegDataWidth = 32;
   localparam int unsigned DmaInputFifoDepth = 8;
@@ -66,6 +74,10 @@ module idma_wrap #(
   typedef logic [RegDataWidth-1:0]      reg_data_t;
   typedef logic [RegDataWidth/8-1:0]    reg_strb_t;
 
+  function automatic int unsigned max_width(input int unsigned a, b);
+    return (a > b) ? a : b;
+  endfunction
+
   `AXI_TYPEDEF_AW_CHAN_T(axi_aw_chan_t, addr_t, id_t, user_t)
   `AXI_TYPEDEF_W_CHAN_T (axi_w_chan_t,  data_t, strb_t, user_t)
   `AXI_TYPEDEF_B_CHAN_T (axi_b_chan_t,  id_t, user_t)
@@ -81,20 +93,38 @@ module idma_wrap #(
   `IDMA_TYPEDEF_FULL_REQ_T(idma_req_t, id_t, addr_t, tf_len_t)
   `IDMA_TYPEDEF_FULL_RSP_T(idma_rsp_t, addr_t)
 
-  typedef struct packed {
-    axi_ar_chan_t ar_chan;
-  } axi_read_meta_channel_t;
+  localparam int unsigned AxiAwChanWidth = $bits(axi_aw_chan_t);
+  localparam int unsigned AxiArChanWidth = $bits(axi_ar_chan_t);
+  localparam int unsigned AxisTChanWidth = $bits(axis_t_chan_t);
 
   typedef struct packed {
-    axi_read_meta_channel_t axi;
+    axi_ar_chan_t ar_chan;
+    logic [max_width(AxiArChanWidth, AxisTChanWidth)-AxiArChanWidth:0] padding;
+  } axi_read_ar_chan_padded_t;
+
+  typedef struct packed {
+    axis_t_chan_t t_chan;
+    logic [max_width(AxiArChanWidth, AxisTChanWidth)-AxisTChanWidth:0] padding;
+  } axis_read_t_chan_padded_t;
+
+  typedef union packed {
+    axi_read_ar_chan_padded_t axi;
+    axis_read_t_chan_padded_t axis;
   } read_meta_channel_t;
 
   typedef struct packed {
     axi_aw_chan_t aw_chan;
-  } axi_write_meta_channel_t;
+    logic [max_width(AxiAwChanWidth, AxisTChanWidth)-AxiAwChanWidth:0] padding;
+  } axi_write_aw_chan_padded_t;
 
   typedef struct packed {
-    axi_write_meta_channel_t axi;
+    axis_t_chan_t t_chan;
+    logic [max_width(AxiAwChanWidth, AxisTChanWidth)-AxisTChanWidth:0] padding;
+  } axis_write_t_chan_padded_t;
+
+  typedef union packed {
+    axi_write_aw_chan_padded_t axi;
+    axis_write_t_chan_padded_t axis;
   } write_meta_channel_t;
 
   (* mark_debug = "true" *) idma_req_t [NumFrontends-1:0] idma_req_fe;
@@ -120,6 +150,9 @@ module idma_wrap #(
   axi_mst_req_t axi_write_req;
   axi_mst_rsp_t axi_read_rsp;
   axi_mst_rsp_t axi_write_rsp;
+  axis_req_t axis_write_req;
+  axis_req_t axis_read_req;
+  axis_rsp_t axis_read_rsp;
 
   (* mark_debug = "true" *) logic desc64_irq;
   (* mark_debug = "true" *) logic desc64_irq_pulse;
@@ -131,6 +164,7 @@ module idma_wrap #(
   logic desc64_sel_irq_enable;
   logic desc64_sel_irq;
   logic reg64_irq;
+  logic desc64_axis_irq_pulse;
 
   if (EnableDesc64) begin : gen_desc64
     axi_lite_req_t desc_axi_lite_req;
@@ -165,8 +199,8 @@ module idma_wrap #(
       .clk_i      ( clk_i                    ),
       .rst_ni     ( rst_ni                   ),
       .test_i     ( testmode_i               ),
-      .slv_req_i  ( axi_slv_req_i[Desc64Idx] ),
-      .slv_resp_o ( axi_slv_rsp_o[Desc64Idx] ),
+      .slv_req_i  ( axi_slv_req_i[Desc64MemIdx] ),
+      .slv_resp_o ( axi_slv_rsp_o[Desc64MemIdx] ),
       .mst_req_o  ( desc_axi_lite_req        ),
       .mst_resp_i ( desc_axi_lite_rsp        )
     );
@@ -206,8 +240,8 @@ module idma_wrap #(
     ) desc64_i (
       .clk_i,
       .rst_ni,
-      .master_req_o      ( axi_mst_fe_req_o ),
-      .master_rsp_i      ( axi_mst_fe_rsp_i ),
+      .master_req_o      ( axi_mst_fe_req_o[0] ),
+      .master_rsp_i      ( axi_mst_fe_rsp_i[0] ),
       .axi_ar_id_i       ( '0               ),
       .axi_aw_id_i       ( '0               ),
       .slave_req_i       ( desc_idma_reg_req ),
@@ -304,22 +338,22 @@ module idma_wrap #(
 
     assign desc64_irq = desc64_irq_pending && desc64_irq_enable;
 
-    assign idma_req_fe[Desc64Idx] = desc_req;
-    assign idma_req_fe_valid[Desc64Idx] = desc_req_valid;
-    assign desc_req_ready = idma_req_fe_ready[Desc64Idx];
-    assign desc_rsp = idma_rsp_fe[Desc64Idx];
-    assign desc_rsp_valid = idma_rsp_fe_valid[Desc64Idx];
-    assign idma_rsp_fe_ready[Desc64Idx] = desc_rsp_ready;
+    assign idma_req_fe[Desc64MemIdx] = desc_req;
+    assign idma_req_fe_valid[Desc64MemIdx] = desc_req_valid;
+    assign desc_req_ready = idma_req_fe_ready[Desc64MemIdx];
+    assign desc_rsp = idma_rsp_fe[Desc64MemIdx];
+    assign desc_rsp_valid = idma_rsp_fe_valid[Desc64MemIdx];
+    assign idma_rsp_fe_ready[Desc64MemIdx] = desc_rsp_ready;
 
     assign dbg_desc_req_src_addr = desc_req.src_addr;
     assign dbg_desc_req_dst_addr = desc_req.dst_addr;
     assign dbg_desc_req_length = desc_req.length;
   end else begin : gen_no_desc64
-    assign axi_mst_fe_req_o = '0;
-    assign axi_slv_rsp_o[Desc64Idx] = '0;
-    assign idma_req_fe[Desc64Idx] = '0;
-    assign idma_req_fe_valid[Desc64Idx] = 1'b0;
-    assign idma_rsp_fe_ready[Desc64Idx] = 1'b0;
+    assign axi_mst_fe_req_o[0] = '0;
+    assign axi_slv_rsp_o[Desc64MemIdx] = '0;
+    assign idma_req_fe[Desc64MemIdx] = '0;
+    assign idma_req_fe_valid[Desc64MemIdx] = 1'b0;
+    assign idma_rsp_fe_ready[Desc64MemIdx] = 1'b0;
     assign desc64_irq_pulse = 1'b0;
     assign desc64_irq_pending = 1'b0;
     assign desc64_irq_enable = 1'b0;
@@ -329,6 +363,116 @@ module idma_wrap #(
     assign desc64_sel_irq_enable = 1'b0;
     assign desc64_sel_irq = 1'b0;
     assign desc64_irq = 1'b0;
+  end
+
+  // Dedicated desc64 frontend for DDR-to-AXI-Stream playback.  The descriptor
+  // ABI is identical to the memory-to-memory frontend; only the protocol tags
+  // are overridden before the shared frontend arbiter.
+  if (EnableDesc64Axis) begin : gen_desc64_axis
+    axi_lite_req_t axis_desc_axi_lite_req;
+    axi_lite_resp_t axis_desc_axi_lite_rsp;
+    desc_regs_req_t axis_desc_reg_req;
+    desc_regs_rsp_t axis_desc_reg_rsp;
+    idma_req_t axis_desc_req_raw;
+    idma_req_t axis_desc_req;
+    idma_rsp_t axis_desc_rsp;
+    logic axis_desc_req_valid;
+    logic axis_desc_req_ready;
+    logic axis_desc_rsp_valid;
+    logic axis_desc_rsp_ready;
+
+    axi_to_axi_lite #(
+      .AxiAddrWidth    ( AxiAddrWidth       ),
+      .AxiDataWidth    ( AxiDataWidth       ),
+      .AxiIdWidth      ( AxiSlvIdWidth      ),
+      .AxiUserWidth    ( AxiUserWidth       ),
+      .AxiMaxWriteTxns ( AxiMaxWriteTxns    ),
+      .AxiMaxReadTxns  ( AxiMaxReadTxns     ),
+      .FallThrough     ( 1'b0               ),
+      .full_req_t      ( axi_slv_req_t      ),
+      .full_resp_t     ( axi_slv_rsp_t      ),
+      .lite_req_t      ( axi_lite_req_t     ),
+      .lite_resp_t     ( axi_lite_resp_t    )
+    ) axi_to_axi_lite_i (
+      .clk_i,
+      .rst_ni,
+      .test_i     ( testmode_i                         ),
+      .slv_req_i  ( axi_slv_req_i[Desc64AxisIdx]       ),
+      .slv_resp_o ( axi_slv_rsp_o[Desc64AxisIdx]       ),
+      .mst_req_o  ( axis_desc_axi_lite_req             ),
+      .mst_resp_i ( axis_desc_axi_lite_rsp             )
+    );
+
+    axi_lite_to_reg #(
+      .ADDR_WIDTH     ( AxiAddrWidth       ),
+      .DATA_WIDTH     ( AxiDataWidth       ),
+      .axi_lite_req_t ( axi_lite_req_t     ),
+      .axi_lite_rsp_t ( axi_lite_resp_t    ),
+      .reg_req_t      ( desc_regs_req_t    ),
+      .reg_rsp_t      ( desc_regs_rsp_t    )
+    ) axi_lite_to_reg_i (
+      .clk_i,
+      .rst_ni,
+      .axi_lite_req_i ( axis_desc_axi_lite_req ),
+      .axi_lite_rsp_o ( axis_desc_axi_lite_rsp ),
+      .reg_req_o      ( axis_desc_reg_req      ),
+      .reg_rsp_i      ( axis_desc_reg_rsp      )
+    );
+
+    idma_desc64_top #(
+      .AddrWidth        ( 64                  ),
+      .DataWidth        ( AxiDataWidth        ),
+      .AxiIdWidth       ( AxiIdWidth          ),
+      .idma_req_t       ( idma_req_t          ),
+      .idma_rsp_t       ( idma_rsp_t          ),
+      .reg_rsp_t        ( desc_regs_rsp_t     ),
+      .reg_req_t        ( desc_regs_req_t     ),
+      .axi_rsp_t        ( axi_mst_rsp_t       ),
+      .axi_req_t        ( axi_mst_req_t       ),
+      .axi_ar_chan_t    ( axi_ar_chan_t       ),
+      .axi_r_chan_t     ( axi_r_chan_t        ),
+      .InputFifoDepth   ( DmaInputFifoDepth   ),
+      .PendingFifoDepth ( DmaPendingFifoDepth ),
+      .BackendDepth     ( DmaBackendDepth     ),
+      .NSpeculation     ( DmaNSpeculation     )
+    ) desc64_axis_i (
+      .clk_i,
+      .rst_ni,
+      .master_req_o      ( axi_mst_fe_req_o[1] ),
+      .master_rsp_i      ( axi_mst_fe_rsp_i[1] ),
+      .axi_ar_id_i       ( '0                  ),
+      .axi_aw_id_i       ( '0                  ),
+      .slave_req_i       ( axis_desc_reg_req    ),
+      .slave_rsp_o       ( axis_desc_reg_rsp    ),
+      .idma_req_o        ( axis_desc_req_raw    ),
+      .idma_req_valid_o  ( axis_desc_req_valid  ),
+      .idma_req_ready_i  ( axis_desc_req_ready  ),
+      .idma_rsp_i        ( axis_desc_rsp        ),
+      .idma_rsp_valid_i  ( axis_desc_rsp_valid  ),
+      .idma_rsp_ready_o  ( axis_desc_rsp_ready  ),
+      .idma_busy_i       ( |busy                ),
+      .irq_o             ( desc64_axis_irq_pulse )
+    );
+
+    always_comb begin
+      axis_desc_req = axis_desc_req_raw;
+      axis_desc_req.opt.src_protocol = idma_pkg::AXI;
+      axis_desc_req.opt.dst_protocol = idma_pkg::AXI_STREAM;
+    end
+
+    assign idma_req_fe[Desc64AxisIdx] = axis_desc_req;
+    assign idma_req_fe_valid[Desc64AxisIdx] = axis_desc_req_valid;
+    assign axis_desc_req_ready = idma_req_fe_ready[Desc64AxisIdx];
+    assign axis_desc_rsp = idma_rsp_fe[Desc64AxisIdx];
+    assign axis_desc_rsp_valid = idma_rsp_fe_valid[Desc64AxisIdx];
+    assign idma_rsp_fe_ready[Desc64AxisIdx] = axis_desc_rsp_ready;
+  end else begin : gen_no_desc64_axis
+    assign axi_mst_fe_req_o[1] = '0;
+    assign axi_slv_rsp_o[Desc64AxisIdx] = '0;
+    assign idma_req_fe[Desc64AxisIdx] = '0;
+    assign idma_req_fe_valid[Desc64AxisIdx] = 1'b0;
+    assign idma_rsp_fe_ready[Desc64AxisIdx] = 1'b0;
+    assign desc64_axis_irq_pulse = 1'b0;
   end
 
   dma_regs_req_t dma_reg_req;
@@ -565,7 +709,7 @@ module idma_wrap #(
     .idma_rsp_be_ready_o  ( idma_rsp_ready     )
   );
 
-  idma_backend_rw_axi #(
+  idma_backend_rw_axi_rw_axis #(
     .CombinedShifter      ( 1'b0                       ),
     .DataWidth            ( AxiDataWidth               ),
     .AddrWidth            ( AxiAddrWidth               ),
@@ -587,6 +731,8 @@ module idma_wrap #(
     .idma_busy_t          ( idma_pkg::idma_busy_t      ),
     .axi_req_t            ( axi_mst_req_t              ),
     .axi_rsp_t            ( axi_mst_rsp_t              ),
+    .axis_req_t           ( axis_req_t                 ),
+    .axis_rsp_t           ( axis_rsp_t                 ),
     .write_meta_channel_t ( write_meta_channel_t       ),
     .read_meta_channel_t  ( read_meta_channel_t        )
   ) backend_i (
@@ -604,10 +750,22 @@ module idma_wrap #(
     .eh_req_ready_o  (                ),
     .axi_read_req_o  ( axi_read_req   ),
     .axi_read_rsp_i  ( axi_read_rsp   ),
+    .axis_read_req_i ( '0             ),
+    .axis_read_rsp_o (                ), // Not used for now
     .axi_write_req_o ( axi_write_req  ),
     .axi_write_rsp_i ( axi_write_rsp  ),
+    .axis_write_req_o ( axis_write_req   ),
+    .axis_write_rsp_i ( axis_write_rsp_i ),
     .busy_o          ( busy           )
   );
+
+  // This first playback implementation has no descriptor-level packet
+  // semantics.  Suppress the backend's end-of-transfer TLAST until those
+  // semantics are deliberately added.
+  always_comb begin
+    axis_write_req_o = axis_write_req;
+    axis_write_req_o.t.last = 1'b0;
+  end
 
   assign me_busy = 1'b0;
 
@@ -626,6 +784,7 @@ module idma_wrap #(
   );
 
   assign irq_o = desc64_irq | reg64_irq;
+  assign axis_irq_o = desc64_axis_irq_pulse;
   assign dbg_idma_req_src_addr = idma_req.src_addr;
   assign dbg_idma_req_dst_addr = idma_req.dst_addr;
   assign dbg_idma_req_length = idma_req.length;

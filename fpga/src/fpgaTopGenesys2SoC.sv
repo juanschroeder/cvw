@@ -26,6 +26,7 @@
 
 `include "config.vh"
 `include "axi/typedef.svh"
+`include "axi_stream/typedef.svh"
 
 import cvw::*;
 `include "parameter-defs.vh"
@@ -123,6 +124,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     , input  logic      SD_CD_N
     , inout  wire       SD_CMD
     , inout  wire [3:0] SD_DAT
+    // Pmod I2S2 TX pins
+    , output logic      i2s_tx_mclk
+    , output logic      i2s_tx_lrck
+    , output logic      i2s_tx_sclk
+    , output logic      i2s_tx_sdout
    );
 
   localparam int unsigned ADDR_W    = 32; // FIXME
@@ -136,21 +142,23 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   localparam int unsigned AXI_QOS_W = 4;
   localparam int unsigned AXI_RESP_W = 2;
 
-  // XBAR is slave for: CPU, CDMA, VGA, USB, iDMA descriptor fetch, iDMA backend
-  localparam int unsigned N_SLV     = 6;
-  // XBAR is master for: DDR3, CDMA, VGA, USB, LITEETH, LiteDRAM CSR, SDHCI, iDMA desc64, iDMA reg64
-  localparam int unsigned N_MST     = 9;
+  // XBAR is slave for: CPU, CDMA, VGA, USB, two iDMA descriptor fetchers, iDMA backend
+  localparam int unsigned N_SLV     = 7;
+  // XBAR is master for: DDR3, CDMA, VGA, USB, LITEETH, LiteDRAM CSR, SDHCI,
+  //                     iDMA desc64 memory, iDMA reg64, iDMA desc64 AXIS
+  localparam int unsigned N_MST     = 10;
   localparam int unsigned SLV_ID_W  = 2;
   localparam int unsigned MST_ID_W  = SLV_ID_W + $clog2(N_SLV);
   localparam int unsigned DDR_ID_W  = MST_ID_W;
-  localparam int unsigned N_RULES   = 9;
+  localparam int unsigned N_RULES   = 10;
 
   localparam int unsigned CB_S_CPU  = 0;
   localparam int unsigned CB_S_CDMA = 1;
   localparam int unsigned CB_S_VGA  = 2;
   localparam int unsigned CB_S_USB  = 3;
   localparam int unsigned CB_S_IDMA_FE = 4;
-  localparam int unsigned CB_S_IDMA_BE = 5;
+  localparam int unsigned CB_S_IDMA_FE_AXIS = 5;
+  localparam int unsigned CB_S_IDMA_BE = 6;
 
   localparam int unsigned CB_M_DDR      = 0;
   localparam int unsigned CB_M_CDMA_REG = 1;
@@ -161,6 +169,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   localparam int unsigned CB_M_SDHCI    = 6;
   localparam int unsigned CB_M_IDMA_DESC = 7;
   localparam int unsigned CB_M_IDMA_REG64 = 8;
+  localparam int unsigned CB_M_IDMA_AXIS = 9;
 
   localparam int unsigned MIG_ADDR_WIDTH = 30;
   localparam int unsigned DDR_ADDR_BITS = MIG_ADDR_WIDTH;
@@ -1157,16 +1166,17 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   // Wally requires a slower clock.  At this point I don't know what speed the atrix 7 will run so I'm initially targeting 25Mhz.
   // the mig will output a clock at 1/4 the sys clock or 41Mhz which might work with wally so we may be able to simplify the logic a lot.
   logic        phy_ref_clk; // *** fix when we add rvvi
-  mmcm mmcm(.clk_out1(clk167),
-                     .clk_out2(clk200),
-                     //.clk_out2(clk48MHz_raw),
-                     .clk_out3(CPUCLK),
-                     //.clk_out4(phy_ref_clk),
-                     .clk_out4(clk48MHz_raw),
-                     .reset(1'b0),
-                     .locked(mmcm1_locked),
-                     .clk_in1_p(default_200mhz_clk_p),
-               .clk_in1_n(default_200mhz_clk_n));
+  logic        audio_clk;
+  mmcm mmcm(
+        .clk_out1(audio_clk),
+        .clk_out2(clk167), //FIXME: this is not 167 MHz for Genesys 2
+        .clk_out3(clk200),
+        .clk_out4(CPUCLK),
+        .clk_out5(clk48MHz_raw),
+        .reset(1'b0),
+        .locked(mmcm1_locked),
+        .clk_in1_p(default_200mhz_clk_p),
+        .clk_in1_n(default_200mhz_clk_n));
 
 
 `ifndef P_WISHBONE_ETH_SUPPORTED
@@ -1393,15 +1403,36 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   `AXI_TYPEDEF_REQ_T    (mst_req_t, mst_aw_t, axi_w_t, mst_ar_t)
   `AXI_TYPEDEF_RESP_T   (mst_resp_t, mst_b_t, mst_r_t)
 
-  (* mark_debug = "true" *) slv_req_t  [1:0] idma_xbar_mst_req;
-  (* mark_debug = "true" *) slv_resp_t [1:0] idma_xbar_mst_rsp;
-  (* mark_debug = "true" *) mst_req_t  [1:0] idma_xbar_slv_req;
-  (* mark_debug = "true" *) mst_resp_t [1:0] idma_xbar_slv_rsp;
+  `AXI_STREAM_TYPEDEF_S_CHAN_T(axis_t_chan_t, axi_data_t, axi_strb_t,
+                               axi_strb_t, slv_id_t, slv_id_t, user_t)
+  `AXI_STREAM_TYPEDEF_REQ_T(axis_req_t, axis_t_chan_t)
+  `AXI_STREAM_TYPEDEF_RSP_T(axis_rsp_t)
 
-  localparam int unsigned IDMA_XBAR_S_PORTS [2] = '{CB_S_IDMA_FE, CB_S_IDMA_BE};
-  localparam int unsigned IDMA_XBAR_M_PORTS [2] = '{CB_M_IDMA_DESC, CB_M_IDMA_REG64};
+  (* mark_debug = "true" *) slv_req_t  [2:0] idma_xbar_mst_req;
+  (* mark_debug = "true" *) slv_resp_t [2:0] idma_xbar_mst_rsp;
+  (* mark_debug = "true" *) mst_req_t  [2:0] idma_xbar_slv_req;
+  (* mark_debug = "true" *) mst_resp_t [2:0] idma_xbar_slv_rsp;
+  axis_req_t idma_axis_req;
+  axis_rsp_t idma_axis_rsp;
+  (* ASYNC_REG="TRUE" *) logic [1:0] audio_resetn_ff;
+  logic audio_reset;
+  logic audio_resetn;
 
-  for (genvar i = 0; i < 2; i++) begin : gen_idma_xbar_s_pack
+  assign audio_reset = rst_req | ~mmcm1_locked;
+  always_ff @(posedge audio_clk or posedge audio_reset) begin
+    if (audio_reset)
+      audio_resetn_ff <= 2'b00;
+    else
+      audio_resetn_ff <= {audio_resetn_ff[0], 1'b1};
+  end
+  assign audio_resetn = audio_resetn_ff[1];
+
+  localparam int unsigned IDMA_XBAR_S_PORTS [3] =
+      '{CB_S_IDMA_FE, CB_S_IDMA_FE_AXIS, CB_S_IDMA_BE};
+  localparam int unsigned IDMA_XBAR_M_PORTS [3] =
+      '{CB_M_IDMA_DESC, CB_M_IDMA_REG64, CB_M_IDMA_AXIS};
+
+  for (genvar i = 0; i < 3; i++) begin : gen_idma_xbar_s_pack
     localparam int unsigned S = IDMA_XBAR_S_PORTS[i];
 
     assign cb_s_axi_awid[S*MST_ID_W +: MST_ID_W] = {{(MST_ID_W-SLV_ID_W){1'b0}}, idma_xbar_mst_req[i].aw.id};
@@ -1449,7 +1480,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     assign idma_xbar_mst_rsp[i].r.user = '0;
   end
 
-  for (genvar i = 0; i < 2; i++) begin : gen_idma_xbar_m_unpack
+  for (genvar i = 0; i < 3; i++) begin : gen_idma_xbar_m_unpack
     localparam int unsigned M = IDMA_XBAR_M_PORTS[i];
 
     assign idma_xbar_slv_req[i].aw.id = cb_m_axi_awid[M*MST_ID_W +: MST_ID_W];
@@ -1909,7 +1940,10 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
             end_addr:   axi_addr_t'(P.AXI_IDMA_BASE[31:0] + P.AXI_IDMA_RANGE[31:0] + 32'd1) }, // iDMA desc64 regs
         '{ idx: CB_M_IDMA_REG64,
             start_addr: axi_addr_t'(P.AXI_IDMA_REG64_BASE[31:0]),
-            end_addr:   axi_addr_t'(P.AXI_IDMA_REG64_BASE[31:0] + P.AXI_IDMA_REG64_RANGE[31:0] + 32'd1) } // iDMA reg64 regs
+            end_addr:   axi_addr_t'(P.AXI_IDMA_REG64_BASE[31:0] + P.AXI_IDMA_REG64_RANGE[31:0] + 32'd1) }, // iDMA reg64 regs
+        '{ idx: CB_M_IDMA_AXIS,
+            start_addr: axi_addr_t'(P.AXIS_IDMA_BASE[31:0]),
+            end_addr:   axi_addr_t'(P.AXIS_IDMA_BASE[31:0] + P.AXIS_IDMA_RANGE[31:0] + 32'd1) } // iDMA desc64 AXI-Stream regs
     };
 
     // ------------------------------
@@ -3128,7 +3162,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
       .cdma_introut  (dma_irq_raw)
     );
-  end else if (P.AXI_IDMA_SUPPORTED || P.AXI_IDMA_REG64_SUPPORTED) begin : gen_idma
+  end else if (P.AXI_IDMA_SUPPORTED || P.AXI_IDMA_REG64_SUPPORTED ||
+               P.AXIS_IDMA_SUPPORTED) begin : gen_idma
     assign reg_awready = 1'b0;
     assign reg_wready  = 1'b0;
     assign reg_arready = 1'b0;
@@ -3195,24 +3230,132 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
       .JobFifoDepth      ( 2                    ),
       .RAWCouplingAvail  ( 1'b0                 ),
       .EnableDesc64      ( P.AXI_IDMA_SUPPORTED ),
+      .EnableDesc64Axis  ( P.AXIS_IDMA_SUPPORTED ),
       .EnableReg64       ( P.AXI_IDMA_REG64_SUPPORTED ),
       .EnableReg64TwoD   ( 1'b0                 ),
       .axi_mst_req_t     ( slv_req_t            ),
       .axi_mst_rsp_t     ( slv_resp_t           ),
       .axi_slv_req_t     ( mst_req_t            ),
-      .axi_slv_rsp_t     ( mst_resp_t           )
+      .axi_slv_rsp_t     ( mst_resp_t           ),
+      .axis_t_chan_t     ( axis_t_chan_t        ),
+      .axis_req_t        ( axis_req_t           ),
+      .axis_rsp_t        ( axis_rsp_t           )
     ) idma_i (
       .clk_i             ( BUSCLK               ),
       .rst_ni            ( BUSCORERSTn          ),
       .testmode_i        ( 1'b0                 ),
-      .axi_mst_fe_req_o  ( idma_xbar_mst_req[0] ),
-      .axi_mst_fe_rsp_i  ( idma_xbar_mst_rsp[0] ),
-      .axi_mst_be_req_o  ( idma_xbar_mst_req[1] ),
-      .axi_mst_be_rsp_i  ( idma_xbar_mst_rsp[1] ),
+      .axi_mst_fe_req_o  ( idma_xbar_mst_req[1:0] ),
+      .axi_mst_fe_rsp_i  ( idma_xbar_mst_rsp[1:0] ),
+      .axi_mst_be_req_o  ( idma_xbar_mst_req[2] ),
+      .axi_mst_be_rsp_i  ( idma_xbar_mst_rsp[2] ),
       .axi_slv_req_i     ( idma_xbar_slv_req    ),
       .axi_slv_rsp_o     ( idma_xbar_slv_rsp    ),
-      .irq_o             ( dma_irq_raw          )
+      .axis_write_req_o  ( idma_axis_req        ),
+      .axis_write_rsp_i  ( idma_axis_rsp        ),
+      .irq_o             ( dma_irq_raw          ),
+      .axis_irq_o        (                      )
     );
+
+    if (P.AXIS_IDMA_SUPPORTED) begin : gen_idma_audio
+      logic [31:0] audio_fifo_tdata;
+      logic audio_fifo_tvalid;
+      logic audio_fifo_tready;
+      logic [31:0] audio_axis_tdata;
+      logic audio_axis_tvalid;
+      logic audio_axis_tready;
+      logic audio_axis_tlast;
+
+      axis_async_fifo_adapter #(
+        .DEPTH          ( 64       ),
+        .S_DATA_WIDTH   ( DATA_W   ),
+        .S_KEEP_ENABLE  ( 1        ),
+        .S_KEEP_WIDTH   ( STRB_W   ),
+        .M_DATA_WIDTH   ( 32       ),
+        .M_KEEP_ENABLE  ( 1        ),
+        .M_KEEP_WIDTH   ( 4        ),
+        .ID_ENABLE      ( 0        ),
+        .ID_WIDTH       ( SLV_ID_W ),
+        .DEST_ENABLE    ( 0        ),
+        .DEST_WIDTH     ( SLV_ID_W ),
+        .USER_ENABLE    ( 0        ),
+        .USER_WIDTH     ( 1        ),
+        .PAUSE_ENABLE   ( 0        )
+      ) axis_audio_fifo_i (
+        .s_clk                  ( BUSCLK                 ),
+        .s_rst                  ( ~BUSCORERSTn           ),
+        .s_axis_tdata           ( idma_axis_req.t.data   ),
+        .s_axis_tkeep           ( idma_axis_req.t.keep   ),
+        .s_axis_tvalid          ( idma_axis_req.tvalid   ),
+        .s_axis_tready          ( idma_axis_rsp.tready   ),
+        .s_axis_tlast           ( idma_axis_req.t.last   ),
+        .s_axis_tid             ( idma_axis_req.t.id     ),
+        .s_axis_tdest           ( idma_axis_req.t.dest   ),
+        .s_axis_tuser           ( idma_axis_req.t.user   ),
+        .m_clk                  ( audio_clk              ),
+        .m_rst                  ( ~audio_resetn          ),
+        .m_axis_tdata           ( audio_fifo_tdata       ),
+        .m_axis_tkeep           (                        ),
+        .m_axis_tvalid          ( audio_fifo_tvalid      ),
+        .m_axis_tready          ( audio_fifo_tready      ),
+        .m_axis_tlast           (                        ),
+        .m_axis_tid             (                        ),
+        .m_axis_tdest           (                        ),
+        .m_axis_tuser           (                        ),
+        .s_pause_req            ( 1'b0                   ),
+        .s_pause_ack            (                        ),
+        .m_pause_req            ( 1'b0                   ),
+        .m_pause_ack            (                        ),
+        .s_status_depth         (                        ),
+        .s_status_depth_commit  (                        ),
+        .s_status_overflow      (                        ),
+        .s_status_bad_frame     (                        ),
+        .s_status_good_frame    (                        ),
+        .m_status_depth         (                        ),
+        .m_status_depth_commit  (                        ),
+        .m_status_overflow      (                        ),
+        .m_status_bad_frame     (                        ),
+        .m_status_good_frame    (                        )
+      );
+
+      axis_stereo_tlast_tagger stereo_tagger_i (
+        .clk_i          ( audio_clk         ),
+        .rst_ni         ( audio_resetn      ),
+        .s_axis_tdata   ( audio_fifo_tdata  ),
+        .s_axis_tvalid  ( audio_fifo_tvalid ),
+        .s_axis_tready  ( audio_fifo_tready ),
+        .m_axis_tdata   ( audio_axis_tdata  ),
+        .m_axis_tvalid  ( audio_axis_tvalid ),
+        .m_axis_tready  ( audio_axis_tready ),
+        .m_axis_tlast   ( audio_axis_tlast  )
+      );
+
+      axis_i2s2 i2s_i (
+        .axis_clk        ( audio_clk         ),
+        .axis_resetn     ( audio_resetn      ),
+        .tx_axis_s_data  ( audio_axis_tdata  ),
+        .tx_axis_s_valid ( audio_axis_tvalid ),
+        .tx_axis_s_ready ( audio_axis_tready ),
+        .tx_axis_s_last  ( audio_axis_tlast  ),
+        .rx_axis_m_data  (                   ),
+        .rx_axis_m_valid (                   ),
+        .rx_axis_m_ready ( 1'b1              ),
+        .rx_axis_m_last  (                   ),
+        .tx_mclk         ( i2s_tx_mclk       ),
+        .tx_lrck         ( i2s_tx_lrck       ),
+        .tx_sclk         ( i2s_tx_sclk       ),
+        .tx_sdout        ( i2s_tx_sdout      ),
+        .rx_mclk         (                   ),
+        .rx_lrck         (                   ),
+        .rx_sclk         (                   ),
+        .rx_sdin         ( 1'b0              )
+      );
+    end else begin : gen_no_idma_audio
+      assign idma_axis_rsp.tready = 1'b1;
+      assign i2s_tx_mclk = 1'b0;
+      assign i2s_tx_lrck = 1'b0;
+      assign i2s_tx_sclk = 1'b0;
+      assign i2s_tx_sdout = 1'b0;
+    end
   end else begin : gen_no_dma
     assign reg_awready = 1'b0;
     assign reg_wready  = 1'b0;
@@ -3225,6 +3368,10 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     assign reg_rresp   = 2'b00;
     assign reg_rid     = '0;
     assign reg_rdata   = '0;
+    assign i2s_tx_mclk = 1'b0;
+    assign i2s_tx_lrck = 1'b0;
+    assign i2s_tx_sclk = 1'b0;
+    assign i2s_tx_sdout = 1'b0;
 
     assign pc_lite_awaddr  = '0;
     assign pc_lite_awprot  = '0;

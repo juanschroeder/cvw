@@ -42,11 +42,13 @@ RV32 ?= 0
 CVWSOC_RV32 := $(filter $(BOOL_TRUE),$(RV32))
 SDHCI ?= 0
 DMA ?= 0
+I2S ?= 0
 BOOTROM ?= 0
 CVWSOC_BOOTROM := $(filter $(BOOL_TRUE),$(BOOTROM))
 # Enable SDHCI with bootrom boot (can't do RAM preload)
 CVWSOC_SIM_SDHCI := $(if $(CVWSOC_BOOTROM),1,$(filter $(BOOL_TRUE),$(SDHCI)))
 CVWSOC_SIM_DMA := $(filter $(BOOL_TRUE),$(DMA))
+CVWSOC_SIM_I2S := $(filter $(BOOL_TRUE),$(I2S))
 WALLYCONF ?= fpgagenesys2soc
 CONFIG ?= $(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF))
 CVWSOC_SIM_AXI_RAM ?= $(if $(CVWSOC_SIM_SDHCI),0,1)
@@ -60,6 +62,7 @@ VERILATOR_DIR := $(WALLY)/sim/verilator
 COPIED_ROOT := $(WALLY)/fpga/src/CopiedFiles_do_not_add_to_repo
 PULP_ROOT := $(COPIED_ROOT)/pulp
 PULP_AXI_ROOT := $(PULP_ROOT)/axi
+PULP_AXI_STREAM_ROOT := $(WALLY)/addins/pulp/axi_stream
 PULP_COMMON_CELLS_ROOT := $(PULP_ROOT)/common_cells
 PULP_REGISTER_INTERFACE_ROOT := $(PULP_ROOT)/register_interface
 SDHCI_ROOT := $(COPIED_ROOT)/sdhci/hw
@@ -249,7 +252,7 @@ BRIDGE_RTL_NEW := $(WALLY)/addins/ahb-axi-bridge/rtl/ahb_to_axi4_burst.sv
 BRIDGE_RTL_OLD := $(WALLY)/addins/ahb-to-axi/rtl/ahb_to_axi4_burst.sv
 BRIDGE_RTL ?= $(if $(wildcard $(BRIDGE_RTL_NEW)),$(BRIDGE_RTL_NEW),$(BRIDGE_RTL_OLD))
 WRAPPER ?= $(WALLY)/sim/verilator/wrapper_cvwsoc.cpp
-WORKDIR := $(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc$(if $(TRACE_ENABLED),_trace,)
+WORKDIR := $(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc$(if $(TRACE_ENABLED),_trace,)$(if $(CVWSOC_SIM_I2S),_i2s,)
 RUNCMD_FILE ?= $(VERILATOR_DIR)/logs/testbench_cvwsoc_runcmd.txt
 
 export CCACHE_DISABLE ?= 1
@@ -319,9 +322,9 @@ PULP_REGISTER_INTERFACE_SOURCES := \
 		$(wildcard $(PULP_ROOT)/register_interface/src/*.sv))
 
 IDMA_GENERATED_SOURCES := \
-	$(IDMA_ROOT)/target/rtl/idma_transport_layer_rw_axi.sv \
-	$(IDMA_ROOT)/target/rtl/idma_legalizer_rw_axi.sv \
-	$(IDMA_ROOT)/target/rtl/idma_backend_rw_axi.sv \
+	$(IDMA_ROOT)/target/rtl/idma_transport_layer_rw_axi_rw_axis.sv \
+	$(IDMA_ROOT)/target/rtl/idma_legalizer_rw_axi_rw_axis.sv \
+	$(IDMA_ROOT)/target/rtl/idma_backend_rw_axi_rw_axis.sv \
 	$(IDMA_ROOT)/target/rtl/idma_desc64_reg_pkg.sv \
 	$(IDMA_ROOT)/target/rtl/idma_desc64_reg_top.sv \
 	$(IDMA_ROOT)/target/rtl/idma_reg64_1d_reg_pkg.sv \
@@ -340,7 +343,15 @@ IDMA_SOURCES := \
 	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_reg_wrapper.sv \
 	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_top.sv \
 	$(IDMA_ROOT)/src/frontend/idma_transfer_id_gen.sv \
+	$(WALLY)/addins/cvwsoc/dma/axis_test_sink.sv \
+	$(WALLY)/addins/cvwsoc/dma/axis_stereo_tlast_tagger.sv \
 	$(WALLY)/addins/cvwsoc/dma/idma_wrap.sv
+
+I2S_SOURCES := $(if $(CVWSOC_SIM_I2S), \
+	$(WALLY)/addins/verilog-axis/rtl/axis_adapter.v \
+	$(WALLY)/addins/verilog-axis/rtl/axis_async_fifo.v \
+	$(WALLY)/addins/verilog-axis/rtl/axis_async_fifo_adapter.v \
+	$(WALLY)/addins/digilent-i2s2/shared/src/hdl/axis_i2s2.v,)
 
 
 CORE_SOURCES := $(filter-out \
@@ -393,6 +404,7 @@ INCLUDE_PATH := \
 	-I$(COPIED_ROOT)/config \
 	-I$(WALLY)/config/shared \
 	-I$(PULP_AXI_ROOT)/include \
+	-I$(PULP_AXI_STREAM_ROOT)/include \
 	-I$(PULP_COMMON_CELLS_ROOT)/include \
 	-I$(PULP_REGISTER_INTERFACE_ROOT)/include \
 	-I$(IDMA_ROOT)/src/include \
@@ -411,6 +423,7 @@ SOURCES := \
 	$(VERILOG_AXI_SOURCES) \
 	$(PULP_REGISTER_INTERFACE_SOURCES) \
 	$(IDMA_SOURCES) \
+	$(I2S_SOURCES) \
 	$(PERIPH_SOURCES)
 
 DEPENDENCIES := \
@@ -985,6 +998,7 @@ $(WORKDIR)/V$(TESTBENCH).mk: $(DEPENDENCIES)
 	$(if $(filter $(BOOL_TRUE),$(CVWSOC_SIM_AXI_RAM)),-DSIM_AXI_RAM,) \
 	$(if $(CVWSOC_SIM_SDHCI),-DSIM_AXI_SDHCI,) \
 	$(if $(CVWSOC_SIM_DMA),-DSIM_AXI_DMA,) \
+	$(if $(CVWSOC_SIM_I2S),-DSIM_I2S,) \
 	$(EXPANDED_PARAM_ARGS) \
 	$(SOURCES)
 
@@ -992,6 +1006,8 @@ cleantb:
 	rm -rf \
 		$(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc \
 		$(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc_trace \
+		$(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc_i2s \
+		$(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc_trace_i2s \
 		$(VERILATOR_DIR)/logs/testbench_cvwsoc*.out \
 		$(VERILATOR_DIR)/logs/testbench_cvwsoc*.pid \
 		$(RUNCMD_FILE) \

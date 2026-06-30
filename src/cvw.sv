@@ -170,6 +170,9 @@ typedef struct packed {
   logic         AXI_IDMA_REG64_SUPPORTED;
   logic [63:0]  AXI_IDMA_REG64_BASE;
   logic [63:0]  AXI_IDMA_REG64_RANGE;
+  logic         AXIS_IDMA_SUPPORTED;
+  logic [63:0]  AXIS_IDMA_BASE;
+  logic [63:0]  AXIS_IDMA_RANGE;
   logic         AXI_SDHCI_SUPPORTED;
   logic [63:0]  AXI_SDHCI_BASE;
   logic [63:0]  AXI_SDHCI_RANGE;

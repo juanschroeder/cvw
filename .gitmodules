@@ -94,3 +94,12 @@
   path = addins/pulp/idma
   url = https://github.com/juanschroeder/iDMA
   branch = cvwsoc
+[submodule "addins/pulp/axi_stream"]
+  path = addins/pulp/axi_stream
+  url = https://github.com/pulp-platform/axi_stream.git
+[submodule "verilog-axis"]
+  path = addins/verilog-axis
+  url = https://github.com/alexforencich/verilog-axis.git
+[submodule "digilent-i2s2"]
+  path = addins/digilent-i2s2
+  url = https://github.com/Digilent/Pmod-I2S2.git

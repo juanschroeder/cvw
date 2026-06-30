@@ -4,7 +4,7 @@
 # This clock is not used by wally or the AHB Bus. However it is used by the AXI BUS on the DD3 IP.
 
 #create_generated_clock -name CLKDiv64_Gen -source [get_pins wallypipelinedsoc/uncore.uncore/sdc.SDC/sd_top/slow_clk_divider/clkMux/I0] -multiply_by 1 -divide_by 1 [get_pins wallypipelinedsoc/uncore.uncore/sdc.SDC/sd_top/slow_clk_divider/clkMux/O]
-create_generated_clock -name SPISDCClock -source [get_pins mmcm/clk_out3] -multiply_by 1 -divide_by 1 [get_pins wallypipelinedsoc/SPICLK]
+create_generated_clock -name SPISDCClock -source [get_pins mmcm/clk_out4] -multiply_by 1 -divide_by 1 [get_pins wallypipelinedsoc/SPICLK]
 
 ##### clock #####
 set_property PACKAGE_PIN AD12 [get_ports default_200mhz_clk_p]
@@ -41,8 +41,8 @@ set_property -dict { PACKAGE_PIN E18   IOSTANDARD LVCMOS12 } [get_ports { GPI[0]
 set_property -dict { PACKAGE_PIN M19   IOSTANDARD LVCMOS12 } [get_ports { GPI[1] }]; #IO_0_15 Sch=btnd
 set_property -dict { PACKAGE_PIN M20   IOSTANDARD LVCMOS12 } [get_ports { GPI[2] }]; #IO_L6P_T0_15 Sch=btnl
 set_property -dict { PACKAGE_PIN C19   IOSTANDARD LVCMOS12 } [get_ports { GPI[3] }]; #IO_L24P_T3_17 Sch=btnr
-set_input_delay -clock [get_clocks clk_out3_mmcm] -min -add_delay 0.000 [get_ports {GPI[*]}]
-set_input_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 0.000 [get_ports {GPI[*]}]
+set_input_delay -clock [get_clocks clk_out4_mmcm] -min -add_delay 0.000 [get_ports {GPI[*]}]
+set_input_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 0.000 [get_ports {GPI[*]}]
 set_max_delay -from [get_ports {GPI[*]}] 20.000
 
 
@@ -54,8 +54,8 @@ set_property -dict { PACKAGE_PIN U29   IOSTANDARD LVCMOS33 } [get_ports { GPO[3]
 set_property -dict { PACKAGE_PIN V20   IOSTANDARD LVCMOS33 } [get_ports { GPO[4] }]; #IO_L19N_T3_A09_D25_VREF_14 Sch=led[4]
 set_max_delay -to [get_ports {GPO[*]}] 20.000
 
-set_output_delay -clock [get_clocks clk_out3_mmcm] -min -add_delay 0.000 [get_ports {GPO[*]}]
-set_output_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 0.000 [get_ports {GPO[*]}]
+set_output_delay -clock [get_clocks clk_out4_mmcm] -min -add_delay 0.000 [get_ports {GPO[*]}]
+set_output_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 0.000 [get_ports {GPO[*]}]
 
 
 
@@ -64,10 +64,10 @@ set_output_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 0.000 [get_po
 set_property -dict { PACKAGE_PIN Y23   IOSTANDARD LVCMOS33 } [get_ports { UARTSout }]; #IO_L1P_T0_12 Sch=uart_rx_out
 set_property -dict { PACKAGE_PIN Y20   IOSTANDARD LVCMOS33 } [get_ports { UARTSin }]; #IO_0_12 Sch=uart_tx_in
 #set_property DRIVE 4 [get_ports UARTSout]
-set_input_delay -clock [get_clocks clk_out3_mmcm] -min -add_delay 0.000 [get_ports UARTSin]
-set_input_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 0.000 [get_ports UARTSin]
-set_output_delay -clock [get_clocks clk_out3_mmcm] -min -add_delay 0.000 [get_ports UARTSout]
-set_output_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 0.000 [get_ports UARTSout]
+set_input_delay -clock [get_clocks clk_out4_mmcm] -min -add_delay 0.000 [get_ports UARTSin]
+set_input_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 0.000 [get_ports UARTSin]
+set_output_delay -clock [get_clocks clk_out4_mmcm] -min -add_delay 0.000 [get_ports UARTSout]
+set_output_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 0.000 [get_ports UARTSout]
 
 
 ##### reset #####
@@ -75,14 +75,14 @@ set_output_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 0.000 [get_po
 set_property -dict { PACKAGE_PIN B19   IOSTANDARD LVCMOS12 } [get_ports { south_reset }]; #IO_L24N_T3_17 Sch=btnu
 set_property -dict { PACKAGE_PIN R19   IOSTANDARD LVCMOS33 } [get_ports { resetn }]; #IO_0_14 Sch=cpu_resetn
 
-set_input_delay -clock [get_clocks clk_out3_mmcm] -min -add_delay 2.000 [get_ports resetn]
-set_input_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 2.000 [get_ports resetn]
+set_input_delay -clock [get_clocks clk_out4_mmcm] -min -add_delay 2.000 [get_ports resetn]
+set_input_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 2.000 [get_ports resetn]
 set_max_delay -from [get_ports resetn] 20.000
 set_false_path -from [get_ports resetn]
 
 
-set_input_delay -clock [get_clocks clk_out3_mmcm] -min -add_delay 2.000 [get_ports south_reset]
-set_input_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 2.000 [get_ports south_reset]
+set_input_delay -clock [get_clocks clk_out4_mmcm] -min -add_delay 2.000 [get_ports south_reset]
+set_input_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 2.000 [get_ports south_reset]
 set_max_delay -from [get_ports south_reset] 20.000
 set_false_path -from [get_ports south_reset]
 
@@ -392,3 +392,15 @@ set_property PULLUP true [get_ports { rgmii_int_n }]
 # LiteEth
 set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {^liteEthAXI/u_liteeth/IDELAYE2(_[0-9]+)?$}]
 #set_property IODELAY_GROUP DDR3-GROUP [get_cells -hier -regexp {^liteEthAXI/u_liteeth/IDELAYE2(_[0-9]+)?$}]
+
+# I2S2: PMOD JA
+# Tested: Dollatek PCM5102A, not exactly but similar to: https://github.com/pschatzmann/arduino-audio-tools/discussions/1641
+# 1:    JA1_P => U27 => LCLK (44.12 KHz)
+# 2:    JA1_N => U28 => BCK (bit clock, 2.824 Mhz)
+# 3:    JA2_P => T26 => DIN (data)
+# 4:    JA2_N => T27 => MCLK (22.59 MHz)
+set_property -dict { PACKAGE_PIN U27 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_lrck}]
+set_property -dict { PACKAGE_PIN U28 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_sclk}]
+set_property -dict { PACKAGE_PIN T26 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_sdout}]
+# For the DAC tested this signal is not connected (derived), but it needed XMT=3.3V
+set_property -dict { PACKAGE_PIN T27 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_mclk}]
