@@ -24,6 +24,7 @@ __pycache__/
 !.github/*
 /**/obj_dir*
 /**/gmon*
+sim/verilator/preload/
 
 # Tests
 tests/riscof/config32.ini

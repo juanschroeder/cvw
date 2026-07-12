@@ -170,6 +170,9 @@ typedef struct packed {
   logic         AXI_IDMA_REG64_SUPPORTED;
   logic [63:0]  AXI_IDMA_REG64_BASE;
   logic [63:0]  AXI_IDMA_REG64_RANGE;
+  logic         AXIS_IDMA_SUPPORTED;
+  logic [63:0]  AXIS_IDMA_BASE;
+  logic [63:0]  AXIS_IDMA_RANGE;
   logic         AXI_SDHCI_SUPPORTED;
   logic [63:0]  AXI_SDHCI_BASE;
   logic [63:0]  AXI_SDHCI_RANGE;
@@ -191,6 +194,7 @@ typedef struct packed {
   logic         UNCACHED_MEM_SUPPORTED;
   logic [63:0]  UNCACHED_MEM_BASE;
   logic [63:0]  UNCACHED_MEM_RANGE;
+  logic         AXIS_I2S_SUPPORTED;
 
 // Test modes
 

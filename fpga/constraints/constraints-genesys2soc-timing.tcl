@@ -206,3 +206,14 @@ set_false_path -to [must_get_pins {(^|.*/)sdhci_irq_ff1_reg(\[[01]\])?/D$}]
 
 ## VGA ##
 set_false_path -to [must_get_pins {(^|.*/)axi_vga_wrap_i/i_axi_to_reg/.*spill_register_flushable_i.*/(CLR|R)$}]
+
+# I2S IDMA audio FIFO Gray pointer CDC.
+set audio_fifo_sync [get_pins -hier -quiet -regexp {.*axis_audio_fifo_i/fifo_inst/(wr|rd)_ptr_gray_sync[12]_reg_reg\[[0-9]+\]/D$}]
+if {[llength $audio_fifo_sync]} {
+  set_property ASYNC_REG TRUE [get_cells -of_objects $audio_fifo_sync]
+  set_false_path -to [must_get_pins {.*axis_audio_fifo_i/fifo_inst/(wr|rd)_ptr_gray_sync1_reg_reg\[[0-9]+\]/D$}]
+  set_property ASYNC_REG TRUE [get_cells -of_objects [must_get_pins {.*axis_audio_fifo_i/fifo_inst/[sm]_rst_sync[123]_reg_reg/D$}]]
+  set_false_path -to [must_get_pins {.*axis_audio_fifo_i/fifo_inst/[sm]_rst_sync2_reg_reg/D$}]
+} else {
+  puts "INFO: I2S audio FIFO not present; skipping audio FIFO CDC constraints"
+}

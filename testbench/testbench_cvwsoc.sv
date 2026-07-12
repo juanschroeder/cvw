@@ -10,6 +10,7 @@
 `timescale 1ns / 1ps
 `include "config.vh"
 `include "axi/typedef.svh"
+`include "axi_stream/typedef.svh"
 
 import cvw::*;
 
@@ -72,8 +73,20 @@ module testbench_cvwsoc #(
       // Veri-lator $readmemh complains when boot.mem is bigger than size
       tmp.BOOTROM_RANGE = 64'h1FFFF;
       tmp.AXI_DUMMY_SUPPORTED = 1'b1;
-      tmp.AXI_IDMA_SUPPORTED = 1'b0; // enable to have iDMA
+`ifdef SIM_AXI_DMA
+      tmp.AXI_IDMA_SUPPORTED = 1'b1; // enable to have iDMA
       tmp.AXI_IDMA_REG64_SUPPORTED = 1'b1;
+      tmp.AXIS_IDMA_SUPPORTED = 1'b1;
+`else
+      tmp.AXI_IDMA_SUPPORTED = 1'b0; // enable to have iDMA
+      tmp.AXI_IDMA_REG64_SUPPORTED = 1'b0;
+      tmp.AXIS_IDMA_SUPPORTED = 1'b0;
+`endif
+`ifdef SIM_I2S
+      tmp.AXIS_I2S_SUPPORTED = 1'b1;
+`else
+      tmp.AXIS_I2S_SUPPORTED = 1'b0;
+`endif
       cvwsoc_sim_cfg = tmp;
     end
   endfunction
@@ -81,9 +94,9 @@ module testbench_cvwsoc #(
   localparam BUSW = P.AHBW; // AXI width = AHB width
   localparam cvw_t SOC_P = cvwsoc_sim_cfg(P);
   localparam int unsigned AXI_ID_WIDTH = 4;
-  localparam int unsigned XBAR_NUM_SLV_PORTS = 3;
-  localparam int unsigned XBAR_NUM_MST_PORTS = 5;
-  localparam int unsigned XBAR_NUM_ADDR_RULES = 5;
+  localparam int unsigned XBAR_NUM_SLV_PORTS = 4;
+  localparam int unsigned XBAR_NUM_MST_PORTS = 6;
+  localparam int unsigned XBAR_NUM_ADDR_RULES = 6;
   localparam int unsigned AXI_MST_ID_WIDTH = AXI_ID_WIDTH + $clog2(XBAR_NUM_SLV_PORTS);
   localparam logic [31:0] EXT_RAM_BASE_ADDR = 32'h8000_0000;
   localparam logic [31:0] EXT_RAM_END_ADDR = EXT_RAM_BASE_ADDR + (32'd1 << EXT_MEM_ADDR_WIDTH);
@@ -93,6 +106,8 @@ module testbench_cvwsoc #(
   localparam logic [31:0] AXI_IDMA_END_ADDR = AXI_IDMA_BASE_ADDR + SOC_P.AXI_IDMA_RANGE[31:0] + 32'd1;
   localparam logic [31:0] AXI_IDMA_REG64_BASE_ADDR = SOC_P.AXI_IDMA_REG64_BASE[31:0];
   localparam logic [31:0] AXI_IDMA_REG64_END_ADDR = AXI_IDMA_REG64_BASE_ADDR + SOC_P.AXI_IDMA_REG64_RANGE[31:0] + 32'd1;
+  localparam logic [31:0] AXIS_IDMA_BASE_ADDR = SOC_P.AXIS_IDMA_BASE[31:0];
+  localparam logic [31:0] AXIS_IDMA_END_ADDR = AXIS_IDMA_BASE_ADDR + SOC_P.AXIS_IDMA_RANGE[31:0] + 32'd1;
   localparam logic [31:0] AXI_DUMMY_BASE_ADDR = SOC_P.AXI_DUMMY_BASE[31:0];
   localparam logic [31:0] AXI_DUMMY_END_ADDR = AXI_DUMMY_BASE_ADDR + SOC_P.AXI_DUMMY_RANGE[31:0] + 32'd1;
   localparam longint unsigned HEARTBEAT_CYCLES = 10_000_000;
@@ -129,6 +144,11 @@ module testbench_cvwsoc #(
   `AXI_TYPEDEF_REQ_T    (mst_req_t, mst_aw_t, axi_w_t, mst_ar_t)
   `AXI_TYPEDEF_RESP_T   (mst_resp_t, mst_b_t, mst_r_t)
 
+  `AXI_STREAM_TYPEDEF_S_CHAN_T(axis_t_chan_t, axi_data_t, axi_strb_t,
+                               axi_strb_t, slv_id_t, slv_id_t, axi_user_t)
+  `AXI_STREAM_TYPEDEF_REQ_T(axis_req_t, axis_t_chan_t)
+  `AXI_STREAM_TYPEDEF_RSP_T(axis_rsp_t)
+
   localparam axi_pkg::xbar_cfg_t XBAR_CFG = '{
     NoSlvPorts:         XBAR_NUM_SLV_PORTS,
     NoMstPorts:         XBAR_NUM_MST_PORTS,
@@ -150,7 +170,8 @@ module testbench_cvwsoc #(
     '{ idx: 1, start_addr: SDHCI_BASE_ADDR, end_addr: SDHCI_END_ADDR },
     '{ idx: 2, start_addr: AXI_DUMMY_BASE_ADDR, end_addr: AXI_DUMMY_END_ADDR },
     '{ idx: 3, start_addr: AXI_IDMA_BASE_ADDR, end_addr: AXI_IDMA_END_ADDR },
-    '{ idx: 4, start_addr: AXI_IDMA_REG64_BASE_ADDR, end_addr: AXI_IDMA_REG64_END_ADDR }
+    '{ idx: 4, start_addr: AXI_IDMA_REG64_BASE_ADDR, end_addr: AXI_IDMA_REG64_END_ADDR },
+    '{ idx: 5, start_addr: AXIS_IDMA_BASE_ADDR, end_addr: AXIS_IDMA_END_ADDR }
   };
 
   // ---------------------------------------------------------------------------
@@ -203,13 +224,18 @@ module testbench_cvwsoc #(
 
   // Top-level debug aliases. The focused FST dump only keeps signals that are
   // reachable from this testbench scope, so keep the fault/debug path here.
-  logic [21:0]          dbg_uncore_hselregions;
+  logic [22:0]          dbg_uncore_hselregions;
   logic                 dbg_uncore_hsel_ram;
   logic                 dbg_uncore_hsel_ram_d;
   logic                 dbg_uncore_hsel_axisdhci;
   logic                 dbg_uncore_hsel_axisdhci_d;
   logic                 dbg_uncore_hsel_axidma;
   logic                 dbg_uncore_hsel_axidma_d;
+  logic                 dbg_uncore_hsel_axisidma;
+  logic                 dbg_uncore_hsel_axisidma_d;
+  logic                 dbg_idmaaxis_ahb_addr_accept;
+  logic                 dbg_idmaaxis_ahb_data_wait;
+  logic                 dbg_idmaaxis_ahb_data_complete;
   logic [P.PA_BITS-1:0] dbg_uncore_haddr;
   logic [P.AHBW-1:0]    dbg_uncore_hwdata;
   logic [P.AHBW/8-1:0]  dbg_uncore_hwstrb;
@@ -375,6 +401,16 @@ module testbench_cvwsoc #(
   assign dbg_uncore_hsel_axisdhci_d         = soc.uncoregen.uncore.HSELAXISDHCID;
   assign dbg_uncore_hsel_axidma             = soc.uncoregen.uncore.HSELAXIDMA;
   assign dbg_uncore_hsel_axidma_d           = soc.uncoregen.uncore.HSELAXIDMAD;
+  assign dbg_uncore_hsel_axisidma           = soc.uncoregen.uncore.HSELAXISIDMA;
+  assign dbg_uncore_hsel_axisidma_d         = soc.uncoregen.uncore.HSELAXISIDMAD;
+  // AHB is pipelined: HADDR/HWRITE describe the address phase while the
+  // delayed select and HREADYEXT describe completion of its data phase.
+  assign dbg_idmaaxis_ahb_addr_accept = dbg_uncore_hsel_axisidma &&
+                                         HTRANS[1] && HREADY;
+  assign dbg_idmaaxis_ahb_data_wait = dbg_uncore_hsel_axisidma_d &&
+                                      !HREADYEXT;
+  assign dbg_idmaaxis_ahb_data_complete = dbg_uncore_hsel_axisidma_d &&
+                                          HREADYEXT;
   assign dbg_load_misaligned_fault_m        = soc.core.LoadMisalignedFaultM;
   assign dbg_load_access_fault_m            = soc.core.LoadAccessFaultM;
   assign dbg_load_page_fault_m              = soc.core.LoadPageFaultM;
@@ -632,8 +668,8 @@ module testbench_cvwsoc #(
     .dst_resp_i (cdc_axi_resp)
   );
 
-  // Slave port 0 is CPU traffic through the CDC. Slave port 1 is desc64
-  // descriptor-fetch traffic. Slave port 2 is the shared iDMA backend master.
+  // Slave port 0 is CPU traffic through the CDC. Slave ports 1 and 3 are the
+  // two desc64 descriptor-fetch masters. Slave port 2 is the shared backend.
   assign slv_req[0] = cdc_axi_req;
   assign cdc_axi_resp = slv_resp[0];
 
@@ -735,6 +771,11 @@ module testbench_cvwsoc #(
   logic [63:0] dbg_idmad64_queued_addr;
   logic dbg_idmad64_idma_req_valid;
   logic dbg_idmad64_idma_req_ready;
+  logic [31:0] dbg_idmad64_idma_req_length;
+  logic [31:0] dbg_idmad64_idma_req_src_addr;
+  logic [31:0] dbg_idmad64_idma_req_dst_addr;
+  logic [2:0] dbg_idmad64_idma_req_src_protocol;
+  logic [2:0] dbg_idmad64_idma_req_dst_protocol;
   logic dbg_idmad64_idma_rsp_valid;
   logic dbg_idmad64_idma_rsp_ready;
   logic dbg_idmad64_do_irq;
@@ -742,16 +783,189 @@ module testbench_cvwsoc #(
   logic dbg_idmad64_do_irq_ready;
   logic dbg_idmad64_do_irq_out;
 
-  mst_req_t [1:0] idma_slv_req;
-  mst_resp_t [1:0] idma_slv_resp;
+  // Flat playback-path probes.  The Verilator FST setup only records signals
+  // declared at this testbench level, so do not replace these with structs.
+  logic dbg_idmaaxis_irq;
+  logic dbg_idmaaxis_mmio_aw_valid;
+  logic dbg_idmaaxis_mmio_aw_ready;
+  logic [31:0] dbg_idmaaxis_mmio_aw_addr;
+  logic dbg_idmaaxis_mmio_w_valid;
+  logic dbg_idmaaxis_mmio_w_ready;
+  logic [BUSW-1:0] dbg_idmaaxis_mmio_w_data;
+  logic [BUSW/8-1:0] dbg_idmaaxis_mmio_w_strb;
+  logic dbg_idmaaxis_mmio_b_valid;
+  logic dbg_idmaaxis_mmio_b_ready;
+  logic [1:0] dbg_idmaaxis_mmio_b_resp;
+  logic dbg_idmaaxis_mmio_ar_valid;
+  logic dbg_idmaaxis_mmio_ar_ready;
+  logic [31:0] dbg_idmaaxis_mmio_ar_addr;
+  logic dbg_idmaaxis_mmio_r_valid;
+  logic dbg_idmaaxis_mmio_r_ready;
+  logic [BUSW-1:0] dbg_idmaaxis_mmio_r_data;
+  logic [1:0] dbg_idmaaxis_mmio_r_resp;
+  logic dbg_idmaaxis_desc_ar_valid;
+  logic dbg_idmaaxis_desc_ar_ready;
+  logic [31:0] dbg_idmaaxis_desc_ar_addr;
+  logic [7:0] dbg_idmaaxis_desc_ar_len;
+  logic dbg_idmaaxis_desc_r_valid;
+  logic dbg_idmaaxis_desc_r_ready;
+  logic [BUSW-1:0] dbg_idmaaxis_desc_r_data;
+  logic dbg_idmaaxis_desc_r_last;
+  logic [1:0] dbg_idmaaxis_desc_r_resp;
+  logic dbg_idmaaxis_input_addr_valid;
+  logic dbg_idmaaxis_input_addr_ready;
+  logic [63:0] dbg_idmaaxis_input_addr;
+  logic dbg_idmaaxis_queued_addr_valid;
+  logic dbg_idmaaxis_queued_addr_ready;
+  logic [63:0] dbg_idmaaxis_queued_addr;
+  logic dbg_idmaaxis_fe_req_valid;
+  logic dbg_idmaaxis_fe_req_ready;
+  logic [31:0] dbg_idmaaxis_fe_req_length;
+  logic [31:0] dbg_idmaaxis_fe_req_src_addr;
+  logic [31:0] dbg_idmaaxis_fe_req_dst_addr;
+  logic [2:0] dbg_idmaaxis_fe_raw_src_protocol;
+  logic [2:0] dbg_idmaaxis_fe_raw_dst_protocol;
+  logic [2:0] dbg_idmaaxis_fe_req_src_protocol;
+  logic [2:0] dbg_idmaaxis_fe_req_dst_protocol;
+  logic dbg_idmaaxis_fe_rsp_valid;
+  logic dbg_idmaaxis_fe_rsp_ready;
+  logic dbg_idmaaxis_fe_rsp_error;
+  logic dbg_idmaaxis_fe_rsp_last;
+  logic dbg_idmaaxis_do_irq;
+  logic dbg_idmaaxis_do_metadata_valid;
+  logic dbg_idmaaxis_do_metadata_ready;
+  logic dbg_idmaaxis_do_irq_out;
+  logic [2:0] dbg_idmaaxis_arb_fe_valid;
+  logic [2:0] dbg_idmaaxis_arb_fe_ready;
+  logic [2:0] dbg_idmaaxis_arb_fe_valid_raw;
+  logic [2:0] dbg_idmaaxis_arb_fe_ready_raw;
+  logic [1:0] dbg_idmaaxis_arb_frontend_idx;
+  logic [1:0] dbg_idmaaxis_arb_frontend_idx_q;
+  logic [8:0] dbg_idmaaxis_arb_outstanding;
+  logic dbg_idmaaxis_arb_req_handshake;
+  logic dbg_idmaaxis_arb_rsp_handshake;
+  logic dbg_idmaaxis_be_req_valid;
+  logic dbg_idmaaxis_be_req_ready;
+  logic [31:0] dbg_idmaaxis_be_req_length;
+  logic [31:0] dbg_idmaaxis_be_req_src_addr;
+  logic [31:0] dbg_idmaaxis_be_req_dst_addr;
+  logic [2:0] dbg_idmaaxis_be_req_src_protocol;
+  logic [2:0] dbg_idmaaxis_be_req_dst_protocol;
+  logic dbg_idmaaxis_be_rsp_valid;
+  logic dbg_idmaaxis_be_rsp_ready;
+  logic dbg_idmaaxis_be_rsp_error;
+  logic dbg_idmaaxis_be_rsp_last;
+  logic [7:0] dbg_idmaaxis_be_busy;
+  logic dbg_idmaaxis_leg_r_valid;
+  logic dbg_idmaaxis_leg_r_ready;
+  logic dbg_idmaaxis_leg_w_valid;
+  logic dbg_idmaaxis_leg_w_ready;
+  logic dbg_idmaaxis_dp_r_valid;
+  logic dbg_idmaaxis_dp_r_ready;
+  logic [2:0] dbg_idmaaxis_dp_r_protocol;
+  logic dbg_idmaaxis_dp_w_valid;
+  logic dbg_idmaaxis_dp_w_ready;
+  logic [2:0] dbg_idmaaxis_dp_w_protocol;
+  logic dbg_idmaaxis_meta_ar_valid;
+  logic dbg_idmaaxis_meta_ar_ready;
+  logic [2:0] dbg_idmaaxis_meta_ar_protocol;
+  logic [31:0] dbg_idmaaxis_meta_ar_addr;
+  logic dbg_idmaaxis_meta_aw_valid;
+  logic dbg_idmaaxis_meta_aw_ready;
+  logic [2:0] dbg_idmaaxis_meta_aw_protocol;
+  logic dbg_idmaaxis_read_ar_valid;
+  logic dbg_idmaaxis_read_ar_ready;
+  logic [31:0] dbg_idmaaxis_read_ar_addr;
+  logic [7:0] dbg_idmaaxis_read_ar_len;
+  logic dbg_idmaaxis_read_r_valid;
+  logic dbg_idmaaxis_read_r_ready;
+  logic [BUSW-1:0] dbg_idmaaxis_read_r_data;
+  logic dbg_idmaaxis_read_r_last;
+  logic [1:0] dbg_idmaaxis_read_r_resp;
+  logic dbg_idmaaxis_axis_w_req_valid;
+  logic dbg_idmaaxis_axis_w_req_ready;
+  logic dbg_idmaaxis_axis_ready_to_write;
+  logic dbg_idmaaxis_axis_write_happening;
+  logic [BUSW/8-1:0] dbg_idmaaxis_axis_buffer_valid;
+  logic dbg_idmaaxis_axis_w_rsp_valid;
+  logic dbg_idmaaxis_w_resp_fifo_in_valid;
+  logic dbg_idmaaxis_w_resp_fifo_in_ready;
+  logic dbg_idmaaxis_w_resp_fifo_out_valid;
+  logic dbg_idmaaxis_w_resp_fifo_out_ready;
+  logic dbg_idmaaxis_w_dp_rsp_valid;
+  logic dbg_idmaaxis_tvalid;
+  logic dbg_idmaaxis_tready;
+  logic dbg_idmaaxis_transfer;
+  logic [BUSW-1:0] dbg_idmaaxis_tdata;
+  logic [BUSW/8-1:0] dbg_idmaaxis_tkeep;
+  logic [BUSW/8-1:0] dbg_idmaaxis_tstrb;
+  logic dbg_idmaaxis_tlast;
+  logic [AXI_ID_WIDTH-1:0] dbg_idmaaxis_tid;
+  logic [AXI_ID_WIDTH-1:0] dbg_idmaaxis_tdest;
+  logic dbg_idmaaxis_tuser;
+  logic [63:0] dbg_idmaaxis_sink_accepted_bytes;
+  logic dbg_idmaaxis_sink_data_error;
+  logic dbg_idmaaxis_sink_tkeep_error;
+  logic dbg_idmaaxis_sink_tlast_error;
+  logic dbg_idmaaxis_sink_stability_error;
+
+  mst_req_t [2:0] idma_slv_req;
+  mst_resp_t [2:0] idma_slv_resp;
+  slv_req_t [1:0] idma_fe_req;
+  slv_resp_t [1:0] idma_fe_resp;
+  axis_req_t idma_axis_req;
+  axis_rsp_t idma_axis_rsp;
+  logic idma_axis_irq;
+  logic [31:0] axis_stall_period;
+  logic [31:0] axis_stall_cycles;
+  logic [63:0] axis_accepted_bytes;
+  logic axis_data_error;
+  logic axis_tkeep_error;
+  logic axis_tlast_error;
+  logic axis_stability_error;
+  logic [1:0] audio_clk_div_q;
+  logic audio_clk;
+  logic [31:0] i2s_axis_tdata;
+  logic [3:0] i2s_axis_tkeep;
+  logic i2s_axis_tvalid;
+  logic i2s_axis_tready;
+  logic i2s_axis_tlast;
+  logic i2s_tx_mclk;
+  logic i2s_tx_lrck;
+  logic i2s_tx_sclk;
+  logic i2s_tx_sdout;
+  logic i2s_rx_mclk;
+  logic i2s_rx_lrck;
+  logic i2s_rx_sclk;
+
+  // 100 MHz simulation clock divided by four for the initial I2S model.
+  always_ff @(posedge clk or posedge reset_ext) begin
+    if (reset_ext)
+      audio_clk_div_q <= '0;
+    else
+      audio_clk_div_q <= audio_clk_div_q + 1'b1;
+  end
+  assign audio_clk = audio_clk_div_q[1];
 
   assign idma_slv_req[0] = mst_req[3];
   assign idma_slv_req[1] = mst_req[4];
+  assign idma_slv_req[2] = mst_req[5];
   assign mst_resp[3] = idma_slv_resp[0];
   assign mst_resp[4] = idma_slv_resp[1];
+  assign mst_resp[5] = idma_slv_resp[2];
 
-  if (SOC_P.AXI_IDMA_SUPPORTED || SOC_P.AXI_IDMA_REG64_SUPPORTED) begin : gen_idma
-    idma_wrap #(
+  initial begin
+    axis_stall_period = '0;
+    axis_stall_cycles = '0;
+    void'($value$plusargs("axis_stall_period=%d", axis_stall_period));
+    void'($value$plusargs("axis_stall_cycles=%d", axis_stall_cycles));
+  end
+
+  if (SOC_P.AXI_IDMA_SUPPORTED || SOC_P.AXI_IDMA_REG64_SUPPORTED ||
+      SOC_P.AXIS_IDMA_SUPPORTED) begin : gen_idma
+    localparam int unsigned AudioFifoDepth = 4096;
+    logic [$clog2(AudioFifoDepth):0] audio_fifo_depth;
+    idma_axi_axis_wrap #(
       .AxiAddrWidth      ( 32                   ),
       .AxiDataWidth      ( BUSW                 ),
       .AxiIdWidth        ( AXI_ID_WIDTH         ),
@@ -764,24 +978,172 @@ module testbench_cvwsoc #(
       .JobFifoDepth      ( 2                    ),
       .RAWCouplingAvail  ( 1'b0                 ),
       .EnableDesc64      ( SOC_P.AXI_IDMA_SUPPORTED ),
+      .EnableDesc64AxiAxis  ( SOC_P.AXIS_IDMA_SUPPORTED ),
       .EnableReg64       ( SOC_P.AXI_IDMA_REG64_SUPPORTED ),
       .EnableReg64TwoD   ( 1'b0                 ),
+      .EnableAxisFifoAdmission ( SOC_P.AXIS_IDMA_SUPPORTED ),
+      .AxisFifoCapacityBytes ( AudioFifoDepth   ),
       .axi_mst_req_t     ( slv_req_t            ),
       .axi_mst_rsp_t     ( slv_resp_t           ),
       .axi_slv_req_t     ( mst_req_t            ),
-      .axi_slv_rsp_t     ( mst_resp_t           )
+      .axi_slv_rsp_t     ( mst_resp_t           ),
+      .axis_t_chan_t     ( axis_t_chan_t        ),
+      .axis_req_t        ( axis_req_t           ),
+      .axis_rsp_t        ( axis_rsp_t           )
     ) idma_i (
       .clk_i             ( bus_clk       ),
       .rst_ni            ( ~bus_reset    ),
       .testmode_i        ( 1'b0          ),
-      .axi_mst_fe_req_o  ( slv_req[1]    ),
-      .axi_mst_fe_rsp_i  ( slv_resp[1]   ),
+      .axi_mst_fe_req_o  ( idma_fe_req   ),
+      .axi_mst_fe_rsp_i  ( idma_fe_resp  ),
       .axi_mst_be_req_o  ( slv_req[2]    ),
       .axi_mst_be_rsp_i  ( slv_resp[2]   ),
       .axi_slv_req_i     ( idma_slv_req  ),
       .axi_slv_rsp_o     ( idma_slv_resp ),
-      .irq_o             ( AXI_IDMAIntr  )
+      .axis_write_req_o  ( idma_axis_req ),
+      .axis_write_rsp_i  ( idma_axis_rsp ),
+      .axis_fifo_occupancy_i ( audio_fifo_depth ),
+      .irq_o             ( AXI_IDMAIntr  ),
+      .axis_irq_o        ( idma_axis_irq )
     );
+
+    assign slv_req[1] = idma_fe_req[0];
+    assign idma_fe_resp[0] = slv_resp[1];
+    assign slv_req[3] = idma_fe_req[1];
+    assign idma_fe_resp[1] = slv_resp[3];
+
+    if (SOC_P.AXIS_I2S_SUPPORTED) begin
+        logic [31:0] fifo_axis_tdata;
+        logic [3:0] fifo_axis_tkeep;
+        logic fifo_axis_tvalid;
+        logic fifo_axis_tready;
+        logic fifo_axis_tlast;
+
+        axis_async_fifo_adapter #(
+        .DEPTH          ( AudioFifoDepth ),
+        .S_DATA_WIDTH   ( BUSW     ),
+        .S_KEEP_ENABLE  ( 1        ),
+        .S_KEEP_WIDTH   ( BUSW/8   ),
+        .M_DATA_WIDTH   ( 32       ),
+        .M_KEEP_ENABLE  ( 1        ),
+        .M_KEEP_WIDTH   ( 4        ),
+        .ID_ENABLE      ( 0        ),
+        .ID_WIDTH       ( AXI_ID_WIDTH ),
+        .DEST_ENABLE    ( 0        ),
+        .DEST_WIDTH     ( AXI_ID_WIDTH ),
+        .USER_ENABLE    ( 0        ),
+        .USER_WIDTH     ( 1        ),
+        .PAUSE_ENABLE   ( 0        )
+        ) axis_audio_fifo_i (
+        .s_clk                  ( bus_clk              ),
+        .s_rst                  ( bus_reset            ),
+        .s_axis_tdata           ( idma_axis_req.t.data ),
+        .s_axis_tkeep           ( idma_axis_req.t.keep ),
+        .s_axis_tvalid          ( idma_axis_req.tvalid ),
+        .s_axis_tready          ( idma_axis_rsp.tready ),
+        .s_axis_tlast           ( idma_axis_req.t.last ),
+        .s_axis_tid             ( idma_axis_req.t.id   ),
+        .s_axis_tdest           ( idma_axis_req.t.dest ),
+        .s_axis_tuser           ( idma_axis_req.t.user ),
+        .m_clk                  ( audio_clk            ),
+        .m_rst                  ( reset_ext            ),
+        .m_axis_tdata           ( fifo_axis_tdata      ),
+        .m_axis_tkeep           ( fifo_axis_tkeep      ),
+        .m_axis_tvalid          ( fifo_axis_tvalid     ),
+        .m_axis_tready          ( fifo_axis_tready     ),
+        .m_axis_tlast           ( fifo_axis_tlast      ),
+        .m_axis_tid             (                      ),
+        .m_axis_tdest           (                      ),
+        .m_axis_tuser           (                      ),
+        .s_pause_req            ( 1'b0                 ),
+        .s_pause_ack            (                      ),
+        .m_pause_req            ( 1'b0                 ),
+        .m_pause_ack            (                      ),
+        .s_status_depth         ( audio_fifo_depth     ),
+        .s_status_depth_commit  (                      ),
+        .s_status_overflow      (                      ),
+        .s_status_bad_frame     (                      ),
+        .s_status_good_frame    (                      ),
+        .m_status_depth         (                      ),
+        .m_status_depth_commit  (                      ),
+        .m_status_overflow      (                      ),
+        .m_status_bad_frame     (                      ),
+        .m_status_good_frame    (                      )
+        );
+
+        axis_stereo_tlast_tagger stereo_tagger_i (
+        .clk_i          ( audio_clk       ),
+        .rst_ni         ( ~reset_ext      ),
+        .s_axis_tdata   ( fifo_axis_tdata ),
+        .s_axis_tvalid  ( fifo_axis_tvalid ),
+        .s_axis_tready  ( fifo_axis_tready ),
+        .m_axis_tdata   ( i2s_axis_tdata  ),
+        .m_axis_tvalid  ( i2s_axis_tvalid ),
+        .m_axis_tready  ( i2s_axis_tready ),
+        .m_axis_tlast   ( i2s_axis_tlast  )
+        );
+
+        assign i2s_axis_tkeep = fifo_axis_tkeep;
+
+        axis_i2s2 i2s_i (
+        .axis_clk        ( audio_clk       ),
+        .axis_resetn     ( ~reset_ext      ),
+        .tx_axis_s_data  ( i2s_axis_tdata  ),
+        .tx_axis_s_valid ( i2s_axis_tvalid ),
+        .tx_axis_s_ready ( i2s_axis_tready ),
+        .tx_axis_s_last  ( i2s_axis_tlast  ),
+        .rx_axis_m_data  (                 ),
+        .rx_axis_m_valid (                 ),
+        .rx_axis_m_ready ( 1'b1            ),
+        .rx_axis_m_last  (                 ),
+        .tx_mclk         ( i2s_tx_mclk     ),
+        .tx_lrck         ( i2s_tx_lrck     ),
+        .tx_sclk         ( i2s_tx_sclk     ),
+        .tx_sdout        ( i2s_tx_sdout    ),
+        .rx_mclk         ( i2s_rx_mclk     ),
+        .rx_lrck         ( i2s_rx_lrck     ),
+        .rx_sclk         ( i2s_rx_sclk     ),
+        .rx_sdin         ( 1'b0            )
+        );
+
+        assign axis_accepted_bytes = '0;
+        assign axis_data_error = 1'b0;
+        assign axis_tkeep_error = 1'b0;
+        assign axis_tlast_error = 1'b0;
+        assign axis_stability_error = 1'b0;
+    end else begin
+        axis_test_sink #(
+        .DataWidth ( BUSW          ),
+        .axis_req_t ( axis_req_t   ),
+        .axis_rsp_t ( axis_rsp_t   )
+        ) axis_sink_i (
+        .clk_i                  ( bus_clk             ),
+        .rst_ni                 ( ~bus_reset          ),
+        .axis_req_i             ( idma_axis_req       ),
+        .axis_rsp_o             ( idma_axis_rsp       ),
+        .stall_period_i         ( axis_stall_period   ),
+        .stall_cycles_i         ( axis_stall_cycles   ),
+        .report_i               ( idma_axis_irq       ),
+        .accepted_byte_count_o  ( axis_accepted_bytes ),
+        .data_error_o           ( axis_data_error     ),
+        .tkeep_error_o          ( axis_tkeep_error    ),
+        .tlast_error_o          ( axis_tlast_error    ),
+        .stability_error_o      ( axis_stability_error )
+        );
+
+        assign i2s_axis_tdata = '0;
+        assign i2s_axis_tkeep = '0;
+        assign i2s_axis_tvalid = 1'b0;
+        assign i2s_axis_tready = 1'b0;
+        assign i2s_axis_tlast = 1'b0;
+        assign i2s_tx_mclk = 1'b0;
+        assign i2s_tx_lrck = 1'b0;
+        assign i2s_tx_sclk = 1'b0;
+        assign i2s_tx_sdout = 1'b0;
+        assign i2s_rx_mclk = 1'b0;
+        assign i2s_rx_lrck = 1'b0;
+        assign i2s_rx_sclk = 1'b0;
+    end
 
     assign dbg_idmar64_irq_pending = idma_i.irq_pending;
     assign dbg_idmar64_irq_enable = idma_i.irq_enable;
@@ -875,6 +1237,202 @@ module testbench_cvwsoc #(
     assign dbg_idmad64_be_b_valid = slv_resp[2].b_valid;
     assign dbg_idmad64_be_b_ready = slv_req[2].b_ready;
 
+    assign dbg_idmaaxis_irq = idma_axis_irq;
+    assign dbg_idmaaxis_mmio_aw_valid = mst_req[5].aw_valid;
+    assign dbg_idmaaxis_mmio_aw_ready = mst_resp[5].aw_ready;
+    assign dbg_idmaaxis_mmio_aw_addr = mst_req[5].aw.addr;
+    assign dbg_idmaaxis_mmio_w_valid = mst_req[5].w_valid;
+    assign dbg_idmaaxis_mmio_w_ready = mst_resp[5].w_ready;
+    assign dbg_idmaaxis_mmio_w_data = mst_req[5].w.data;
+    assign dbg_idmaaxis_mmio_w_strb = mst_req[5].w.strb;
+    assign dbg_idmaaxis_mmio_b_valid = mst_resp[5].b_valid;
+    assign dbg_idmaaxis_mmio_b_ready = mst_req[5].b_ready;
+    assign dbg_idmaaxis_mmio_b_resp = mst_resp[5].b.resp;
+    assign dbg_idmaaxis_mmio_ar_valid = mst_req[5].ar_valid;
+    assign dbg_idmaaxis_mmio_ar_ready = mst_resp[5].ar_ready;
+    assign dbg_idmaaxis_mmio_ar_addr = mst_req[5].ar.addr;
+    assign dbg_idmaaxis_mmio_r_valid = mst_resp[5].r_valid;
+    assign dbg_idmaaxis_mmio_r_ready = mst_req[5].r_ready;
+    assign dbg_idmaaxis_mmio_r_data = mst_resp[5].r.data;
+    assign dbg_idmaaxis_mmio_r_resp = mst_resp[5].r.resp;
+
+    assign dbg_idmaaxis_desc_ar_valid = slv_req[3].ar_valid;
+    assign dbg_idmaaxis_desc_ar_ready = slv_resp[3].ar_ready;
+    assign dbg_idmaaxis_desc_ar_addr = slv_req[3].ar.addr;
+    assign dbg_idmaaxis_desc_ar_len = slv_req[3].ar.len;
+    assign dbg_idmaaxis_desc_r_valid = slv_resp[3].r_valid;
+    assign dbg_idmaaxis_desc_r_ready = slv_req[3].r_ready;
+    assign dbg_idmaaxis_desc_r_data = slv_resp[3].r.data;
+    assign dbg_idmaaxis_desc_r_last = slv_resp[3].r.last;
+    assign dbg_idmaaxis_desc_r_resp = slv_resp[3].r.resp;
+
+    assign dbg_idmaaxis_arb_fe_valid = idma_i.fe_arb_i.idma_req_fe_valid;
+    assign dbg_idmaaxis_arb_fe_ready = idma_i.fe_arb_i.idma_req_fe_ready;
+    assign dbg_idmaaxis_arb_fe_valid_raw = idma_i.idma_req_fe_valid;
+    assign dbg_idmaaxis_arb_fe_ready_raw = idma_i.idma_req_fe_ready;
+    assign dbg_idmaaxis_arb_frontend_idx = idma_i.fe_arb_i.idma_fe_idx;
+    assign dbg_idmaaxis_arb_frontend_idx_q = idma_i.fe_arb_i.idma_fe_idx_q;
+    assign dbg_idmaaxis_arb_outstanding = idma_i.fe_arb_i.ongoing_req_cnt_q;
+    assign dbg_idmaaxis_arb_req_handshake = idma_i.fe_arb_i.is_new_idma_req;
+    assign dbg_idmaaxis_arb_rsp_handshake = idma_i.fe_arb_i.is_new_idma_rsp;
+    assign dbg_idmaaxis_be_req_valid = idma_i.idma_req_valid;
+    assign dbg_idmaaxis_be_req_ready = idma_i.idma_req_ready;
+    assign dbg_idmaaxis_be_req_length = idma_i.idma_req.length;
+    assign dbg_idmaaxis_be_req_src_addr = idma_i.idma_req.src_addr;
+    assign dbg_idmaaxis_be_req_dst_addr = idma_i.idma_req.dst_addr;
+    assign dbg_idmaaxis_be_req_src_protocol = idma_i.idma_req.opt.src_protocol;
+    assign dbg_idmaaxis_be_req_dst_protocol = idma_i.idma_req.opt.dst_protocol;
+    assign dbg_idmaaxis_be_rsp_valid = idma_i.idma_rsp_valid;
+    assign dbg_idmaaxis_be_rsp_ready = idma_i.idma_rsp_ready;
+    assign dbg_idmaaxis_be_rsp_error = idma_i.idma_rsp.error;
+    assign dbg_idmaaxis_be_rsp_last = idma_i.idma_rsp.last;
+    assign dbg_idmaaxis_be_busy = idma_i.busy;
+
+    assign dbg_idmaaxis_leg_r_valid = idma_i.backend_i.r_valid;
+    assign dbg_idmaaxis_leg_r_ready = idma_i.backend_i.r_ready;
+    assign dbg_idmaaxis_leg_w_valid = idma_i.backend_i.w_valid;
+    assign dbg_idmaaxis_leg_w_ready = idma_i.backend_i.w_ready;
+    assign dbg_idmaaxis_dp_r_valid = idma_i.backend_i.r_dp_req_out_valid;
+    assign dbg_idmaaxis_dp_r_ready = idma_i.backend_i.r_dp_req_out_ready;
+    assign dbg_idmaaxis_dp_r_protocol =
+        idma_i.backend_i.r_dp_req_out.src_protocol;
+    assign dbg_idmaaxis_dp_w_valid = idma_i.backend_i.w_dp_req_out_valid;
+    assign dbg_idmaaxis_dp_w_ready = idma_i.backend_i.w_dp_req_out_ready;
+    assign dbg_idmaaxis_dp_w_protocol =
+        idma_i.backend_i.w_dp_req_out.dst_protocol;
+    assign dbg_idmaaxis_meta_ar_valid = idma_i.backend_i.ar_valid_dp;
+    assign dbg_idmaaxis_meta_ar_ready = idma_i.backend_i.ar_ready_dp;
+    assign dbg_idmaaxis_meta_ar_protocol =
+        idma_i.backend_i.ar_req_dp.src_protocol;
+    assign dbg_idmaaxis_meta_ar_addr =
+        idma_i.backend_i.ar_req_dp.ar_req.axi.ar_chan.addr;
+    assign dbg_idmaaxis_meta_aw_valid = idma_i.backend_i.aw_valid_dp;
+    assign dbg_idmaaxis_meta_aw_ready = idma_i.backend_i.aw_ready_dp;
+    assign dbg_idmaaxis_meta_aw_protocol =
+        idma_i.backend_i.aw_req_dp.dst_protocol;
+
+    assign dbg_idmaaxis_read_ar_valid = slv_req[2].ar_valid;
+    assign dbg_idmaaxis_read_ar_ready = slv_resp[2].ar_ready;
+    assign dbg_idmaaxis_read_ar_addr = slv_req[2].ar.addr;
+    assign dbg_idmaaxis_read_ar_len = slv_req[2].ar.len;
+    assign dbg_idmaaxis_read_r_valid = slv_resp[2].r_valid;
+    assign dbg_idmaaxis_read_r_ready = slv_req[2].r_ready;
+    assign dbg_idmaaxis_read_r_data = slv_resp[2].r.data;
+    assign dbg_idmaaxis_read_r_last = slv_resp[2].r.last;
+    assign dbg_idmaaxis_read_r_resp = slv_resp[2].r.resp;
+
+    assign dbg_idmaaxis_axis_w_req_valid =
+        idma_i.backend_i.i_idma_transport_layer.w_dp_req_valid;
+    assign dbg_idmaaxis_axis_w_req_ready =
+        idma_i.backend_i.i_idma_transport_layer.axis_w_dp_ready;
+    assign dbg_idmaaxis_axis_ready_to_write =
+        idma_i.backend_i.i_idma_transport_layer.i_idma_axis_write.ready_to_write;
+    assign dbg_idmaaxis_axis_write_happening =
+        idma_i.backend_i.i_idma_transport_layer.i_idma_axis_write.write_happening;
+    assign dbg_idmaaxis_axis_buffer_valid =
+        idma_i.backend_i.i_idma_transport_layer.buffer_out_valid_shifted;
+    assign dbg_idmaaxis_axis_w_rsp_valid =
+        idma_i.backend_i.i_idma_transport_layer.axis_w_dp_rsp_valid;
+    assign dbg_idmaaxis_w_resp_fifo_in_valid =
+        idma_i.backend_i.i_idma_transport_layer.w_resp_fifo_in_valid;
+    assign dbg_idmaaxis_w_resp_fifo_in_ready =
+        idma_i.backend_i.i_idma_transport_layer.w_resp_fifo_in_ready;
+    assign dbg_idmaaxis_w_resp_fifo_out_valid =
+        idma_i.backend_i.i_idma_transport_layer.w_resp_fifo_out_valid;
+    assign dbg_idmaaxis_w_resp_fifo_out_ready =
+        idma_i.backend_i.i_idma_transport_layer.w_resp_fifo_out_ready;
+    assign dbg_idmaaxis_w_dp_rsp_valid =
+        idma_i.backend_i.i_idma_transport_layer.w_dp_rsp_valid;
+
+    assign dbg_idmaaxis_tvalid = idma_axis_req.tvalid;
+    assign dbg_idmaaxis_tready = idma_axis_rsp.tready;
+    assign dbg_idmaaxis_transfer = idma_axis_req.tvalid && idma_axis_rsp.tready;
+    assign dbg_idmaaxis_tdata = idma_axis_req.t.data;
+    assign dbg_idmaaxis_tkeep = idma_axis_req.t.keep;
+    assign dbg_idmaaxis_tstrb = idma_axis_req.t.strb;
+    assign dbg_idmaaxis_tlast = idma_axis_req.t.last;
+    assign dbg_idmaaxis_tid = idma_axis_req.t.id;
+    assign dbg_idmaaxis_tdest = idma_axis_req.t.dest;
+    assign dbg_idmaaxis_tuser = idma_axis_req.t.user;
+    assign dbg_idmaaxis_sink_accepted_bytes = axis_accepted_bytes;
+    assign dbg_idmaaxis_sink_data_error = axis_data_error;
+    assign dbg_idmaaxis_sink_tkeep_error = axis_tkeep_error;
+    assign dbg_idmaaxis_sink_tlast_error = axis_tlast_error;
+    assign dbg_idmaaxis_sink_stability_error = axis_stability_error;
+
+    if (SOC_P.AXIS_IDMA_SUPPORTED) begin : gen_desc64_axiaxis_dbg
+      assign dbg_idmaaxis_input_addr_valid =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.input_addr_valid;
+      assign dbg_idmaaxis_input_addr_ready =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.input_addr_ready;
+      assign dbg_idmaaxis_input_addr =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.input_addr;
+      assign dbg_idmaaxis_queued_addr_valid =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.queued_addr_valid;
+      assign dbg_idmaaxis_queued_addr_ready =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.queued_addr_ready;
+      assign dbg_idmaaxis_queued_addr =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.queued_addr;
+      assign dbg_idmaaxis_fe_req_valid =
+          idma_i.gen_desc64_axiaxis.axis_desc_req_valid;
+      assign dbg_idmaaxis_fe_req_ready =
+          idma_i.gen_desc64_axiaxis.axis_desc_req_ready;
+      assign dbg_idmaaxis_fe_req_length =
+          idma_i.gen_desc64_axiaxis.axis_desc_req.length;
+      assign dbg_idmaaxis_fe_req_src_addr =
+          idma_i.gen_desc64_axiaxis.axis_desc_req.src_addr;
+      assign dbg_idmaaxis_fe_req_dst_addr =
+          idma_i.gen_desc64_axiaxis.axis_desc_req.dst_addr;
+      assign dbg_idmaaxis_fe_raw_src_protocol =
+            idma_i.gen_desc64_axiaxis.axis_desc_req.opt.src_protocol;
+      assign dbg_idmaaxis_fe_raw_dst_protocol =
+            idma_i.gen_desc64_axiaxis.axis_desc_req.opt.dst_protocol;
+      assign dbg_idmaaxis_fe_req_src_protocol =
+          idma_i.gen_desc64_axiaxis.axis_desc_req.opt.src_protocol;
+      assign dbg_idmaaxis_fe_req_dst_protocol =
+          idma_i.gen_desc64_axiaxis.axis_desc_req.opt.dst_protocol;
+      assign dbg_idmaaxis_fe_rsp_valid =
+          idma_i.gen_desc64_axiaxis.axis_desc_rsp_valid;
+      assign dbg_idmaaxis_fe_rsp_ready =
+          idma_i.gen_desc64_axiaxis.axis_desc_rsp_ready;
+      assign dbg_idmaaxis_fe_rsp_error =
+          idma_i.gen_desc64_axiaxis.axis_desc_rsp.error;
+      assign dbg_idmaaxis_fe_rsp_last =
+          idma_i.gen_desc64_axiaxis.axis_desc_rsp.last;
+      assign dbg_idmaaxis_do_irq =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.do_irq;
+      assign dbg_idmaaxis_do_metadata_valid =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.do_metadata_valid;
+      assign dbg_idmaaxis_do_metadata_ready =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.do_metadata_ready;
+      assign dbg_idmaaxis_do_irq_out =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.do_irq_out;
+    end else begin : gen_no_desc64_axis_dbg
+      assign dbg_idmaaxis_input_addr_valid = 1'b0;
+      assign dbg_idmaaxis_input_addr_ready = 1'b0;
+      assign dbg_idmaaxis_input_addr = '0;
+      assign dbg_idmaaxis_queued_addr_valid = 1'b0;
+      assign dbg_idmaaxis_queued_addr_ready = 1'b0;
+      assign dbg_idmaaxis_queued_addr = '0;
+      assign dbg_idmaaxis_fe_req_valid = 1'b0;
+      assign dbg_idmaaxis_fe_req_ready = 1'b0;
+      assign dbg_idmaaxis_fe_req_length = '0;
+      assign dbg_idmaaxis_fe_req_src_addr = '0;
+      assign dbg_idmaaxis_fe_req_dst_addr = '0;
+      assign dbg_idmaaxis_fe_raw_src_protocol = '0;
+      assign dbg_idmaaxis_fe_raw_dst_protocol = '0;
+      assign dbg_idmaaxis_fe_req_src_protocol = '0;
+      assign dbg_idmaaxis_fe_req_dst_protocol = '0;
+      assign dbg_idmaaxis_fe_rsp_valid = 1'b0;
+      assign dbg_idmaaxis_fe_rsp_ready = 1'b0;
+      assign dbg_idmaaxis_fe_rsp_error = 1'b0;
+      assign dbg_idmaaxis_fe_rsp_last = 1'b0;
+      assign dbg_idmaaxis_do_irq = 1'b0;
+      assign dbg_idmaaxis_do_metadata_valid = 1'b0;
+      assign dbg_idmaaxis_do_metadata_ready = 1'b0;
+      assign dbg_idmaaxis_do_irq_out = 1'b0;
+    end
+
     if (SOC_P.AXI_IDMA_SUPPORTED) begin : gen_desc64_dbg
       assign dbg_idmad64_input_addr_valid =
           idma_i.gen_desc64.desc64_i.input_addr_valid;
@@ -892,6 +1450,13 @@ module testbench_cvwsoc #(
           idma_i.gen_desc64.desc64_i.idma_req_valid_o;
       assign dbg_idmad64_idma_req_ready =
           idma_i.gen_desc64.desc64_i.idma_req_ready_i;
+      assign dbg_idmad64_idma_req_length = idma_i.gen_desc64.desc_req.length;
+      assign dbg_idmad64_idma_req_src_addr = idma_i.gen_desc64.desc_req.src_addr;
+      assign dbg_idmad64_idma_req_dst_addr = idma_i.gen_desc64.desc_req.dst_addr;
+      assign dbg_idmad64_idma_req_src_protocol =
+          idma_i.gen_desc64.desc_req.opt.src_protocol;
+      assign dbg_idmad64_idma_req_dst_protocol =
+          idma_i.gen_desc64.desc_req.opt.dst_protocol;
       assign dbg_idmad64_idma_rsp_valid =
           idma_i.gen_desc64.desc64_i.idma_rsp_valid_i;
       assign dbg_idmad64_idma_rsp_ready =
@@ -913,19 +1478,129 @@ module testbench_cvwsoc #(
       assign dbg_idmad64_queued_addr = '0;
       assign dbg_idmad64_idma_req_valid = 1'b0;
       assign dbg_idmad64_idma_req_ready = 1'b0;
+      assign dbg_idmad64_idma_req_length = '0;
+      assign dbg_idmad64_idma_req_src_addr = '0;
+      assign dbg_idmad64_idma_req_dst_addr = '0;
+      assign dbg_idmad64_idma_req_src_protocol = '0;
+      assign dbg_idmad64_idma_req_dst_protocol = '0;
       assign dbg_idmad64_idma_rsp_valid = 1'b0;
       assign dbg_idmad64_idma_rsp_ready = 1'b0;
       assign dbg_idmad64_do_irq = 1'b0;
-      assign dbg_idmad64_do_irq_valid = 1'b0;
-      assign dbg_idmad64_do_irq_ready = 1'b0;
+      assign dbg_idmad64_do_metadata_valid = 1'b0;
+      assign dbg_idmad64_do_metadata_ready = 1'b0;
       assign dbg_idmad64_do_irq_out = 1'b0;
     end
 
   end else begin : gen_no_idma
     assign slv_req[1] = '0;
     assign slv_req[2] = '0;
+    assign slv_req[3] = '0;
     assign idma_slv_resp = '0;
     assign AXI_IDMAIntr = 1'b0;
+    assign idma_axis_req = '0;
+    assign idma_axis_irq = 1'b0;
+    assign axis_accepted_bytes = '0;
+    assign axis_data_error = 1'b0;
+    assign axis_tkeep_error = 1'b0;
+    assign axis_tlast_error = 1'b0;
+    assign axis_stability_error = 1'b0;
+    assign i2s_axis_tdata = '0;
+    assign i2s_axis_tkeep = '0;
+    assign i2s_axis_tvalid = 1'b0;
+    assign i2s_axis_tready = 1'b0;
+    assign i2s_axis_tlast = 1'b0;
+    assign i2s_tx_mclk = 1'b0;
+    assign i2s_tx_lrck = 1'b0;
+    assign i2s_tx_sclk = 1'b0;
+    assign i2s_tx_sdout = 1'b0;
+    assign i2s_rx_mclk = 1'b0;
+    assign i2s_rx_lrck = 1'b0;
+    assign i2s_rx_sclk = 1'b0;
+    assign {
+      dbg_idmaaxis_irq,
+      dbg_idmaaxis_mmio_aw_valid, dbg_idmaaxis_mmio_aw_ready,
+      dbg_idmaaxis_mmio_aw_addr,
+      dbg_idmaaxis_mmio_w_valid, dbg_idmaaxis_mmio_w_ready,
+      dbg_idmaaxis_mmio_w_data, dbg_idmaaxis_mmio_w_strb,
+      dbg_idmaaxis_mmio_b_valid, dbg_idmaaxis_mmio_b_ready,
+      dbg_idmaaxis_mmio_b_resp,
+      dbg_idmaaxis_mmio_ar_valid, dbg_idmaaxis_mmio_ar_ready,
+      dbg_idmaaxis_mmio_ar_addr,
+      dbg_idmaaxis_mmio_r_valid, dbg_idmaaxis_mmio_r_ready,
+      dbg_idmaaxis_mmio_r_data, dbg_idmaaxis_mmio_r_resp
+    } = '0;
+    assign {
+      dbg_idmaaxis_desc_ar_valid, dbg_idmaaxis_desc_ar_ready,
+      dbg_idmaaxis_desc_ar_addr, dbg_idmaaxis_desc_ar_len,
+      dbg_idmaaxis_desc_r_valid, dbg_idmaaxis_desc_r_ready,
+      dbg_idmaaxis_desc_r_data, dbg_idmaaxis_desc_r_last,
+      dbg_idmaaxis_desc_r_resp
+    } = '0;
+    assign {
+      dbg_idmaaxis_input_addr_valid, dbg_idmaaxis_input_addr_ready,
+      dbg_idmaaxis_input_addr,
+      dbg_idmaaxis_queued_addr_valid, dbg_idmaaxis_queued_addr_ready,
+      dbg_idmaaxis_queued_addr,
+      dbg_idmaaxis_fe_req_valid, dbg_idmaaxis_fe_req_ready,
+      dbg_idmaaxis_fe_req_length, dbg_idmaaxis_fe_req_src_addr,
+      dbg_idmaaxis_fe_req_dst_addr,
+      dbg_idmaaxis_fe_raw_src_protocol, dbg_idmaaxis_fe_raw_dst_protocol,
+      dbg_idmaaxis_fe_req_src_protocol, dbg_idmaaxis_fe_req_dst_protocol,
+      dbg_idmaaxis_fe_rsp_valid, dbg_idmaaxis_fe_rsp_ready,
+      dbg_idmaaxis_fe_rsp_error, dbg_idmaaxis_fe_rsp_last,
+      dbg_idmaaxis_do_irq, dbg_idmaaxis_do_metadata_valid,
+      dbg_idmaaxis_do_metadata_ready, dbg_idmaaxis_do_irq_out
+    } = '0;
+    assign {
+      dbg_idmaaxis_arb_fe_valid, dbg_idmaaxis_arb_fe_ready,
+      dbg_idmaaxis_arb_fe_valid_raw, dbg_idmaaxis_arb_fe_ready_raw,
+      dbg_idmaaxis_arb_frontend_idx, dbg_idmaaxis_arb_frontend_idx_q,
+      dbg_idmaaxis_arb_outstanding,
+      dbg_idmaaxis_arb_req_handshake, dbg_idmaaxis_arb_rsp_handshake,
+      dbg_idmaaxis_be_req_valid, dbg_idmaaxis_be_req_ready,
+      dbg_idmaaxis_be_req_length, dbg_idmaaxis_be_req_src_addr,
+      dbg_idmaaxis_be_req_dst_addr,
+      dbg_idmaaxis_be_req_src_protocol, dbg_idmaaxis_be_req_dst_protocol,
+      dbg_idmaaxis_be_rsp_valid, dbg_idmaaxis_be_rsp_ready,
+      dbg_idmaaxis_be_rsp_error, dbg_idmaaxis_be_rsp_last,
+      dbg_idmaaxis_be_busy
+    } = '0;
+    assign {
+      dbg_idmaaxis_leg_r_valid, dbg_idmaaxis_leg_r_ready,
+      dbg_idmaaxis_leg_w_valid, dbg_idmaaxis_leg_w_ready,
+      dbg_idmaaxis_dp_r_valid, dbg_idmaaxis_dp_r_ready,
+      dbg_idmaaxis_dp_r_protocol,
+      dbg_idmaaxis_dp_w_valid, dbg_idmaaxis_dp_w_ready,
+      dbg_idmaaxis_dp_w_protocol,
+      dbg_idmaaxis_meta_ar_valid, dbg_idmaaxis_meta_ar_ready,
+      dbg_idmaaxis_meta_ar_protocol, dbg_idmaaxis_meta_ar_addr,
+      dbg_idmaaxis_meta_aw_valid, dbg_idmaaxis_meta_aw_ready,
+      dbg_idmaaxis_meta_aw_protocol
+    } = '0;
+    assign {
+      dbg_idmaaxis_read_ar_valid, dbg_idmaaxis_read_ar_ready,
+      dbg_idmaaxis_read_ar_addr, dbg_idmaaxis_read_ar_len,
+      dbg_idmaaxis_read_r_valid, dbg_idmaaxis_read_r_ready,
+      dbg_idmaaxis_read_r_data, dbg_idmaaxis_read_r_last,
+      dbg_idmaaxis_read_r_resp
+    } = '0;
+    assign {
+      dbg_idmaaxis_axis_w_req_valid, dbg_idmaaxis_axis_w_req_ready,
+      dbg_idmaaxis_axis_ready_to_write, dbg_idmaaxis_axis_write_happening,
+      dbg_idmaaxis_axis_buffer_valid, dbg_idmaaxis_axis_w_rsp_valid,
+      dbg_idmaaxis_w_resp_fifo_in_valid, dbg_idmaaxis_w_resp_fifo_in_ready,
+      dbg_idmaaxis_w_resp_fifo_out_valid, dbg_idmaaxis_w_resp_fifo_out_ready,
+      dbg_idmaaxis_w_dp_rsp_valid
+    } = '0;
+    assign {
+      dbg_idmaaxis_tvalid, dbg_idmaaxis_tready, dbg_idmaaxis_transfer,
+      dbg_idmaaxis_tdata, dbg_idmaaxis_tkeep, dbg_idmaaxis_tstrb,
+      dbg_idmaaxis_tlast, dbg_idmaaxis_tid, dbg_idmaaxis_tdest,
+      dbg_idmaaxis_tuser,
+      dbg_idmaaxis_sink_accepted_bytes,
+      dbg_idmaaxis_sink_data_error, dbg_idmaaxis_sink_tkeep_error,
+      dbg_idmaaxis_sink_tlast_error, dbg_idmaaxis_sink_stability_error
+    } = '0;
     assign dbg_idmar64_irq_pending = 1'b0;
     assign dbg_idmar64_irq_enable = 1'b0;
     assign dbg_idmar64_irq_clear_wr = 1'b0;
@@ -1024,11 +1699,16 @@ module testbench_cvwsoc #(
     assign dbg_idmad64_queued_addr = '0;
     assign dbg_idmad64_idma_req_valid = 1'b0;
     assign dbg_idmad64_idma_req_ready = 1'b0;
+    assign dbg_idmad64_idma_req_length = '0;
+    assign dbg_idmad64_idma_req_src_addr = '0;
+    assign dbg_idmad64_idma_req_dst_addr = '0;
+    assign dbg_idmad64_idma_req_src_protocol = '0;
+    assign dbg_idmad64_idma_req_dst_protocol = '0;
     assign dbg_idmad64_idma_rsp_valid = 1'b0;
     assign dbg_idmad64_idma_rsp_ready = 1'b0;
     assign dbg_idmad64_do_irq = 1'b0;
-    assign dbg_idmad64_do_irq_valid = 1'b0;
-    assign dbg_idmad64_do_irq_ready = 1'b0;
+    assign dbg_idmad64_do_metadata_valid = 1'b0;
+    assign dbg_idmad64_do_metadata_ready = 1'b0;
     assign dbg_idmad64_do_irq_out = 1'b0;
   end
 

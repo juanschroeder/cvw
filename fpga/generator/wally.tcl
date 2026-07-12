@@ -155,6 +155,7 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" 
         ../src/CopiedFiles_do_not_add_to_repo/sdhci/hw/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/axi/include \
+        ../../addins/pulp/axi_stream/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/common_cells/include} [current_fileset]
 
@@ -166,6 +167,9 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" 
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/vendor/*/src/*.sv]
     # verilog-axi stuff
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/verilog-axi/rtl/*.v]
+    # AXI-Stream to I2S audio path
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/verilog-axis/rtl/*.v]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/digilent-i2s2/*.v]
     # oc uart stuff
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/*.v]
     # ahb3lite_wb_bridge stuff
@@ -198,10 +202,11 @@ if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" 
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_reshaper.sv]
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_reg_wrapper.sv]
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_top.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/frontend/desc64/idma_desc64_axi_axis*.sv]
     # iDMA: generated RTL
-    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_transport_layer_rw_axi.sv]
-    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_legalizer_rw_axi.sv]
-    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_backend_rw_axi.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_transport_layer_rw_axi_rw_axis.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_legalizer_rw_axi_rw_axis.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_backend_rw_axi_rw_axis.sv]
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_desc64_reg_pkg.sv]
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_desc64_reg_top.sv]
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_reg64_1d_reg_pkg.sv]

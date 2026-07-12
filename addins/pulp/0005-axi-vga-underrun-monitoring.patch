@@ -1,0 +1,47 @@
+diff --git a/src/axi_vga.sv b/src/axi_vga.sv
+index 1cc1617..0399411 100644
+--- a/src/axi_vga.sv
++++ b/src/axi_vga.sv
+@@ -52,6 +52,9 @@ module axi_vga #(
+ 
+   /// credit counter width
+   localparam int unsigned CounterWidth = $clog2(BufferDepth + 32'd1);
++  /// Width of the response FIFO usage counter.  The FIFO has BufferDepth+1 entries.
++  localparam int unsigned FifoUsageWidth =
++      ((BufferDepth + 32'd1) > 1) ? $clog2(BufferDepth + 32'd1) : 1;
+   /// credit counter type
+   typedef logic[CounterWidth-1:0] counter_t;
+ 
+@@ -73,6 +76,23 @@ module axi_vga #(
+   logic [BlueWidth-1:0]  blue;
+   logic valid, ready;
+ 
++  // A visible pixel is consumed whenever ready is asserted.  If the fetcher has
++  // no valid pixel at that instant, the timing FSM outputs black: this is the
++  // exact framebuffer-underrun condition we need to trigger the ILA on.
++  (* mark_debug = "true" *) logic [FifoUsageWidth-1:0] r_fifo_usage;
++  (* mark_debug = "true" *) logic pixel_underrun;
++  (* mark_debug = "true" *) logic [31:0] pixel_underrun_count_q;
++
++  assign pixel_underrun = ready && !valid;
++
++  always_ff @(posedge clk_i or negedge rst_ni) begin
++    if (!rst_ni) begin
++      pixel_underrun_count_q <= '0;
++    end else if (pixel_underrun && !(&pixel_underrun_count_q)) begin
++      pixel_underrun_count_q <= pixel_underrun_count_q + 1'b1;
++    end
++  end
++
+   // Clock divider constant
+   assign clk_div = |reg2hw.clk_div.q ? reg2hw.clk_div.q : 1;
+ 
+@@ -195,7 +215,7 @@ module axi_vga #(
+     .rst_ni,
+     .flush_i    ( 1'b0                   ),
+     .testmode_i ( test_mode_en_i         ),
+-    .usage_o    ( /*NC*/                 ),
++    .usage_o    ( r_fifo_usage           ),
+     .data_i     ( axi_resp_i.r           ),
+     .valid_i    ( axi_resp_i.r_valid     ),
+     .ready_o    ( axi_req_o.r_ready      ),

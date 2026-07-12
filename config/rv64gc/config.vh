@@ -214,6 +214,9 @@ localparam logic [63:0] AXI_IDMA_RANGE   = 64'h00000FFF;
 localparam logic AXI_IDMA_REG64_SUPPORTED = 0;
 localparam logic [63:0] AXI_IDMA_REG64_BASE    = 64'h10081000;
 localparam logic [63:0] AXI_IDMA_REG64_RANGE   = 64'h00000FFF;
+localparam logic AXIS_IDMA_SUPPORTED = 0;
+localparam logic [63:0] AXIS_IDMA_BASE    = 64'h10082000;
+localparam logic [63:0] AXIS_IDMA_RANGE   = 64'h00000FFF;
 localparam logic AXI_SDHCI_SUPPORTED = 0;
 localparam logic [63:0] AXI_SDHCI_BASE    = 64'h10090000;
 localparam logic [63:0] AXI_SDHCI_RANGE   = 64'h00000FFF;
@@ -235,6 +238,7 @@ localparam logic [63:0] AXI_DUMMY_RANGE   = 64'h0003FFFF;
 localparam logic UNCACHED_MEM_SUPPORTED = 0;
 localparam logic [63:0] UNCACHED_MEM_BASE     = 64'h84000000;
 localparam logic [63:0] UNCACHED_MEM_RANGE    = 64'h0FFFFF;
+localparam logic AXIS_I2S_SUPPORTED = 0;
 
 // Bus Interface width
 localparam AHBW = (XLEN);
