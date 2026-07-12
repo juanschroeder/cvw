@@ -21,7 +21,6 @@ ifneq ($(filter-out clean cleantb,$(MAKECMDGOALS)),)
 endif
 endif
 
-CPUSETTINGS ?=
 
 ifneq ($(filter sim-fast sim-fast-uboot,$(MAKECMDGOALS)),)
 PERF_CPU ?= 6
@@ -32,6 +31,8 @@ RV32 ?= 1
 CONFIG ?= fpgagenesys2rv32w64soc
 CPUSETTINGS ?= taskset -c $(PERF_CPU)
 endif
+
+CPUSETTINGS ?=
 
 # prefix for Verilator. E.g. 'taskset -c 2'
 
@@ -342,10 +343,16 @@ IDMA_SOURCES := \
 	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_reshaper.sv \
 	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_reg_wrapper.sv \
 	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_top.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_axi_axis_pkg.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_axi_axis_ar_gen_prefetch.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_axi_axis_reader.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_axi_axis_reshaper.sv \
+	$(IDMA_ROOT)/src/frontend/desc64/idma_desc64_axi_axis_top.sv \
 	$(IDMA_ROOT)/src/frontend/idma_transfer_id_gen.sv \
 	$(WALLY)/addins/cvwsoc/dma/axis_test_sink.sv \
 	$(WALLY)/addins/cvwsoc/dma/axis_stereo_tlast_tagger.sv \
-	$(WALLY)/addins/cvwsoc/dma/idma_wrap.sv
+	$(WALLY)/addins/cvwsoc/dma/idma_axi_axis_wrap.sv
+
 
 I2S_SOURCES := $(if $(CVWSOC_SIM_I2S), \
 	$(WALLY)/addins/verilog-axis/rtl/axis_adapter.v \

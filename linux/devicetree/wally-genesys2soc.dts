@@ -123,6 +123,7 @@
         spi-max-frequency = <5000000>;
         voltage-ranges = <3300 3300>;
         disable-wp;
+        status = "disabled";
       };
     };
 
@@ -221,8 +222,8 @@
       reg = <0x0 0x10080000 0x0 0x1000>;
       interrupt-parent = <&plic>;
       interrupts = <13>;
-      eth,input-slots = <1>;
-      eth,pending-slots = <1>;
+      eth,input-slots = <2>;
+      eth,pending-slots = <8>;
       #dma-cells = <1>;
       dma-channels = <32>;
       dma-requests = <127>;

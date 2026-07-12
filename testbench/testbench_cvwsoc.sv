@@ -82,6 +82,11 @@ module testbench_cvwsoc #(
       tmp.AXI_IDMA_REG64_SUPPORTED = 1'b0;
       tmp.AXIS_IDMA_SUPPORTED = 1'b0;
 `endif
+`ifdef SIM_I2S
+      tmp.AXIS_I2S_SUPPORTED = 1'b1;
+`else
+      tmp.AXIS_I2S_SUPPORTED = 1'b0;
+`endif
       cvwsoc_sim_cfg = tmp;
     end
   endfunction
@@ -827,8 +832,8 @@ module testbench_cvwsoc #(
   logic dbg_idmaaxis_fe_rsp_error;
   logic dbg_idmaaxis_fe_rsp_last;
   logic dbg_idmaaxis_do_irq;
-  logic dbg_idmaaxis_do_irq_valid;
-  logic dbg_idmaaxis_do_irq_ready;
+  logic dbg_idmaaxis_do_metadata_valid;
+  logic dbg_idmaaxis_do_metadata_ready;
   logic dbg_idmaaxis_do_irq_out;
   logic [2:0] dbg_idmaaxis_arb_fe_valid;
   logic [2:0] dbg_idmaaxis_arb_fe_ready;
@@ -836,7 +841,7 @@ module testbench_cvwsoc #(
   logic [2:0] dbg_idmaaxis_arb_fe_ready_raw;
   logic [1:0] dbg_idmaaxis_arb_frontend_idx;
   logic [1:0] dbg_idmaaxis_arb_frontend_idx_q;
-  logic [5:0] dbg_idmaaxis_arb_outstanding;
+  logic [8:0] dbg_idmaaxis_arb_outstanding;
   logic dbg_idmaaxis_arb_req_handshake;
   logic dbg_idmaaxis_arb_rsp_handshake;
   logic dbg_idmaaxis_be_req_valid;
@@ -958,7 +963,9 @@ module testbench_cvwsoc #(
 
   if (SOC_P.AXI_IDMA_SUPPORTED || SOC_P.AXI_IDMA_REG64_SUPPORTED ||
       SOC_P.AXIS_IDMA_SUPPORTED) begin : gen_idma
-    idma_wrap #(
+    localparam int unsigned AudioFifoDepth = 4096;
+    logic [$clog2(AudioFifoDepth):0] audio_fifo_depth;
+    idma_axi_axis_wrap #(
       .AxiAddrWidth      ( 32                   ),
       .AxiDataWidth      ( BUSW                 ),
       .AxiIdWidth        ( AXI_ID_WIDTH         ),
@@ -971,9 +978,11 @@ module testbench_cvwsoc #(
       .JobFifoDepth      ( 2                    ),
       .RAWCouplingAvail  ( 1'b0                 ),
       .EnableDesc64      ( SOC_P.AXI_IDMA_SUPPORTED ),
-      .EnableDesc64Axis  ( SOC_P.AXIS_IDMA_SUPPORTED ),
+      .EnableDesc64AxiAxis  ( SOC_P.AXIS_IDMA_SUPPORTED ),
       .EnableReg64       ( SOC_P.AXI_IDMA_REG64_SUPPORTED ),
       .EnableReg64TwoD   ( 1'b0                 ),
+      .EnableAxisFifoAdmission ( SOC_P.AXIS_IDMA_SUPPORTED ),
+      .AxisFifoCapacityBytes ( AudioFifoDepth   ),
       .axi_mst_req_t     ( slv_req_t            ),
       .axi_mst_rsp_t     ( slv_resp_t           ),
       .axi_slv_req_t     ( mst_req_t            ),
@@ -993,6 +1002,7 @@ module testbench_cvwsoc #(
       .axi_slv_rsp_o     ( idma_slv_resp ),
       .axis_write_req_o  ( idma_axis_req ),
       .axis_write_rsp_i  ( idma_axis_rsp ),
+      .axis_fifo_occupancy_i ( audio_fifo_depth ),
       .irq_o             ( AXI_IDMAIntr  ),
       .axis_irq_o        ( idma_axis_irq )
     );
@@ -1002,138 +1012,138 @@ module testbench_cvwsoc #(
     assign slv_req[3] = idma_fe_req[1];
     assign idma_fe_resp[1] = slv_resp[3];
 
-`ifdef SIM_I2S
-    logic [31:0] fifo_axis_tdata;
-    logic [3:0] fifo_axis_tkeep;
-    logic fifo_axis_tvalid;
-    logic fifo_axis_tready;
-    logic fifo_axis_tlast;
+    if (SOC_P.AXIS_I2S_SUPPORTED) begin
+        logic [31:0] fifo_axis_tdata;
+        logic [3:0] fifo_axis_tkeep;
+        logic fifo_axis_tvalid;
+        logic fifo_axis_tready;
+        logic fifo_axis_tlast;
 
-    axis_async_fifo_adapter #(
-      .DEPTH          ( 64       ),
-      .S_DATA_WIDTH   ( BUSW     ),
-      .S_KEEP_ENABLE  ( 1        ),
-      .S_KEEP_WIDTH   ( BUSW/8   ),
-      .M_DATA_WIDTH   ( 32       ),
-      .M_KEEP_ENABLE  ( 1        ),
-      .M_KEEP_WIDTH   ( 4        ),
-      .ID_ENABLE      ( 0        ),
-      .ID_WIDTH       ( AXI_ID_WIDTH ),
-      .DEST_ENABLE    ( 0        ),
-      .DEST_WIDTH     ( AXI_ID_WIDTH ),
-      .USER_ENABLE    ( 0        ),
-      .USER_WIDTH     ( 1        ),
-      .PAUSE_ENABLE   ( 0        )
-    ) axis_audio_fifo_i (
-      .s_clk                  ( bus_clk              ),
-      .s_rst                  ( bus_reset            ),
-      .s_axis_tdata           ( idma_axis_req.t.data ),
-      .s_axis_tkeep           ( idma_axis_req.t.keep ),
-      .s_axis_tvalid          ( idma_axis_req.tvalid ),
-      .s_axis_tready          ( idma_axis_rsp.tready ),
-      .s_axis_tlast           ( idma_axis_req.t.last ),
-      .s_axis_tid             ( idma_axis_req.t.id   ),
-      .s_axis_tdest           ( idma_axis_req.t.dest ),
-      .s_axis_tuser           ( idma_axis_req.t.user ),
-      .m_clk                  ( audio_clk            ),
-      .m_rst                  ( reset_ext            ),
-      .m_axis_tdata           ( fifo_axis_tdata      ),
-      .m_axis_tkeep           ( fifo_axis_tkeep      ),
-      .m_axis_tvalid          ( fifo_axis_tvalid     ),
-      .m_axis_tready          ( fifo_axis_tready     ),
-      .m_axis_tlast           ( fifo_axis_tlast      ),
-      .m_axis_tid             (                      ),
-      .m_axis_tdest           (                      ),
-      .m_axis_tuser           (                      ),
-      .s_pause_req            ( 1'b0                 ),
-      .s_pause_ack            (                      ),
-      .m_pause_req            ( 1'b0                 ),
-      .m_pause_ack            (                      ),
-      .s_status_depth         (                      ),
-      .s_status_depth_commit  (                      ),
-      .s_status_overflow      (                      ),
-      .s_status_bad_frame     (                      ),
-      .s_status_good_frame    (                      ),
-      .m_status_depth         (                      ),
-      .m_status_depth_commit  (                      ),
-      .m_status_overflow      (                      ),
-      .m_status_bad_frame     (                      ),
-      .m_status_good_frame    (                      )
-    );
+        axis_async_fifo_adapter #(
+        .DEPTH          ( AudioFifoDepth ),
+        .S_DATA_WIDTH   ( BUSW     ),
+        .S_KEEP_ENABLE  ( 1        ),
+        .S_KEEP_WIDTH   ( BUSW/8   ),
+        .M_DATA_WIDTH   ( 32       ),
+        .M_KEEP_ENABLE  ( 1        ),
+        .M_KEEP_WIDTH   ( 4        ),
+        .ID_ENABLE      ( 0        ),
+        .ID_WIDTH       ( AXI_ID_WIDTH ),
+        .DEST_ENABLE    ( 0        ),
+        .DEST_WIDTH     ( AXI_ID_WIDTH ),
+        .USER_ENABLE    ( 0        ),
+        .USER_WIDTH     ( 1        ),
+        .PAUSE_ENABLE   ( 0        )
+        ) axis_audio_fifo_i (
+        .s_clk                  ( bus_clk              ),
+        .s_rst                  ( bus_reset            ),
+        .s_axis_tdata           ( idma_axis_req.t.data ),
+        .s_axis_tkeep           ( idma_axis_req.t.keep ),
+        .s_axis_tvalid          ( idma_axis_req.tvalid ),
+        .s_axis_tready          ( idma_axis_rsp.tready ),
+        .s_axis_tlast           ( idma_axis_req.t.last ),
+        .s_axis_tid             ( idma_axis_req.t.id   ),
+        .s_axis_tdest           ( idma_axis_req.t.dest ),
+        .s_axis_tuser           ( idma_axis_req.t.user ),
+        .m_clk                  ( audio_clk            ),
+        .m_rst                  ( reset_ext            ),
+        .m_axis_tdata           ( fifo_axis_tdata      ),
+        .m_axis_tkeep           ( fifo_axis_tkeep      ),
+        .m_axis_tvalid          ( fifo_axis_tvalid     ),
+        .m_axis_tready          ( fifo_axis_tready     ),
+        .m_axis_tlast           ( fifo_axis_tlast      ),
+        .m_axis_tid             (                      ),
+        .m_axis_tdest           (                      ),
+        .m_axis_tuser           (                      ),
+        .s_pause_req            ( 1'b0                 ),
+        .s_pause_ack            (                      ),
+        .m_pause_req            ( 1'b0                 ),
+        .m_pause_ack            (                      ),
+        .s_status_depth         ( audio_fifo_depth     ),
+        .s_status_depth_commit  (                      ),
+        .s_status_overflow      (                      ),
+        .s_status_bad_frame     (                      ),
+        .s_status_good_frame    (                      ),
+        .m_status_depth         (                      ),
+        .m_status_depth_commit  (                      ),
+        .m_status_overflow      (                      ),
+        .m_status_bad_frame     (                      ),
+        .m_status_good_frame    (                      )
+        );
 
-    axis_stereo_tlast_tagger stereo_tagger_i (
-      .clk_i          ( audio_clk       ),
-      .rst_ni         ( ~reset_ext      ),
-      .s_axis_tdata   ( fifo_axis_tdata ),
-      .s_axis_tvalid  ( fifo_axis_tvalid ),
-      .s_axis_tready  ( fifo_axis_tready ),
-      .m_axis_tdata   ( i2s_axis_tdata  ),
-      .m_axis_tvalid  ( i2s_axis_tvalid ),
-      .m_axis_tready  ( i2s_axis_tready ),
-      .m_axis_tlast   ( i2s_axis_tlast  )
-    );
+        axis_stereo_tlast_tagger stereo_tagger_i (
+        .clk_i          ( audio_clk       ),
+        .rst_ni         ( ~reset_ext      ),
+        .s_axis_tdata   ( fifo_axis_tdata ),
+        .s_axis_tvalid  ( fifo_axis_tvalid ),
+        .s_axis_tready  ( fifo_axis_tready ),
+        .m_axis_tdata   ( i2s_axis_tdata  ),
+        .m_axis_tvalid  ( i2s_axis_tvalid ),
+        .m_axis_tready  ( i2s_axis_tready ),
+        .m_axis_tlast   ( i2s_axis_tlast  )
+        );
 
-    assign i2s_axis_tkeep = fifo_axis_tkeep;
+        assign i2s_axis_tkeep = fifo_axis_tkeep;
 
-    axis_i2s2 i2s_i (
-      .axis_clk        ( audio_clk       ),
-      .axis_resetn     ( ~reset_ext      ),
-      .tx_axis_s_data  ( i2s_axis_tdata  ),
-      .tx_axis_s_valid ( i2s_axis_tvalid ),
-      .tx_axis_s_ready ( i2s_axis_tready ),
-      .tx_axis_s_last  ( i2s_axis_tlast  ),
-      .rx_axis_m_data  (                 ),
-      .rx_axis_m_valid (                 ),
-      .rx_axis_m_ready ( 1'b1            ),
-      .rx_axis_m_last  (                 ),
-      .tx_mclk         ( i2s_tx_mclk     ),
-      .tx_lrck         ( i2s_tx_lrck     ),
-      .tx_sclk         ( i2s_tx_sclk     ),
-      .tx_sdout        ( i2s_tx_sdout    ),
-      .rx_mclk         ( i2s_rx_mclk     ),
-      .rx_lrck         ( i2s_rx_lrck     ),
-      .rx_sclk         ( i2s_rx_sclk     ),
-      .rx_sdin         ( 1'b0            )
-    );
+        axis_i2s2 i2s_i (
+        .axis_clk        ( audio_clk       ),
+        .axis_resetn     ( ~reset_ext      ),
+        .tx_axis_s_data  ( i2s_axis_tdata  ),
+        .tx_axis_s_valid ( i2s_axis_tvalid ),
+        .tx_axis_s_ready ( i2s_axis_tready ),
+        .tx_axis_s_last  ( i2s_axis_tlast  ),
+        .rx_axis_m_data  (                 ),
+        .rx_axis_m_valid (                 ),
+        .rx_axis_m_ready ( 1'b1            ),
+        .rx_axis_m_last  (                 ),
+        .tx_mclk         ( i2s_tx_mclk     ),
+        .tx_lrck         ( i2s_tx_lrck     ),
+        .tx_sclk         ( i2s_tx_sclk     ),
+        .tx_sdout        ( i2s_tx_sdout    ),
+        .rx_mclk         ( i2s_rx_mclk     ),
+        .rx_lrck         ( i2s_rx_lrck     ),
+        .rx_sclk         ( i2s_rx_sclk     ),
+        .rx_sdin         ( 1'b0            )
+        );
 
-    assign axis_accepted_bytes = '0;
-    assign axis_data_error = 1'b0;
-    assign axis_tkeep_error = 1'b0;
-    assign axis_tlast_error = 1'b0;
-    assign axis_stability_error = 1'b0;
-`else
-    axis_test_sink #(
-      .DataWidth ( BUSW          ),
-      .axis_req_t ( axis_req_t   ),
-      .axis_rsp_t ( axis_rsp_t   )
-    ) axis_sink_i (
-      .clk_i                  ( bus_clk             ),
-      .rst_ni                 ( ~bus_reset          ),
-      .axis_req_i             ( idma_axis_req       ),
-      .axis_rsp_o             ( idma_axis_rsp       ),
-      .stall_period_i         ( axis_stall_period   ),
-      .stall_cycles_i         ( axis_stall_cycles   ),
-      .report_i               ( idma_axis_irq       ),
-      .accepted_byte_count_o  ( axis_accepted_bytes ),
-      .data_error_o           ( axis_data_error     ),
-      .tkeep_error_o          ( axis_tkeep_error    ),
-      .tlast_error_o          ( axis_tlast_error    ),
-      .stability_error_o      ( axis_stability_error )
-    );
+        assign axis_accepted_bytes = '0;
+        assign axis_data_error = 1'b0;
+        assign axis_tkeep_error = 1'b0;
+        assign axis_tlast_error = 1'b0;
+        assign axis_stability_error = 1'b0;
+    end else begin
+        axis_test_sink #(
+        .DataWidth ( BUSW          ),
+        .axis_req_t ( axis_req_t   ),
+        .axis_rsp_t ( axis_rsp_t   )
+        ) axis_sink_i (
+        .clk_i                  ( bus_clk             ),
+        .rst_ni                 ( ~bus_reset          ),
+        .axis_req_i             ( idma_axis_req       ),
+        .axis_rsp_o             ( idma_axis_rsp       ),
+        .stall_period_i         ( axis_stall_period   ),
+        .stall_cycles_i         ( axis_stall_cycles   ),
+        .report_i               ( idma_axis_irq       ),
+        .accepted_byte_count_o  ( axis_accepted_bytes ),
+        .data_error_o           ( axis_data_error     ),
+        .tkeep_error_o          ( axis_tkeep_error    ),
+        .tlast_error_o          ( axis_tlast_error    ),
+        .stability_error_o      ( axis_stability_error )
+        );
 
-    assign i2s_axis_tdata = '0;
-    assign i2s_axis_tkeep = '0;
-    assign i2s_axis_tvalid = 1'b0;
-    assign i2s_axis_tready = 1'b0;
-    assign i2s_axis_tlast = 1'b0;
-    assign i2s_tx_mclk = 1'b0;
-    assign i2s_tx_lrck = 1'b0;
-    assign i2s_tx_sclk = 1'b0;
-    assign i2s_tx_sdout = 1'b0;
-    assign i2s_rx_mclk = 1'b0;
-    assign i2s_rx_lrck = 1'b0;
-    assign i2s_rx_sclk = 1'b0;
-`endif
+        assign i2s_axis_tdata = '0;
+        assign i2s_axis_tkeep = '0;
+        assign i2s_axis_tvalid = 1'b0;
+        assign i2s_axis_tready = 1'b0;
+        assign i2s_axis_tlast = 1'b0;
+        assign i2s_tx_mclk = 1'b0;
+        assign i2s_tx_lrck = 1'b0;
+        assign i2s_tx_sclk = 1'b0;
+        assign i2s_tx_sdout = 1'b0;
+        assign i2s_rx_mclk = 1'b0;
+        assign i2s_rx_lrck = 1'b0;
+        assign i2s_rx_sclk = 1'b0;
+    end
 
     assign dbg_idmar64_irq_pending = idma_i.irq_pending;
     assign dbg_idmar64_irq_enable = idma_i.irq_enable;
@@ -1350,53 +1360,53 @@ module testbench_cvwsoc #(
     assign dbg_idmaaxis_sink_tlast_error = axis_tlast_error;
     assign dbg_idmaaxis_sink_stability_error = axis_stability_error;
 
-    if (SOC_P.AXIS_IDMA_SUPPORTED) begin : gen_desc64_axis_dbg
+    if (SOC_P.AXIS_IDMA_SUPPORTED) begin : gen_desc64_axiaxis_dbg
       assign dbg_idmaaxis_input_addr_valid =
-          idma_i.gen_desc64_axis.desc64_axis_i.input_addr_valid;
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.input_addr_valid;
       assign dbg_idmaaxis_input_addr_ready =
-          idma_i.gen_desc64_axis.desc64_axis_i.input_addr_ready;
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.input_addr_ready;
       assign dbg_idmaaxis_input_addr =
-          idma_i.gen_desc64_axis.desc64_axis_i.input_addr;
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.input_addr;
       assign dbg_idmaaxis_queued_addr_valid =
-          idma_i.gen_desc64_axis.desc64_axis_i.queued_addr_valid;
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.queued_addr_valid;
       assign dbg_idmaaxis_queued_addr_ready =
-          idma_i.gen_desc64_axis.desc64_axis_i.queued_addr_ready;
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.queued_addr_ready;
       assign dbg_idmaaxis_queued_addr =
-          idma_i.gen_desc64_axis.desc64_axis_i.queued_addr;
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.queued_addr;
       assign dbg_idmaaxis_fe_req_valid =
-          idma_i.gen_desc64_axis.axis_desc_req_valid;
+          idma_i.gen_desc64_axiaxis.axis_desc_req_valid;
       assign dbg_idmaaxis_fe_req_ready =
-          idma_i.gen_desc64_axis.axis_desc_req_ready;
+          idma_i.gen_desc64_axiaxis.axis_desc_req_ready;
       assign dbg_idmaaxis_fe_req_length =
-          idma_i.gen_desc64_axis.axis_desc_req.length;
+          idma_i.gen_desc64_axiaxis.axis_desc_req.length;
       assign dbg_idmaaxis_fe_req_src_addr =
-          idma_i.gen_desc64_axis.axis_desc_req.src_addr;
+          idma_i.gen_desc64_axiaxis.axis_desc_req.src_addr;
       assign dbg_idmaaxis_fe_req_dst_addr =
-          idma_i.gen_desc64_axis.axis_desc_req.dst_addr;
+          idma_i.gen_desc64_axiaxis.axis_desc_req.dst_addr;
       assign dbg_idmaaxis_fe_raw_src_protocol =
-          idma_i.gen_desc64_axis.axis_desc_req_raw.opt.src_protocol;
+            idma_i.gen_desc64_axiaxis.axis_desc_req.opt.src_protocol;
       assign dbg_idmaaxis_fe_raw_dst_protocol =
-          idma_i.gen_desc64_axis.axis_desc_req_raw.opt.dst_protocol;
+            idma_i.gen_desc64_axiaxis.axis_desc_req.opt.dst_protocol;
       assign dbg_idmaaxis_fe_req_src_protocol =
-          idma_i.gen_desc64_axis.axis_desc_req.opt.src_protocol;
+          idma_i.gen_desc64_axiaxis.axis_desc_req.opt.src_protocol;
       assign dbg_idmaaxis_fe_req_dst_protocol =
-          idma_i.gen_desc64_axis.axis_desc_req.opt.dst_protocol;
+          idma_i.gen_desc64_axiaxis.axis_desc_req.opt.dst_protocol;
       assign dbg_idmaaxis_fe_rsp_valid =
-          idma_i.gen_desc64_axis.axis_desc_rsp_valid;
+          idma_i.gen_desc64_axiaxis.axis_desc_rsp_valid;
       assign dbg_idmaaxis_fe_rsp_ready =
-          idma_i.gen_desc64_axis.axis_desc_rsp_ready;
+          idma_i.gen_desc64_axiaxis.axis_desc_rsp_ready;
       assign dbg_idmaaxis_fe_rsp_error =
-          idma_i.gen_desc64_axis.axis_desc_rsp.error;
+          idma_i.gen_desc64_axiaxis.axis_desc_rsp.error;
       assign dbg_idmaaxis_fe_rsp_last =
-          idma_i.gen_desc64_axis.axis_desc_rsp.last;
+          idma_i.gen_desc64_axiaxis.axis_desc_rsp.last;
       assign dbg_idmaaxis_do_irq =
-          idma_i.gen_desc64_axis.desc64_axis_i.do_irq;
-      assign dbg_idmaaxis_do_irq_valid =
-          idma_i.gen_desc64_axis.desc64_axis_i.do_irq_valid;
-      assign dbg_idmaaxis_do_irq_ready =
-          idma_i.gen_desc64_axis.desc64_axis_i.do_irq_ready;
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.do_irq;
+      assign dbg_idmaaxis_do_metadata_valid =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.do_metadata_valid;
+      assign dbg_idmaaxis_do_metadata_ready =
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.do_metadata_ready;
       assign dbg_idmaaxis_do_irq_out =
-          idma_i.gen_desc64_axis.desc64_axis_i.do_irq_out;
+          idma_i.gen_desc64_axiaxis.desc64_axis_i.do_irq_out;
     end else begin : gen_no_desc64_axis_dbg
       assign dbg_idmaaxis_input_addr_valid = 1'b0;
       assign dbg_idmaaxis_input_addr_ready = 1'b0;
@@ -1418,8 +1428,8 @@ module testbench_cvwsoc #(
       assign dbg_idmaaxis_fe_rsp_error = 1'b0;
       assign dbg_idmaaxis_fe_rsp_last = 1'b0;
       assign dbg_idmaaxis_do_irq = 1'b0;
-      assign dbg_idmaaxis_do_irq_valid = 1'b0;
-      assign dbg_idmaaxis_do_irq_ready = 1'b0;
+      assign dbg_idmaaxis_do_metadata_valid = 1'b0;
+      assign dbg_idmaaxis_do_metadata_ready = 1'b0;
       assign dbg_idmaaxis_do_irq_out = 1'b0;
     end
 
@@ -1476,8 +1486,8 @@ module testbench_cvwsoc #(
       assign dbg_idmad64_idma_rsp_valid = 1'b0;
       assign dbg_idmad64_idma_rsp_ready = 1'b0;
       assign dbg_idmad64_do_irq = 1'b0;
-      assign dbg_idmad64_do_irq_valid = 1'b0;
-      assign dbg_idmad64_do_irq_ready = 1'b0;
+      assign dbg_idmad64_do_metadata_valid = 1'b0;
+      assign dbg_idmad64_do_metadata_ready = 1'b0;
       assign dbg_idmad64_do_irq_out = 1'b0;
     end
 
@@ -1538,8 +1548,8 @@ module testbench_cvwsoc #(
       dbg_idmaaxis_fe_req_src_protocol, dbg_idmaaxis_fe_req_dst_protocol,
       dbg_idmaaxis_fe_rsp_valid, dbg_idmaaxis_fe_rsp_ready,
       dbg_idmaaxis_fe_rsp_error, dbg_idmaaxis_fe_rsp_last,
-      dbg_idmaaxis_do_irq, dbg_idmaaxis_do_irq_valid,
-      dbg_idmaaxis_do_irq_ready, dbg_idmaaxis_do_irq_out
+      dbg_idmaaxis_do_irq, dbg_idmaaxis_do_metadata_valid,
+      dbg_idmaaxis_do_metadata_ready, dbg_idmaaxis_do_irq_out
     } = '0;
     assign {
       dbg_idmaaxis_arb_fe_valid, dbg_idmaaxis_arb_fe_ready,
@@ -1697,8 +1707,8 @@ module testbench_cvwsoc #(
     assign dbg_idmad64_idma_rsp_valid = 1'b0;
     assign dbg_idmad64_idma_rsp_ready = 1'b0;
     assign dbg_idmad64_do_irq = 1'b0;
-    assign dbg_idmad64_do_irq_valid = 1'b0;
-    assign dbg_idmad64_do_irq_ready = 1'b0;
+    assign dbg_idmad64_do_metadata_valid = 1'b0;
+    assign dbg_idmad64_do_metadata_ready = 1'b0;
     assign dbg_idmad64_do_irq_out = 1'b0;
   end
 

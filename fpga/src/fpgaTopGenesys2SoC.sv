@@ -3217,7 +3217,10 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     assign cdma_m_axi_arvalid = 1'b0;
     assign cdma_m_axi_rready  = 1'b0;
 
-    idma_wrap #(
+    localparam int unsigned AudioFifoDepth = 16384;
+    logic [$clog2(AudioFifoDepth):0] audio_fifo_depth;
+
+    idma_axi_axis_wrap #(
       .AxiAddrWidth      ( ADDR_W               ),
       .AxiDataWidth      ( DATA_W               ),
       .AxiIdWidth        ( SLV_ID_W             ),
@@ -3230,9 +3233,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
       .JobFifoDepth      ( 2                    ),
       .RAWCouplingAvail  ( 1'b0                 ),
       .EnableDesc64      ( P.AXI_IDMA_SUPPORTED ),
-      .EnableDesc64Axis  ( P.AXIS_IDMA_SUPPORTED ),
+      .EnableDesc64AxiAxis ( P.AXIS_IDMA_SUPPORTED ),
       .EnableReg64       ( P.AXI_IDMA_REG64_SUPPORTED ),
       .EnableReg64TwoD   ( 1'b0                 ),
+      .EnableAxisFifoAdmission ( P.AXIS_IDMA_SUPPORTED ),
+      .AxisFifoCapacityBytes ( AudioFifoDepth   ),
       .axi_mst_req_t     ( slv_req_t            ),
       .axi_mst_rsp_t     ( slv_resp_t           ),
       .axi_slv_req_t     ( mst_req_t            ),
@@ -3252,11 +3257,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
       .axi_slv_rsp_o     ( idma_xbar_slv_rsp    ),
       .axis_write_req_o  ( idma_axis_req        ),
       .axis_write_rsp_i  ( idma_axis_rsp        ),
-      .irq_o             ( dma_irq_raw          ),
-      .axis_irq_o        (                      )
+      .axis_fifo_occupancy_i ( audio_fifo_depth ),
+      .axis_irq_o        ( dma_irq_raw )
     );
 
-    if (P.AXIS_IDMA_SUPPORTED) begin : gen_idma_audio
+    if (P.AXIS_I2S_SUPPORTED) begin : gen_axis_i2s
       logic [31:0] audio_fifo_tdata;
       logic audio_fifo_tvalid;
       logic audio_fifo_tready;
@@ -3266,7 +3271,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
       logic audio_axis_tlast;
 
       axis_async_fifo_adapter #(
-        .DEPTH          ( 64       ),
+        .DEPTH          ( AudioFifoDepth ),
         .S_DATA_WIDTH   ( DATA_W   ),
         .S_KEEP_ENABLE  ( 1        ),
         .S_KEEP_WIDTH   ( STRB_W   ),
@@ -3305,7 +3310,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
         .s_pause_ack            (                        ),
         .m_pause_req            ( 1'b0                   ),
         .m_pause_ack            (                        ),
-        .s_status_depth         (                        ),
+        .s_status_depth         ( audio_fifo_depth       ),
         .s_status_depth_commit  (                        ),
         .s_status_overflow      (                        ),
         .s_status_bad_frame     (                        ),

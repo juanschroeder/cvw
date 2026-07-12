@@ -194,6 +194,7 @@ typedef struct packed {
   logic         UNCACHED_MEM_SUPPORTED;
   logic [63:0]  UNCACHED_MEM_BASE;
   logic [63:0]  UNCACHED_MEM_RANGE;
+  logic         AXIS_I2S_SUPPORTED;
 
 // Test modes
 
