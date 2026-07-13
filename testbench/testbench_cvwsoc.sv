@@ -187,7 +187,13 @@ module testbench_cvwsoc #(
   always #(BUS_HALF_PERIOD_NS) bus_clk = ~bus_clk;
 
   initial begin
+`ifndef TEST_BTB_RESET
     repeat (RESET_CYCLES) @(posedge clk);
+`else
+    // The bound helper seeds one retained BTB entry while reset is asserted.
+    repeat (2) @(posedge clk);
+    repeat (RESET_CYCLES - 2) @(posedge clk);
+`endif
     reset_ext = 1'b0;
   end
 
@@ -555,7 +561,11 @@ module testbench_cvwsoc #(
     .HWDATA(HWDATA),
     .HWRITE(HWRITE),
     .HRDATA(HRDATAEXT),
+`ifndef TEST_BTB_RESET
     .HREADY(HREADYEXT),
+`else
+    .HREADY(),
+`endif
     .HRESP(HRESPEXT),
     .AWID(m_axi_awid),
     .AWADDR(m_axi_awaddr),
@@ -3041,3 +3051,27 @@ bind plic_apb plic_apb_dbg_bind #(
   .dbg_plic_claim0_write($root.testbench_cvwsoc.dbg_plic_claim0_write),
   .dbg_plic_claim1_write($root.testbench_cvwsoc.dbg_plic_claim1_write)
 );
+
+`ifdef TEST_BTB_RESET
+// Testbench-only: prefill btb instance.
+// This models a RAM whose state survives reset.
+module btb_reset_seed import cvw::*; #(
+  parameter cvw_t P,
+  parameter int unsigned Depth = 10
+) (
+  input logic clk
+);
+  // btb indexes PCNextF as {PC[Depth+1]^PC[1], PC[Depth:2]}.
+  // Poison only 0x1020: the CPU must first execute boot ROM from 0x1000.
+  localparam logic [P.XLEN-1:0] STALE_PC = P.XLEN'(32'h0000_1020);
+  localparam logic [Depth-1:0] STALE_INDEX =
+      {STALE_PC[Depth+1] ^ STALE_PC[1], STALE_PC[Depth:2]};
+
+  initial begin
+    repeat (2) @(posedge clk);
+    memory.ram.RAM[STALE_INDEX] = {4'b0010, P.XLEN'(32'h8000_B000)};
+  end
+endmodule
+
+bind btb btb_reset_seed #(.P(P), .Depth(Depth)) btb_reset_seed_i(.clk(clk));
+`endif

@@ -46,6 +46,8 @@ DMA ?= 0
 I2S ?= 0
 BOOTROM ?= 0
 CVWSOC_BOOTROM := $(filter $(BOOL_TRUE),$(BOOTROM))
+BTB_RESET_TEST ?= 0
+CVWSOC_BTB_RESET_TEST := $(filter $(BOOL_TRUE),$(BTB_RESET_TEST))
 # Enable SDHCI with bootrom boot (can't do RAM preload)
 CVWSOC_SIM_SDHCI := $(if $(CVWSOC_BOOTROM),1,$(filter $(BOOL_TRUE),$(SDHCI)))
 CVWSOC_SIM_DMA := $(filter $(BOOL_TRUE),$(DMA))
@@ -226,6 +228,7 @@ PLUS_ARGS ?=
 EXTRA_PLUS_ARGS ?=
 PARAM_ARGS ?=
 DEFINE_ARGS ?=
+DEFINE_ARGS += $(if $(CVWSOC_BTB_RESET_TEST),-DTEST_BTB_RESET)
 BOOTROM_BIN ?=
 EXT_RAM_BIN ?=
 CVWSOC_BOOTROM_MEMH ?= $(WALLY)/fpga/src/boot.mem
