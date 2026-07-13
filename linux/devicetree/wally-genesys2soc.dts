@@ -7,7 +7,7 @@
   model = "wally-virt,qemu";
 
   chosen {
-    bootargs = "root=/dev/mmcblk1p5 rw earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 loglevel=7 init=/sbin/init rootwait ";
+    bootargs = "root=/dev/mmcblk0p5 rw earlycon=uart8250,mmio,0x10000000 console=ttyS0,115200 loglevel=7 init=/sbin/init rootwait";
     stdout-path = "/soc/uart@10000000";
 
     // needed for the FB
@@ -17,9 +17,7 @@
 
     //320 x 240
     framebuffer0: framebuffer@85040000 {
-    //framebuffer0: framebuffer@84040000 {
       compatible = "simple-framebuffer";
-      //reg = <0x0 0x84040000 0x0 0x00025800>;
       reg = <0x0 0x85040000 0x0 0x00025800>;
       width = <320>;
       height = <240>;
@@ -89,7 +87,7 @@
     uart@10000000 {
       interrupts = <0x0a>;
       interrupt-parent = <&plic>;
-      clock-frequency = <40000000>;
+      clocks = <&refclk>;
       reg = <0x00 0x10000000 0x00 0x100>;
       compatible = "ns16550a";
     };
@@ -175,7 +173,6 @@
         };
     };
 
-    // Remark: BUSCLK can be different for UberDDR3 vs LiteDRAM
     busclk: busclk {
       #clock-cells = <0>;
       compatible = "fixed-clock";
@@ -191,6 +188,7 @@
         #dma-cells = <1>;
         xlnx,addrwidth = <0x20>; // 32-bit addresses
         status = "disabled";
+
 
         // DMA visible memory window.
         // For your 128MB DDR at 0x8000_0000..0x87FF_FFFF:
@@ -216,14 +214,15 @@
     };
     */
 
-    idma: dma-controller@10080000  {
+    /* AXI/AXI Stream DMA controller */
+    idma: dma-controller@10082000  {
       model = "eth,idma-engine";
       compatible = "eth,idma-engine";
-      reg = <0x0 0x10080000 0x0 0x1000>;
+      reg = <0x0 0x10082000 0x0 0x1000>;
       interrupt-parent = <&plic>;
       interrupts = <13>;
       eth,input-slots = <2>;
-      eth,pending-slots = <8>;
+      eth,pending-slots = <8>; // PendingFifoDepth
       #dma-cells = <1>;
       dma-channels = <32>;
       dma-requests = <127>;
@@ -231,6 +230,37 @@
       memory-region = <&uncached_memory_idma>;
     };
 
+    i2s_tx: audio-dai {
+            compatible = "cvwsoc,i2s";
+            #sound-dai-cells = <0>;
+
+            dmas = <&idma 0>;
+            dma-names = "tx";
+
+            status = "okay";
+    };
+
+    pcm5102a: codec {
+            compatible = "ti,pcm5102a";
+            #sound-dai-cells = <0>;
+    };
+
+    sound {
+            compatible = "simple-audio-card";
+            simple-audio-card,name = "CVWSoC PCM5102A";
+            simple-audio-card,format = "i2s";
+
+            simple-audio-card,bitclock-master = <&sound_cpu>;
+            simple-audio-card,frame-master = <&sound_cpu>;
+
+            sound_cpu: simple-audio-card,cpu {
+                    sound-dai = <&i2s_tx>;
+            };
+
+            simple-audio-card,codec {
+                    sound-dai = <&pcm5102a>;
+            };
+    };
 
     usb@100C0000 {
         compatible = "generic-ohci";
@@ -240,6 +270,7 @@
         dma-noncoherent;
         memory-region = <&uncached_memory_usb>;
     };
+
 
     // SDHCI base clock (divided in Hw)
     sdhci_clk: sdhci-clk {
@@ -267,11 +298,13 @@
 
   };
 
+  // Remark: u-boot might dynamically add its reserved regions, so they should match
   reserved-memory {
     #address-cells = <2>;
     #size-cells = <2>;
     ranges;
 
+    // 1 MB uncached region: 0x84000000-- 0x840FFFFF
     uncached_memory_usb: uncached-memory@84000000 {
         reg = <0x0 0x84000000 0x0 0x0040000>; // 256 KiB uncached DDR
         no-map;
@@ -293,20 +326,11 @@
         no-map;
     };
 
-    /*
-    dmabuffer@BFE00000 {
-        compatible = "shared-dma-pool";
-        reg = <0x0 0xBFE00000 0x0 0x00100000>; // 1 MiB reserved
-        no-map;
-    };
-    */
-
     // Prevent Linux from using this region
     opensbi@80000000 {
         reg = <0x0 0x80000000  0x0 0x0080000>; // 512 Kib
         no-map;
     };
   };
-
 
 };
