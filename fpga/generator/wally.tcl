@@ -42,6 +42,10 @@ if {$board=="ArtyA7"} {
     add_files  {../src/fpgaTop.sv}
 }
 
+if {$board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
+    add_files  ../../addins/cvwsoc/cvwsoc_axi.sv
+}
+
 # read in ip
 import_ip IP/sysrst.srcs/sources_1/ip/sysrst/sysrst.xci
 if {! ($board == "genesys2soc" || $board == "genesys2rv32soc" || $board=="genesys2rv32w64soc")} {

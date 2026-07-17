@@ -25,43 +25,43 @@ set_property ALL_PROBE_SAME_MU_CNT 1 [get_debug_cores u_ila_usb]
 set_property port_width 1 [get_debug_ports u_ila_usb/clk]
 # changed for sampling AXI STUFF!!
 
-connect_debug_port u_ila_usb/clk [get_nets BUSCLK]
+connect_debug_port u_ila_usb/clk [get_nets u_cvwsoc_axi/BUSCLK]
 
 
-# ila_add_probe u_ila_usb -net usb0_dp_IBUF
-# ila_add_probe u_ila_usb -net usb0_dm_IBUF
-# ila_add_probe u_ila_usb -net usb1_dp_IBUF
-# ila_add_probe u_ila_usb -net usb1_dm_IBUF
-# ila_add_probe u_ila_usb -net usb0_dp_TRI
-# ila_add_probe u_ila_usb -net usb0_dm_TRI
-# ila_add_probe u_ila_usb -net usb1_dp_TRI
-# ila_add_probe u_ila_usb -net usb1_dm_TRI
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/usb0_dp_IBUF
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/usb0_dm_IBUF
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/usb1_dp_IBUF
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/usb1_dm_IBUF
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/usb0_dp_TRI
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/usb0_dm_TRI
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/usb1_dp_TRI
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/usb1_dm_TRI
 
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/u_ohci/back_native_0_dp_writeEnable_delay_1
-#ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/u_ohci/back_native_0_dp_write
-#ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/u_ohci/back_native_0_dm_write
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/u_ohci/back_native_1_dp_writeEnable_delay_1
-#ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/u_ohci/back_native_1_dp_write
-#ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/u_ohci/back_native_1_dm_write
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/u_ohci/back_native_0_dp_writeEnable_delay_1
+#ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/u_ohci/back_native_0_dp_write
+#ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/u_ohci/back_native_0_dm_write
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/u_ohci/back_native_1_dp_writeEnable_delay_1
+#ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/u_ohci/back_native_1_dp_write
+#ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/u_ohci/back_native_1_dm_write
 
 # NEW STUFF TO ADD (??)
-# ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb0_dp_read
-# ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb0_dm_read
-# ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb1_dp_read
-# ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb1_dm_read
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb0_dp_read
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb0_dm_read
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb1_dp_read
+# ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb1_dm_read
 
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb0_dp_oe
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb0_dm_oe
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb1_dp_oe
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb1_dm_oe
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb0_dp_read
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb0_dm_read
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb1_dp_read
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb1_dm_read
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb0_dp_write
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb0_dm_write
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb1_dp_write
-ila_add_probe u_ila_usb -net gen_axi_usb.usb_ohci_i/usb1_dm_write
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb0_dp_oe
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb0_dm_oe
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb1_dp_oe
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb1_dm_oe
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb0_dp_read
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb0_dm_read
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb1_dp_read
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb1_dm_read
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb0_dp_write
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb0_dm_write
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb1_dp_write
+ila_add_probe u_ila_usb -net u_cvwsoc_axi/gen_axi_usb.usb_ohci_i/usb1_dm_write
 ##########################################################3
 
 # This is a GLOBAL setting (not ILA instance specific)
