@@ -309,16 +309,16 @@ ila_add_probe u_ila_axi -bus cb_m_axi_rlast -msb 2 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus cb_m_axi_wlast -msb 2 -lsb 0 -order lsb2msb
 #CDMA
 # ila_add_probe u_ila_axi -net cdma_m_axi_awvalid
-# ila_add_probe u_ila_axi -net cdma_m_axi_awready 
-# ila_add_probe u_ila_axi -bus cdma_m_axi_awaddr -msb 31 -lsb 0 -order lsb2msb 
-# ila_add_probe u_ila_axi -bus cdma_m_axi_awlen -msb 7 -lsb 0 -order lsb2msb 
-# ila_add_probe u_ila_axi -net cdma_m_axi_wvalid 
-# ila_add_probe u_ila_axi -net cdma_m_axi_wready 
+# ila_add_probe u_ila_axi -net cdma_m_axi_awready
+# ila_add_probe u_ila_axi -bus cdma_m_axi_awaddr -msb 31 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus cdma_m_axi_awlen -msb 7 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net cdma_m_axi_wvalid
+# ila_add_probe u_ila_axi -net cdma_m_axi_wready
 # ila_add_probe u_ila_axi -net cdma_m_axi_wlast
-# ila_add_probe u_ila_axi -net cdma_m_axi_bvalid 
+# ila_add_probe u_ila_axi -net cdma_m_axi_bvalid
 # ila_add_probe u_ila_axi -bus cdma_m_axi_bresp -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net cdma_m_axi_arvalid 
-# ila_add_probe u_ila_axi -net cdma_m_axi_arready 
+# ila_add_probe u_ila_axi -net cdma_m_axi_arvalid
+# ila_add_probe u_ila_axi -net cdma_m_axi_arready
 # ila_add_probe u_ila_axi -bus cdma_m_axi_araddr -msb 31 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus cdma_m_axi_arlen -msb 7 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -net cdma_m_axi_rvalid
@@ -342,11 +342,11 @@ ila_add_probe u_ila_axi -bus cb_m_axi_rlast -msb 2 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -net pc_lite_arvalid
 # ila_add_probe u_ila_axi -bus pc_lite_araddr -msb 31 -lsb 0 -order lsb2msb
 
-# ila_add_probe u_ila_axi -net pc_lite_awvalid 
-# ila_add_probe u_ila_axi -net pc_lite_awready 
+# ila_add_probe u_ila_axi -net pc_lite_awvalid
+# ila_add_probe u_ila_axi -net pc_lite_awready
 # ila_add_probe u_ila_axi -bus pc_lite_awaddr -msb 5 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net pc_lite_wvalid 
-# ila_add_probe u_ila_axi -net pc_lite_wready 
+# ila_add_probe u_ila_axi -net pc_lite_wvalid
+# ila_add_probe u_ila_axi -net pc_lite_wready
 # ila_add_probe u_ila_axi -bus pc_lite_wdata -msb 31 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -net pc_lite_bvalid
 # ila_add_probe u_ila_axi -bus pc_lite_bresp -msb 1 -lsb 0 -order lsb2msb
@@ -367,22 +367,22 @@ ila_add_probe u_ila_axi -bus cb_m_axi_rlast -msb 2 -lsb 0 -order lsb2msb
 
 # AXI-regbus converter signals
 #ila_add_probe u_ila_axi -net reg_req.valid
-#ila_add_probe u_ila_axi -net axi_vga_wrap_i/i_axi_vga/reg_req_i[valid]
-# ila_add_probe u_ila_axi -net axi_vga_wrap_i/i_axi_vga/reg_req_i[valid]
-#ila_add_probe u_ila_axi -net [get_nets -hier -regexp {^axi_vga_wrap_i/i_axi_vga/reg_req_i\[valid\]$}]
-ila_add_probe u_ila_axi -net axi_vga_wrap_i/dbg_reg_req_valid
-#ila_add_probe u_ila_axi -net [get_nets -hier -regexp {^axi_vga_wrap_i/i_axi_vga/reg_req_i\[write\]$}]
-ila_add_probe u_ila_axi -net axi_vga_wrap_i/dbg_reg_req_write
-#ila_add_probe u_ila_axi -bus axi_vga_wrap_i/i_axi_vga/reg_req_i[addr] -msb 11 -lsb 0 -order lsb2msb
-#ila_add_probe u_ila_axi -bus [get_nets -hier -regexp {axi_vga_wrap_i/i_axi_vga/reg_req_i\[addr\]\[[0-9]+\]$}] -msb 11 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus axi_vga_wrap_i/dbg_reg_req_addr -msb 11 -lsb 0 -order lsb2msb
-#ila_add_probe u_ila_axi -bus [get_nets -hier -regexp {axi_vga_wrap_i/i_axi_vga/reg_req_i\[wdata\]\[[0-9]+\]$}] -msb 31 -lsb 0 -order lsb2msb
+#ila_add_probe u_ila_axi -net gen_axi_vga.axi_vga_wrap_i/i_axi_vga/reg_req_i[valid]
+# ila_add_probe u_ila_axi -net gen_axi_vga.axi_vga_wrap_i/i_axi_vga/reg_req_i[valid]
+#ila_add_probe u_ila_axi -net [get_nets -hier -regexp {^gen_axi_vga/axi_vga_wrap_i/i_axi_vga/reg_req_i\[valid\]$}]
+ila_add_probe u_ila_axi -net gen_axi_vga.axi_vga_wrap_i/dbg_reg_req_valid
+#ila_add_probe u_ila_axi -net [get_nets -hier -regexp {^gen_axi_vga/axi_vga_wrap_i/i_axi_vga/reg_req_i\[write\]$}]
+ila_add_probe u_ila_axi -net gen_axi_vga.axi_vga_wrap_i/dbg_reg_req_write
+#ila_add_probe u_ila_axi -bus gen_axi_vga.axi_vga_wrap_i/i_axi_vga/reg_req_i[addr] -msb 11 -lsb 0 -order lsb2msb
+#ila_add_probe u_ila_axi -bus [get_nets -hier -regexp {gen_axi_vga/axi_vga_wrap_i/i_axi_vga/reg_req_i\[addr\]\[[0-9]+\]$}] -msb 11 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus gen_axi_vga.axi_vga_wrap_i/dbg_reg_req_addr -msb 11 -lsb 0 -order lsb2msb
+#ila_add_probe u_ila_axi -bus [get_nets -hier -regexp {gen_axi_vga/axi_vga_wrap_i/i_axi_vga/reg_req_i\[wdata\]\[[0-9]+\]$}] -msb 31 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus dbg_reg_req_wdata -msb 31 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus axi_vga_wrap_i/dbg_reg_rsp_rdata -msb 31 -lsb 0 -order lsb2msb
-#ila_add_probe u_ila_axi -net [get_nets -hier -regexp {^axi_vga_wrap_i/i_axi_vga/reg_rsp_o\[error\]$}]
-ila_add_probe u_ila_axi -net axi_vga_wrap_i/dbg_reg_rsp_error
-#ila_add_probe u_ila_axi -net axi_vga_wrap_i/i_axi_vga/reg_rsp_i[ready]
-#ila_add_probe u_ila_axi -net [get_nets -hier -regexp {^axi_vga_wrap_i/i_axi_vga/reg_rsp_o\[ready\]$}]
+ila_add_probe u_ila_axi -bus gen_axi_vga.axi_vga_wrap_i/dbg_reg_rsp_rdata -msb 31 -lsb 0 -order lsb2msb
+#ila_add_probe u_ila_axi -net [get_nets -hier -regexp {^gen_axi_vga/axi_vga_wrap_i/i_axi_vga/reg_rsp_o\[error\]$}]
+ila_add_probe u_ila_axi -net gen_axi_vga.axi_vga_wrap_i/dbg_reg_rsp_error
+#ila_add_probe u_ila_axi -net gen_axi_vga.axi_vga_wrap_i/i_axi_vga/reg_rsp_i[ready]
+#ila_add_probe u_ila_axi -net [get_nets -hier -regexp {^gen_axi_vga/axi_vga_wrap_i/i_axi_vga/reg_rsp_o\[ready\]$}]
 ila_add_probe u_ila_axi -net dbg_reg_rsp_ready
 
 # AXI bus from VGA master
@@ -403,5 +403,3 @@ ila_add_probe u_ila_axi -net vga_m_axi_rready
 # connect_debug_port dbg_hub/clk [get_nets default_100mhz_clk]
 # #connect_debug_port dbg_hub/clk [get_nets CPUCLK]
 connect_debug_port dbg_hub/clk [get_nets default_100mhz_clk]
-
-

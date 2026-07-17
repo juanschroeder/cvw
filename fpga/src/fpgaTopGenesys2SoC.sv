@@ -29,6 +29,7 @@
 `include "axi_stream/typedef.svh"
 
 import cvw::*;
+import cvwsoc_pkg::*;
 `include "parameter-defs.vh"
 
 module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
@@ -142,34 +143,38 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   localparam int unsigned AXI_QOS_W = 4;
   localparam int unsigned AXI_RESP_W = 2;
 
-  // XBAR is slave for: CPU, CDMA, VGA, USB, two iDMA descriptor fetchers, iDMA backend
-  localparam int unsigned N_SLV     = 7;
+  typedef logic [ADDR_W-1:0] axi_addr_t;
+
+  // Generate XBAR configuration
+  localparam xbar_out_t XBAR_OUT = gen_xbar_out(P);
+
+  localparam int unsigned N_SLV     = XBAR_OUT.n_slv;
   // XBAR is master for: DDR3, CDMA, VGA, USB, LITEETH, LiteDRAM CSR, SDHCI,
   //                     iDMA desc64 memory, iDMA reg64, iDMA desc64 AXIS
-  localparam int unsigned N_MST     = 10;
+  localparam int unsigned N_MST     = XBAR_OUT.n_mst;
   localparam int unsigned SLV_ID_W  = 2;
   localparam int unsigned MST_ID_W  = SLV_ID_W + $clog2(N_SLV);
   localparam int unsigned DDR_ID_W  = MST_ID_W;
-  localparam int unsigned N_RULES   = 10;
+  localparam int unsigned N_RULES   = XBAR_OUT.n_rules;
 
-  localparam int unsigned CB_S_CPU  = 0;
-  localparam int unsigned CB_S_CDMA = 1;
-  localparam int unsigned CB_S_VGA  = 2;
-  localparam int unsigned CB_S_USB  = 3;
-  localparam int unsigned CB_S_IDMA_FE = 4;
-  localparam int unsigned CB_S_IDMA_FE_AXIS = 5;
-  localparam int unsigned CB_S_IDMA_BE = 6;
+  localparam int unsigned CB_S_CPU  = XBAR_OUT.s_cpu;
+  localparam int unsigned CB_S_CDMA = XBAR_OUT.s_cdma;
+  localparam int unsigned CB_S_VGA  = XBAR_OUT.s_vga;
+  localparam int unsigned CB_S_USB  = XBAR_OUT.s_usb;
+  localparam int unsigned CB_S_IDMA_FE = XBAR_OUT.s_idma_fe;
+  localparam int unsigned CB_S_IDMA_FE_AXIS = XBAR_OUT.s_idma_fe_axis;
+  localparam int unsigned CB_S_IDMA_BE = XBAR_OUT.s_idma_be;
 
-  localparam int unsigned CB_M_DDR      = 0;
-  localparam int unsigned CB_M_CDMA_REG = 1;
-  localparam int unsigned CB_M_VGA_REG  = 2;
-  localparam int unsigned CB_M_USB_REG  = 3;
-  localparam int unsigned CB_M_ETH_REG  = 4;
-  localparam int unsigned CB_M_DRAM_CSR = 5;
-  localparam int unsigned CB_M_SDHCI    = 6;
-  localparam int unsigned CB_M_IDMA_DESC = 7;
-  localparam int unsigned CB_M_IDMA_REG64 = 8;
-  localparam int unsigned CB_M_IDMA_AXIS = 9;
+  localparam int unsigned CB_M_DDR      = XBAR_OUT.m_ddr;
+  localparam int unsigned CB_M_CDMA_REG = XBAR_OUT.m_cdma_reg;
+  localparam int unsigned CB_M_VGA_REG  = XBAR_OUT.m_vga_reg;
+  localparam int unsigned CB_M_USB_REG  = XBAR_OUT.m_usb_reg;
+  localparam int unsigned CB_M_ETH_REG  = XBAR_OUT.m_eth_reg;
+  localparam int unsigned CB_M_DRAM_CSR = XBAR_OUT.m_dram_csr;
+  localparam int unsigned CB_M_SDHCI    = XBAR_OUT.m_sdhci;
+  localparam int unsigned CB_M_IDMA_DESC = XBAR_OUT.m_idma_desc;
+  localparam int unsigned CB_M_IDMA_REG64 = XBAR_OUT.m_idma_reg64;
+  localparam int unsigned CB_M_IDMA_AXIS = XBAR_OUT.m_idma_axis;
 
   localparam int unsigned MIG_ADDR_WIDTH = 30;
   localparam int unsigned DDR_ADDR_BITS = MIG_ADDR_WIDTH;
@@ -824,139 +829,36 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   assign BUS_cb_axi_rready  = cb_m_axi_rready[CB_M_DDR];
 
-  // Pack crossbar S_AXI (S00=CPU/BUS, S01=CDMA, S02=VGA, S03=USB OHCI DMA).
   // Crossbar source-port thread IDs are SLV_ID_W bits; the xbar adds the port tag internally.
   assign cb_s_axi_awid[CB_S_CPU*MST_ID_W +: MST_ID_W]  = {{(MST_ID_W-SLV_ID_W){1'b0}}, BUS_axi_awid[SLV_ID_W-1:0]};
-  assign cb_s_axi_awid[CB_S_CDMA*MST_ID_W +: MST_ID_W] = {{(MST_ID_W-SLV_ID_W){1'b0}}, cdma_m_axi_awid[SLV_ID_W-1:0]};
-  assign cb_s_axi_awid[CB_S_VGA*MST_ID_W +: MST_ID_W]  = {{(MST_ID_W-SLV_ID_W){1'b0}}, vga_m_axi_awid[SLV_ID_W-1:0]};
-  assign cb_s_axi_awid[CB_S_USB*MST_ID_W +: MST_ID_W]  = {{(MST_ID_W-SLV_ID_W){1'b0}}, usb_m_axi_awid[SLV_ID_W-1:0]};
-
   assign cb_s_axi_awaddr[CB_S_CPU*ADDR_W +: ADDR_W]  = BUS_axi_awaddr;
-  assign cb_s_axi_awaddr[CB_S_CDMA*ADDR_W +: ADDR_W] = cdma_m_axi_awaddr;
-  assign cb_s_axi_awaddr[CB_S_VGA*ADDR_W +: ADDR_W]  = vga_m_axi_awaddr;
-  assign cb_s_axi_awaddr[CB_S_USB*ADDR_W +: ADDR_W]  = usb_m_axi_awaddr;
-
   assign cb_s_axi_awlen[CB_S_CPU*AXI_LEN_W +: AXI_LEN_W]  = BUS_axi_awlen;
-  assign cb_s_axi_awlen[CB_S_CDMA*AXI_LEN_W +: AXI_LEN_W] = cdma_m_axi_awlen;
-  assign cb_s_axi_awlen[CB_S_VGA*AXI_LEN_W +: AXI_LEN_W]  = vga_m_axi_awlen;
-  assign cb_s_axi_awlen[CB_S_USB*AXI_LEN_W +: AXI_LEN_W]  = usb_m_axi_awlen;
-
   assign cb_s_axi_awsize[CB_S_CPU*AXI_SIZE_W +: AXI_SIZE_W]  = BUS_axi_awsize;
-  assign cb_s_axi_awsize[CB_S_CDMA*AXI_SIZE_W +: AXI_SIZE_W] = cdma_m_axi_awsize;
-  assign cb_s_axi_awsize[CB_S_VGA*AXI_SIZE_W +: AXI_SIZE_W]  = vga_m_axi_awsize;
-  assign cb_s_axi_awsize[CB_S_USB*AXI_SIZE_W +: AXI_SIZE_W]  = usb_m_axi_awsize;
-
   assign cb_s_axi_awburst[CB_S_CPU*AXI_BURST_W +: AXI_BURST_W]  = BUS_axi_awburst;
-  assign cb_s_axi_awburst[CB_S_CDMA*AXI_BURST_W +: AXI_BURST_W] = cdma_m_axi_awburst;
-  assign cb_s_axi_awburst[CB_S_VGA*AXI_BURST_W +: AXI_BURST_W]  = vga_m_axi_awburst;
-  assign cb_s_axi_awburst[CB_S_USB*AXI_BURST_W +: AXI_BURST_W]  = usb_m_axi_awburst;
-
   assign cb_s_axi_awlock[CB_S_CPU]  = BUS_axi_awlock;
-  assign cb_s_axi_awlock[CB_S_CDMA] = cdma_m_axi_awlock;
-  assign cb_s_axi_awlock[CB_S_VGA]  = vga_m_axi_awlock;
-  assign cb_s_axi_awlock[CB_S_USB]  = usb_m_axi_awlock;
-
   assign cb_s_axi_awcache[CB_S_CPU*AXI_CACHE_W +: AXI_CACHE_W]  = BUS_axi_awcache;
-  assign cb_s_axi_awcache[CB_S_CDMA*AXI_CACHE_W +: AXI_CACHE_W] = cdma_m_axi_awcache;
-  assign cb_s_axi_awcache[CB_S_VGA*AXI_CACHE_W +: AXI_CACHE_W]  = vga_m_axi_awcache;
-  assign cb_s_axi_awcache[CB_S_USB*AXI_CACHE_W +: AXI_CACHE_W]  = usb_m_axi_awcache;
-
   assign cb_s_axi_awprot[CB_S_CPU*AXI_PROT_W +: AXI_PROT_W]  = BUS_axi_awprot;
-  assign cb_s_axi_awprot[CB_S_CDMA*AXI_PROT_W +: AXI_PROT_W] = cdma_m_axi_awprot;
-  assign cb_s_axi_awprot[CB_S_VGA*AXI_PROT_W +: AXI_PROT_W]  = vga_m_axi_awprot;
-  assign cb_s_axi_awprot[CB_S_USB*AXI_PROT_W +: AXI_PROT_W]  = usb_m_axi_awprot;
-
   assign cb_s_axi_awqos[CB_S_CPU*AXI_QOS_W +: AXI_QOS_W]  = BUS_axi_awqos;
-  assign cb_s_axi_awqos[CB_S_CDMA*AXI_QOS_W +: AXI_QOS_W] = '0;
-  assign cb_s_axi_awqos[CB_S_VGA*AXI_QOS_W +: AXI_QOS_W]  = '0;
-  assign cb_s_axi_awqos[CB_S_USB*AXI_QOS_W +: AXI_QOS_W]  = '0;
-
   assign cb_s_axi_awvalid[CB_S_CPU]  = BUS_axi_awvalid;
-  assign cb_s_axi_awvalid[CB_S_CDMA] = cdma_m_axi_awvalid;
-  assign cb_s_axi_awvalid[CB_S_VGA]  = vga_m_axi_awvalid;
-  assign cb_s_axi_awvalid[CB_S_USB]  = usb_m_axi_awvalid;
-
   assign cb_s_axi_wdata[CB_S_CPU*DATA_W  +: DATA_W] = BUS_axi_wdata;
-  assign cb_s_axi_wdata[CB_S_CDMA*DATA_W +: DATA_W] = cdma_m_axi_wdata;
-  assign cb_s_axi_wdata[CB_S_VGA*DATA_W  +: DATA_W] = vga_m_axi_wdata;
-  assign cb_s_axi_wdata[CB_S_USB*DATA_W  +: DATA_W] = usb_m_axi_wdata;
-
   assign cb_s_axi_wstrb[CB_S_CPU*STRB_W  +: STRB_W] = BUS_axi_wstrb;
-  assign cb_s_axi_wstrb[CB_S_CDMA*STRB_W +: STRB_W] = cdma_m_axi_wstrb;
-  assign cb_s_axi_wstrb[CB_S_VGA*STRB_W  +: STRB_W] = vga_m_axi_wstrb;
-  assign cb_s_axi_wstrb[CB_S_USB*STRB_W  +: STRB_W] = usb_m_axi_wstrb;
   assign cb_s_axi_wlast[CB_S_CPU]  = BUS_axi_wlast;
-  assign cb_s_axi_wlast[CB_S_CDMA] = cdma_m_axi_wlast;
-  assign cb_s_axi_wlast[CB_S_VGA]  = vga_m_axi_wlast;
-  assign cb_s_axi_wlast[CB_S_USB]  = usb_m_axi_wlast;
-
   assign cb_s_axi_wvalid[CB_S_CPU]  = BUS_axi_wvalid;
-  assign cb_s_axi_wvalid[CB_S_CDMA] = cdma_m_axi_wvalid;
-  assign cb_s_axi_wvalid[CB_S_VGA]  = vga_m_axi_wvalid;
-  assign cb_s_axi_wvalid[CB_S_USB]  = usb_m_axi_wvalid;
-
   assign cb_s_axi_bready[CB_S_CPU]  = BUS_axi_bready;
-  assign cb_s_axi_bready[CB_S_CDMA] = cdma_m_axi_bready;
-  assign cb_s_axi_bready[CB_S_VGA]  = vga_m_axi_bready;
-  assign cb_s_axi_bready[CB_S_USB]  = usb_m_axi_bready;
-
   assign cb_s_axi_arid[CB_S_CPU*MST_ID_W +: MST_ID_W]  = {{(MST_ID_W-SLV_ID_W){1'b0}}, BUS_axi_arid[SLV_ID_W-1:0]};
-  assign cb_s_axi_arid[CB_S_CDMA*MST_ID_W +: MST_ID_W] = {{(MST_ID_W-SLV_ID_W){1'b0}}, cdma_m_axi_arid[SLV_ID_W-1:0]};
-  assign cb_s_axi_arid[CB_S_VGA*MST_ID_W +: MST_ID_W]  = {{(MST_ID_W-SLV_ID_W){1'b0}}, vga_m_axi_arid[SLV_ID_W-1:0]};
-  assign cb_s_axi_arid[CB_S_USB*MST_ID_W +: MST_ID_W]  = {{(MST_ID_W-SLV_ID_W){1'b0}}, usb_m_axi_arid[SLV_ID_W-1:0]};
-
   assign cb_s_axi_araddr[CB_S_CPU*ADDR_W +: ADDR_W]  = BUS_axi_araddr;
-  assign cb_s_axi_araddr[CB_S_CDMA*ADDR_W +: ADDR_W] = cdma_m_axi_araddr;
-  assign cb_s_axi_araddr[CB_S_VGA*ADDR_W +: ADDR_W]  = vga_m_axi_araddr;
-  assign cb_s_axi_araddr[CB_S_USB*ADDR_W +: ADDR_W]  = usb_m_axi_araddr;
-
   assign cb_s_axi_arlen[CB_S_CPU*AXI_LEN_W +: AXI_LEN_W]  = BUS_axi_arlen;
-  assign cb_s_axi_arlen[CB_S_CDMA*AXI_LEN_W +: AXI_LEN_W] = cdma_m_axi_arlen;
-  assign cb_s_axi_arlen[CB_S_VGA*AXI_LEN_W +: AXI_LEN_W]  = vga_m_axi_arlen;
-  assign cb_s_axi_arlen[CB_S_USB*AXI_LEN_W +: AXI_LEN_W]  = usb_m_axi_arlen;
-
   assign cb_s_axi_arsize[CB_S_CPU*AXI_SIZE_W +: AXI_SIZE_W]  = BUS_axi_arsize;
-  assign cb_s_axi_arsize[CB_S_CDMA*AXI_SIZE_W +: AXI_SIZE_W] = cdma_m_axi_arsize;
-  assign cb_s_axi_arsize[CB_S_VGA*AXI_SIZE_W +: AXI_SIZE_W]  = vga_m_axi_arsize;
-  assign cb_s_axi_arsize[CB_S_USB*AXI_SIZE_W +: AXI_SIZE_W]  = usb_m_axi_arsize;
-
   assign cb_s_axi_arburst[CB_S_CPU*AXI_BURST_W +: AXI_BURST_W]  = BUS_axi_arburst;
-  assign cb_s_axi_arburst[CB_S_CDMA*AXI_BURST_W +: AXI_BURST_W] = cdma_m_axi_arburst;
-  assign cb_s_axi_arburst[CB_S_VGA*AXI_BURST_W +: AXI_BURST_W]  = vga_m_axi_arburst;
-  assign cb_s_axi_arburst[CB_S_USB*AXI_BURST_W +: AXI_BURST_W]  = usb_m_axi_arburst;
-
   assign cb_s_axi_arlock[CB_S_CPU]  = BUS_axi_arlock;
-  assign cb_s_axi_arlock[CB_S_CDMA] = cdma_m_axi_arlock;
-  assign cb_s_axi_arlock[CB_S_VGA]  = vga_m_axi_arlock;
-  assign cb_s_axi_arlock[CB_S_USB]  = usb_m_axi_arlock;
-
   assign cb_s_axi_arcache[CB_S_CPU*AXI_CACHE_W +: AXI_CACHE_W]  = BUS_axi_arcache;
-  assign cb_s_axi_arcache[CB_S_CDMA*AXI_CACHE_W +: AXI_CACHE_W] = cdma_m_axi_arcache;
-  assign cb_s_axi_arcache[CB_S_VGA*AXI_CACHE_W +: AXI_CACHE_W]  = vga_m_axi_arcache;
-  assign cb_s_axi_arcache[CB_S_USB*AXI_CACHE_W +: AXI_CACHE_W]  = usb_m_axi_arcache;
-
   assign cb_s_axi_arprot[CB_S_CPU*AXI_PROT_W +: AXI_PROT_W]  = BUS_axi_arprot;
-  assign cb_s_axi_arprot[CB_S_CDMA*AXI_PROT_W +: AXI_PROT_W] = cdma_m_axi_arprot;
-  assign cb_s_axi_arprot[CB_S_VGA*AXI_PROT_W +: AXI_PROT_W]  = vga_m_axi_arprot;
-  assign cb_s_axi_arprot[CB_S_USB*AXI_PROT_W +: AXI_PROT_W]  = usb_m_axi_arprot;
-
   assign cb_s_axi_arqos[CB_S_CPU*AXI_QOS_W +: AXI_QOS_W]  = BUS_axi_arqos;
-  assign cb_s_axi_arqos[CB_S_CDMA*AXI_QOS_W +: AXI_QOS_W] = '0;
-  assign cb_s_axi_arqos[CB_S_VGA*AXI_QOS_W +: AXI_QOS_W]  = '0;
-  assign cb_s_axi_arqos[CB_S_USB*AXI_QOS_W +: AXI_QOS_W]  = '0;
-
   assign cb_s_axi_arvalid[CB_S_CPU]  = BUS_axi_arvalid;
-  assign cb_s_axi_arvalid[CB_S_CDMA] = cdma_m_axi_arvalid;
-  assign cb_s_axi_arvalid[CB_S_VGA]  = vga_m_axi_arvalid;
-  assign cb_s_axi_arvalid[CB_S_USB]  = usb_m_axi_arvalid;
-
   assign cb_s_axi_rready[CB_S_CPU]  = BUS_axi_rready;
-  assign cb_s_axi_rready[CB_S_CDMA] = cdma_m_axi_rready;
-  assign cb_s_axi_rready[CB_S_VGA]  = vga_m_axi_rready;
-  assign cb_s_axi_rready[CB_S_USB]  = usb_m_axi_rready;
 
 
-  // Split back to CPU master (S00)
+  // Split back to CPU master (Slave 0)
   assign BUS_axi_awready = cb_s_axi_awready[CB_S_CPU];
   assign BUS_axi_wready  = cb_s_axi_wready[CB_S_CPU];
   assign BUS_axi_bvalid  = cb_s_axi_bvalid[CB_S_CPU];
@@ -969,133 +871,34 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   assign BUS_axi_rid     = cb_s_axi_rid[CB_S_CPU*MST_ID_W +: MST_ID_W];
   assign BUS_axi_rdata   = cb_s_axi_rdata[CB_S_CPU*DATA_W +: DATA_W];
 
-  // Split back to CDMA master (S01)
-  assign cdma_m_axi_awready = cb_s_axi_awready[CB_S_CDMA];
-  assign cdma_m_axi_wready  = cb_s_axi_wready[CB_S_CDMA];
-  assign cdma_m_axi_bvalid  = cb_s_axi_bvalid[CB_S_CDMA];
-  assign cdma_m_axi_bresp   = cb_s_axi_bresp[CB_S_CDMA*AXI_RESP_W +: AXI_RESP_W];
-  assign cdma_m_axi_bid     = cb_s_axi_bid[CB_S_CDMA*MST_ID_W +: MST_ID_W];
-  assign cdma_m_axi_arready = cb_s_axi_arready[CB_S_CDMA];
-  assign cdma_m_axi_rvalid  = cb_s_axi_rvalid[CB_S_CDMA];
-  assign cdma_m_axi_rlast   = cb_s_axi_rlast[CB_S_CDMA];
-  assign cdma_m_axi_rresp   = cb_s_axi_rresp[CB_S_CDMA*AXI_RESP_W +: AXI_RESP_W];
-  assign cdma_m_axi_rid     = cb_s_axi_rid[CB_S_CDMA*MST_ID_W +: MST_ID_W];
-  assign cdma_m_axi_rdata   = cb_s_axi_rdata[CB_S_CDMA*DATA_W +: DATA_W];
+  if (P.XILINX_AXI_DMA_SUPPORTED) begin : gen_cb_s_cdma
+    assign {cb_s_axi_awid[CB_S_CDMA*MST_ID_W +: MST_ID_W], cb_s_axi_awaddr[CB_S_CDMA*ADDR_W +: ADDR_W], cb_s_axi_awlen[CB_S_CDMA*AXI_LEN_W +: AXI_LEN_W], cb_s_axi_awsize[CB_S_CDMA*AXI_SIZE_W +: AXI_SIZE_W], cb_s_axi_awburst[CB_S_CDMA*AXI_BURST_W +: AXI_BURST_W], cb_s_axi_awlock[CB_S_CDMA], cb_s_axi_awcache[CB_S_CDMA*AXI_CACHE_W +: AXI_CACHE_W], cb_s_axi_awprot[CB_S_CDMA*AXI_PROT_W +: AXI_PROT_W], cb_s_axi_awqos[CB_S_CDMA*AXI_QOS_W +: AXI_QOS_W], cb_s_axi_awvalid[CB_S_CDMA], cb_s_axi_wdata[CB_S_CDMA*DATA_W +: DATA_W], cb_s_axi_wstrb[CB_S_CDMA*STRB_W +: STRB_W], cb_s_axi_wlast[CB_S_CDMA], cb_s_axi_wvalid[CB_S_CDMA], cb_s_axi_bready[CB_S_CDMA], cb_s_axi_arid[CB_S_CDMA*MST_ID_W +: MST_ID_W], cb_s_axi_araddr[CB_S_CDMA*ADDR_W +: ADDR_W], cb_s_axi_arlen[CB_S_CDMA*AXI_LEN_W +: AXI_LEN_W], cb_s_axi_arsize[CB_S_CDMA*AXI_SIZE_W +: AXI_SIZE_W], cb_s_axi_arburst[CB_S_CDMA*AXI_BURST_W +: AXI_BURST_W], cb_s_axi_arlock[CB_S_CDMA], cb_s_axi_arcache[CB_S_CDMA*AXI_CACHE_W +: AXI_CACHE_W], cb_s_axi_arprot[CB_S_CDMA*AXI_PROT_W +: AXI_PROT_W], cb_s_axi_arqos[CB_S_CDMA*AXI_QOS_W +: AXI_QOS_W], cb_s_axi_arvalid[CB_S_CDMA], cb_s_axi_rready[CB_S_CDMA]} = {{(MST_ID_W-SLV_ID_W){1'b0}}, cdma_m_axi_awid, cdma_m_axi_awaddr, cdma_m_axi_awlen, cdma_m_axi_awsize, cdma_m_axi_awburst, cdma_m_axi_awlock, cdma_m_axi_awcache, cdma_m_axi_awprot, {AXI_QOS_W{1'b0}}, cdma_m_axi_awvalid, cdma_m_axi_wdata, cdma_m_axi_wstrb, cdma_m_axi_wlast, cdma_m_axi_wvalid, cdma_m_axi_bready, {(MST_ID_W-SLV_ID_W){1'b0}}, cdma_m_axi_arid, cdma_m_axi_araddr, cdma_m_axi_arlen, cdma_m_axi_arsize, cdma_m_axi_arburst, cdma_m_axi_arlock, cdma_m_axi_arcache, cdma_m_axi_arprot, {AXI_QOS_W{1'b0}}, cdma_m_axi_arvalid, cdma_m_axi_rready};
+    assign {cdma_m_axi_awready, cdma_m_axi_wready, cdma_m_axi_bvalid, cdma_m_axi_bresp, cdma_m_axi_bid, cdma_m_axi_arready, cdma_m_axi_rvalid, cdma_m_axi_rlast, cdma_m_axi_rresp, cdma_m_axi_rid, cdma_m_axi_rdata} = {cb_s_axi_awready[CB_S_CDMA], cb_s_axi_wready[CB_S_CDMA], cb_s_axi_bvalid[CB_S_CDMA], cb_s_axi_bresp[CB_S_CDMA*AXI_RESP_W +: AXI_RESP_W], cb_s_axi_bid[CB_S_CDMA*MST_ID_W +: MST_ID_W], cb_s_axi_arready[CB_S_CDMA], cb_s_axi_rvalid[CB_S_CDMA], cb_s_axi_rlast[CB_S_CDMA], cb_s_axi_rresp[CB_S_CDMA*AXI_RESP_W +: AXI_RESP_W], cb_s_axi_rid[CB_S_CDMA*MST_ID_W +: MST_ID_W], cb_s_axi_rdata[CB_S_CDMA*DATA_W +: DATA_W]};
+  end
 
-  // Split back to VGA master (S02)
-  assign vga_m_axi_awready = cb_s_axi_awready[CB_S_VGA];
-  assign vga_m_axi_wready  = cb_s_axi_wready[CB_S_VGA];
-  assign vga_m_axi_bvalid  = cb_s_axi_bvalid[CB_S_VGA];
-  assign vga_m_axi_bresp   = cb_s_axi_bresp[CB_S_VGA*AXI_RESP_W +: AXI_RESP_W];
-  assign vga_m_axi_bid     = cb_s_axi_bid[CB_S_VGA*MST_ID_W +: SLV_ID_W];
-  assign vga_m_axi_arready = cb_s_axi_arready[CB_S_VGA];
-  assign vga_m_axi_rvalid  = cb_s_axi_rvalid[CB_S_VGA];
-  assign vga_m_axi_rlast   = cb_s_axi_rlast[CB_S_VGA];
-  assign vga_m_axi_rresp   = cb_s_axi_rresp[CB_S_VGA*AXI_RESP_W +: AXI_RESP_W];
-  assign vga_m_axi_rid     = cb_s_axi_rid[CB_S_VGA*MST_ID_W +: SLV_ID_W];
-  assign vga_m_axi_rdata   = cb_s_axi_rdata[CB_S_VGA*DATA_W +: DATA_W];
+  if (P.AXI_VGA_SUPPORTED) begin : gen_cb_s_vga
+    assign {cb_s_axi_awid[CB_S_VGA*MST_ID_W +: MST_ID_W], cb_s_axi_awaddr[CB_S_VGA*ADDR_W +: ADDR_W], cb_s_axi_awlen[CB_S_VGA*AXI_LEN_W +: AXI_LEN_W], cb_s_axi_awsize[CB_S_VGA*AXI_SIZE_W +: AXI_SIZE_W], cb_s_axi_awburst[CB_S_VGA*AXI_BURST_W +: AXI_BURST_W], cb_s_axi_awlock[CB_S_VGA], cb_s_axi_awcache[CB_S_VGA*AXI_CACHE_W +: AXI_CACHE_W], cb_s_axi_awprot[CB_S_VGA*AXI_PROT_W +: AXI_PROT_W], cb_s_axi_awqos[CB_S_VGA*AXI_QOS_W +: AXI_QOS_W], cb_s_axi_awvalid[CB_S_VGA], cb_s_axi_wdata[CB_S_VGA*DATA_W +: DATA_W], cb_s_axi_wstrb[CB_S_VGA*STRB_W +: STRB_W], cb_s_axi_wlast[CB_S_VGA], cb_s_axi_wvalid[CB_S_VGA], cb_s_axi_bready[CB_S_VGA], cb_s_axi_arid[CB_S_VGA*MST_ID_W +: MST_ID_W], cb_s_axi_araddr[CB_S_VGA*ADDR_W +: ADDR_W], cb_s_axi_arlen[CB_S_VGA*AXI_LEN_W +: AXI_LEN_W], cb_s_axi_arsize[CB_S_VGA*AXI_SIZE_W +: AXI_SIZE_W], cb_s_axi_arburst[CB_S_VGA*AXI_BURST_W +: AXI_BURST_W], cb_s_axi_arlock[CB_S_VGA], cb_s_axi_arcache[CB_S_VGA*AXI_CACHE_W +: AXI_CACHE_W], cb_s_axi_arprot[CB_S_VGA*AXI_PROT_W +: AXI_PROT_W], cb_s_axi_arqos[CB_S_VGA*AXI_QOS_W +: AXI_QOS_W], cb_s_axi_arvalid[CB_S_VGA], cb_s_axi_rready[CB_S_VGA]} = {{(MST_ID_W-SLV_ID_W){1'b0}}, vga_m_axi_awid, vga_m_axi_awaddr, vga_m_axi_awlen, vga_m_axi_awsize, vga_m_axi_awburst, vga_m_axi_awlock, vga_m_axi_awcache, vga_m_axi_awprot, {AXI_QOS_W{1'b0}}, vga_m_axi_awvalid, vga_m_axi_wdata, vga_m_axi_wstrb, vga_m_axi_wlast, vga_m_axi_wvalid, vga_m_axi_bready, {(MST_ID_W-SLV_ID_W){1'b0}}, vga_m_axi_arid, vga_m_axi_araddr, vga_m_axi_arlen, vga_m_axi_arsize, vga_m_axi_arburst, vga_m_axi_arlock, vga_m_axi_arcache, vga_m_axi_arprot, {AXI_QOS_W{1'b0}}, vga_m_axi_arvalid, vga_m_axi_rready};
+    assign {vga_m_axi_awready, vga_m_axi_wready, vga_m_axi_bvalid, vga_m_axi_bresp, vga_m_axi_bid, vga_m_axi_arready, vga_m_axi_rvalid, vga_m_axi_rlast, vga_m_axi_rresp, vga_m_axi_rid, vga_m_axi_rdata} = {cb_s_axi_awready[CB_S_VGA], cb_s_axi_wready[CB_S_VGA], cb_s_axi_bvalid[CB_S_VGA], cb_s_axi_bresp[CB_S_VGA*AXI_RESP_W +: AXI_RESP_W], cb_s_axi_bid[CB_S_VGA*MST_ID_W +: SLV_ID_W], cb_s_axi_arready[CB_S_VGA], cb_s_axi_rvalid[CB_S_VGA], cb_s_axi_rlast[CB_S_VGA], cb_s_axi_rresp[CB_S_VGA*AXI_RESP_W +: AXI_RESP_W], cb_s_axi_rid[CB_S_VGA*MST_ID_W +: SLV_ID_W], cb_s_axi_rdata[CB_S_VGA*DATA_W +: DATA_W]};
+  end
 
-  // Split back to USB OHCI DMA master (S03)
-  assign usb_m_axi_awready = cb_s_axi_awready[CB_S_USB];
-  assign usb_m_axi_wready  = cb_s_axi_wready[CB_S_USB];
-  assign usb_m_axi_bvalid  = cb_s_axi_bvalid[CB_S_USB];
-  assign usb_m_axi_bresp   = cb_s_axi_bresp[CB_S_USB*AXI_RESP_W +: AXI_RESP_W];
-  assign usb_m_axi_bid     = cb_s_axi_bid[CB_S_USB*MST_ID_W +: SLV_ID_W];
-  assign usb_m_axi_arready = cb_s_axi_arready[CB_S_USB];
-  assign usb_m_axi_rvalid  = cb_s_axi_rvalid[CB_S_USB];
-  assign usb_m_axi_rlast   = cb_s_axi_rlast[CB_S_USB];
-  assign usb_m_axi_rresp   = cb_s_axi_rresp[CB_S_USB*AXI_RESP_W +: AXI_RESP_W];
-  assign usb_m_axi_rid     = cb_s_axi_rid[CB_S_USB*MST_ID_W +: SLV_ID_W];
-  assign usb_m_axi_rdata   = cb_s_axi_rdata[CB_S_USB*DATA_W +: DATA_W];
+  if (P.AXI_USB_SUPPORTED) begin : gen_cb_s_usb
+    assign {cb_s_axi_awid[CB_S_USB*MST_ID_W +: MST_ID_W], cb_s_axi_awaddr[CB_S_USB*ADDR_W +: ADDR_W], cb_s_axi_awlen[CB_S_USB*AXI_LEN_W +: AXI_LEN_W], cb_s_axi_awsize[CB_S_USB*AXI_SIZE_W +: AXI_SIZE_W], cb_s_axi_awburst[CB_S_USB*AXI_BURST_W +: AXI_BURST_W], cb_s_axi_awlock[CB_S_USB], cb_s_axi_awcache[CB_S_USB*AXI_CACHE_W +: AXI_CACHE_W], cb_s_axi_awprot[CB_S_USB*AXI_PROT_W +: AXI_PROT_W], cb_s_axi_awqos[CB_S_USB*AXI_QOS_W +: AXI_QOS_W], cb_s_axi_awvalid[CB_S_USB], cb_s_axi_wdata[CB_S_USB*DATA_W +: DATA_W], cb_s_axi_wstrb[CB_S_USB*STRB_W +: STRB_W], cb_s_axi_wlast[CB_S_USB], cb_s_axi_wvalid[CB_S_USB], cb_s_axi_bready[CB_S_USB], cb_s_axi_arid[CB_S_USB*MST_ID_W +: MST_ID_W], cb_s_axi_araddr[CB_S_USB*ADDR_W +: ADDR_W], cb_s_axi_arlen[CB_S_USB*AXI_LEN_W +: AXI_LEN_W], cb_s_axi_arsize[CB_S_USB*AXI_SIZE_W +: AXI_SIZE_W], cb_s_axi_arburst[CB_S_USB*AXI_BURST_W +: AXI_BURST_W], cb_s_axi_arlock[CB_S_USB], cb_s_axi_arcache[CB_S_USB*AXI_CACHE_W +: AXI_CACHE_W], cb_s_axi_arprot[CB_S_USB*AXI_PROT_W +: AXI_PROT_W], cb_s_axi_arqos[CB_S_USB*AXI_QOS_W +: AXI_QOS_W], cb_s_axi_arvalid[CB_S_USB], cb_s_axi_rready[CB_S_USB]} = {{(MST_ID_W-SLV_ID_W){1'b0}}, usb_m_axi_awid, usb_m_axi_awaddr, usb_m_axi_awlen, usb_m_axi_awsize, usb_m_axi_awburst, usb_m_axi_awlock, usb_m_axi_awcache, usb_m_axi_awprot, {AXI_QOS_W{1'b0}}, usb_m_axi_awvalid, usb_m_axi_wdata, usb_m_axi_wstrb, usb_m_axi_wlast, usb_m_axi_wvalid, usb_m_axi_bready, {(MST_ID_W-SLV_ID_W){1'b0}}, usb_m_axi_arid, usb_m_axi_araddr, usb_m_axi_arlen, usb_m_axi_arsize, usb_m_axi_arburst, usb_m_axi_arlock, usb_m_axi_arcache, usb_m_axi_arprot, {AXI_QOS_W{1'b0}}, usb_m_axi_arvalid, usb_m_axi_rready};
+    assign {usb_m_axi_awready, usb_m_axi_wready, usb_m_axi_bvalid, usb_m_axi_bresp, usb_m_axi_bid, usb_m_axi_arready, usb_m_axi_rvalid, usb_m_axi_rlast, usb_m_axi_rresp, usb_m_axi_rid, usb_m_axi_rdata} = {cb_s_axi_awready[CB_S_USB], cb_s_axi_wready[CB_S_USB], cb_s_axi_bvalid[CB_S_USB], cb_s_axi_bresp[CB_S_USB*AXI_RESP_W +: AXI_RESP_W], cb_s_axi_bid[CB_S_USB*MST_ID_W +: SLV_ID_W], cb_s_axi_arready[CB_S_USB], cb_s_axi_rvalid[CB_S_USB], cb_s_axi_rlast[CB_S_USB], cb_s_axi_rresp[CB_S_USB*AXI_RESP_W +: AXI_RESP_W], cb_s_axi_rid[CB_S_USB*MST_ID_W +: SLV_ID_W], cb_s_axi_rdata[CB_S_USB*DATA_W +: DATA_W]};
+  end
 
 
-  // Provide crossbar MI return channels from M00..M06.
+  // Crossbar is master to DDR
   assign cb_m_axi_awready[CB_M_DDR]      = BUS_cb_axi_awready;
-  assign cb_m_axi_awready[CB_M_CDMA_REG] = reg_awready;
-  assign cb_m_axi_awready[CB_M_VGA_REG]  = vga_reg_awready;
-  assign cb_m_axi_awready[CB_M_USB_REG]  = usb_reg_awready;
-  assign cb_m_axi_awready[CB_M_ETH_REG]  = liteeth_reg_awready;
-  assign cb_m_axi_awready[CB_M_DRAM_CSR] = litedram_axi_awready;
-  assign cb_m_axi_awready[CB_M_SDHCI]    = sdhci_reg_awready;
-
   assign cb_m_axi_wready[CB_M_DDR]      = BUS_cb_axi_wready;
-  assign cb_m_axi_wready[CB_M_CDMA_REG] = reg_wready;
-  assign cb_m_axi_wready[CB_M_VGA_REG]  = vga_reg_wready;
-  assign cb_m_axi_wready[CB_M_USB_REG]  = usb_reg_wready;
-  assign cb_m_axi_wready[CB_M_ETH_REG]  = liteeth_reg_wready;
-  assign cb_m_axi_wready[CB_M_DRAM_CSR] = litedram_axi_wready;
-  assign cb_m_axi_wready[CB_M_SDHCI]    = sdhci_reg_wready;
-
   assign cb_m_axi_arready[CB_M_DDR]      = BUS_cb_axi_arready;
-  assign cb_m_axi_arready[CB_M_CDMA_REG] = reg_arready;
-  assign cb_m_axi_arready[CB_M_VGA_REG]  = vga_reg_arready;
-  assign cb_m_axi_arready[CB_M_USB_REG]  = usb_reg_arready;
-  assign cb_m_axi_arready[CB_M_ETH_REG]  = liteeth_reg_arready;
-  assign cb_m_axi_arready[CB_M_DRAM_CSR] = litedram_axi_arready;
-  assign cb_m_axi_arready[CB_M_SDHCI]    = sdhci_reg_arready;
-
   assign cb_m_axi_bvalid[CB_M_DDR]      = BUS_cb_axi_bvalid;
-  assign cb_m_axi_bvalid[CB_M_CDMA_REG] = reg_bvalid;
-  assign cb_m_axi_bvalid[CB_M_VGA_REG]  = vga_reg_bvalid;
-  assign cb_m_axi_bvalid[CB_M_USB_REG]  = usb_reg_bvalid;
-  assign cb_m_axi_bvalid[CB_M_ETH_REG]  = liteeth_reg_bvalid;
-  assign cb_m_axi_bvalid[CB_M_DRAM_CSR] = litedram_axi_bvalid;
-  assign cb_m_axi_bvalid[CB_M_SDHCI]    = sdhci_reg_bvalid;
-
   assign cb_m_axi_bresp[CB_M_DDR*AXI_RESP_W +: AXI_RESP_W]      = BUS_cb_axi_bresp;
-  assign cb_m_axi_bresp[CB_M_CDMA_REG*AXI_RESP_W +: AXI_RESP_W] = reg_bresp;
-  assign cb_m_axi_bresp[CB_M_VGA_REG*AXI_RESP_W +: AXI_RESP_W]  = vga_reg_bresp;
-  assign cb_m_axi_bresp[CB_M_USB_REG*AXI_RESP_W +: AXI_RESP_W]  = usb_reg_bresp;
-  assign cb_m_axi_bresp[CB_M_ETH_REG*AXI_RESP_W +: AXI_RESP_W]  = liteeth_reg_bresp;
-  assign cb_m_axi_bresp[CB_M_DRAM_CSR*AXI_RESP_W +: AXI_RESP_W] = litedram_axi_bresp;
-  assign cb_m_axi_bresp[CB_M_SDHCI*AXI_RESP_W +: AXI_RESP_W]    = sdhci_reg_bresp;
-
   assign cb_m_axi_bid[CB_M_DDR*MST_ID_W +: MST_ID_W]      = BUS_cb_axi_bid;
-  assign cb_m_axi_bid[CB_M_CDMA_REG*MST_ID_W +: MST_ID_W] = reg_bid;
-  assign cb_m_axi_bid[CB_M_VGA_REG*MST_ID_W +: MST_ID_W]  = vga_reg_bid;
-  assign cb_m_axi_bid[CB_M_USB_REG*MST_ID_W +: MST_ID_W]  = usb_reg_bid;
-  assign cb_m_axi_bid[CB_M_ETH_REG*MST_ID_W +: MST_ID_W]  = liteeth_reg_bid;
-  assign cb_m_axi_bid[CB_M_DRAM_CSR*MST_ID_W +: MST_ID_W] = litedram_axi_bid;
-  assign cb_m_axi_bid[CB_M_SDHCI*MST_ID_W +: MST_ID_W]    = sdhci_reg_bid;
-
   assign cb_m_axi_rvalid[CB_M_DDR]      = BUS_cb_axi_rvalid;
-  assign cb_m_axi_rvalid[CB_M_CDMA_REG] = reg_rvalid;
-  assign cb_m_axi_rvalid[CB_M_VGA_REG]  = vga_reg_rvalid;
-  assign cb_m_axi_rvalid[CB_M_USB_REG]  = usb_reg_rvalid;
-  assign cb_m_axi_rvalid[CB_M_ETH_REG]  = liteeth_reg_rvalid;
-  assign cb_m_axi_rvalid[CB_M_DRAM_CSR] = litedram_axi_rvalid;
-  assign cb_m_axi_rvalid[CB_M_SDHCI]    = sdhci_reg_rvalid;
-
   assign cb_m_axi_rlast[CB_M_DDR]      = BUS_cb_axi_rlast;
-  assign cb_m_axi_rlast[CB_M_CDMA_REG] = reg_rlast;
-  assign cb_m_axi_rlast[CB_M_VGA_REG]  = vga_reg_rlast;
-  assign cb_m_axi_rlast[CB_M_USB_REG]  = usb_reg_rlast;
-  assign cb_m_axi_rlast[CB_M_ETH_REG]  = liteeth_reg_rlast;
-  assign cb_m_axi_rlast[CB_M_DRAM_CSR] = litedram_axi_rlast;
-  assign cb_m_axi_rlast[CB_M_SDHCI]    = sdhci_reg_rlast;
-
   assign cb_m_axi_rresp[CB_M_DDR*AXI_RESP_W +: AXI_RESP_W]      = BUS_cb_axi_rresp;
-  assign cb_m_axi_rresp[CB_M_CDMA_REG*AXI_RESP_W +: AXI_RESP_W] = reg_rresp;
-  assign cb_m_axi_rresp[CB_M_VGA_REG*AXI_RESP_W +: AXI_RESP_W]  = vga_reg_rresp;
-  assign cb_m_axi_rresp[CB_M_USB_REG*AXI_RESP_W +: AXI_RESP_W]  = usb_reg_rresp;
-  assign cb_m_axi_rresp[CB_M_ETH_REG*AXI_RESP_W +: AXI_RESP_W]  = liteeth_reg_rresp;
-  assign cb_m_axi_rresp[CB_M_DRAM_CSR*AXI_RESP_W +: AXI_RESP_W] = litedram_axi_rresp;
-  assign cb_m_axi_rresp[CB_M_SDHCI*AXI_RESP_W +: AXI_RESP_W]    = sdhci_reg_rresp;
-
   assign cb_m_axi_rid[CB_M_DDR*MST_ID_W +: MST_ID_W]      = BUS_cb_axi_rid;
-  assign cb_m_axi_rid[CB_M_CDMA_REG*MST_ID_W +: MST_ID_W] = reg_rid;
-  assign cb_m_axi_rid[CB_M_VGA_REG*MST_ID_W +: MST_ID_W]  = vga_reg_rid;
-  assign cb_m_axi_rid[CB_M_USB_REG*MST_ID_W +: MST_ID_W]  = usb_reg_rid;
-  assign cb_m_axi_rid[CB_M_ETH_REG*MST_ID_W +: MST_ID_W]  = liteeth_reg_rid;
-  assign cb_m_axi_rid[CB_M_DRAM_CSR*MST_ID_W +: MST_ID_W] = litedram_axi_rid;
-  assign cb_m_axi_rid[CB_M_SDHCI*MST_ID_W +: MST_ID_W]    = sdhci_reg_rid;
   assign cb_m_axi_rdata[CB_M_DDR*DATA_W      +: DATA_W] = BUS_cb_axi_rdata;
-  assign cb_m_axi_rdata[CB_M_CDMA_REG*DATA_W +: DATA_W] = reg_rdata;
-  assign cb_m_axi_rdata[CB_M_VGA_REG*DATA_W  +: DATA_W] = vga_reg_rdata;
-  assign cb_m_axi_rdata[CB_M_USB_REG*DATA_W  +: DATA_W] = usb_reg_rdata;
-  assign cb_m_axi_rdata[CB_M_ETH_REG*DATA_W  +: DATA_W] = liteeth_reg_rdata;
-  assign cb_m_axi_rdata[CB_M_DRAM_CSR*DATA_W +: DATA_W] = litedram_axi_rdata;
-  assign cb_m_axi_rdata[CB_M_SDHCI*DATA_W    +: DATA_W] = sdhci_reg_rdata;
 
 
   ///////////////////////////////////////////////////////////
@@ -1247,57 +1050,57 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
                     );
 
   if (P.XILINX_AXI_BR_SUPPORTED) begin
-  // ahb lite to axi bridge
-  ahbaxibridge ahbaxibridge
-    (.s_ahb_hclk(CPUCLK),
-     .s_ahb_hresetn(peripheral_aresetn),
-     .s_ahb_hsel(HSELEXT),
-     .s_ahb_haddr(HADDR[31:0]),
-     .s_ahb_hprot(HPROT),
-     .s_ahb_htrans(HTRANS),
-     .s_ahb_hsize(HSIZE),
-     .s_ahb_hwrite(HWRITE),
-     .s_ahb_hburst(HBURST),
-     .s_ahb_hwdata(HWDATA),
-     .s_ahb_hready_out(HREADYEXT),
-     .s_ahb_hready_in(HREADY),
-     .s_ahb_hrdata(HRDATAEXT),
-     .s_ahb_hresp(HRESPEXT),
-     .m_axi_awid(m_axi_awid),
-     .m_axi_awlen(m_axi_awlen),
-     .m_axi_awsize(m_axi_awsize),
-     .m_axi_awburst(m_axi_awburst),
-     .m_axi_awcache(m_axi_awcache),
-     .m_axi_awaddr(m_axi_awaddr),
-     .m_axi_awprot(m_axi_awprot),
-     .m_axi_awvalid(m_axi_awvalid),
-     .m_axi_awready(m_axi_awready),
-     .m_axi_awlock(m_axi_awlock),
-     .m_axi_wdata(m_axi_wdata),
-     .m_axi_wstrb(m_axi_wstrb),
-     .m_axi_wlast(m_axi_wlast),
-     .m_axi_wvalid(m_axi_wvalid),
-     .m_axi_wready(m_axi_wready),
-     .m_axi_bid(m_axi_bid),
-     .m_axi_bresp(m_axi_bresp),
-     .m_axi_bvalid(m_axi_bvalid),
-     .m_axi_bready(m_axi_bready),
-     .m_axi_arid(m_axi_arid),
-     .m_axi_arlen(m_axi_arlen),
-     .m_axi_arsize(m_axi_arsize),
-     .m_axi_arburst(m_axi_arburst),
-     .m_axi_arprot(m_axi_arprot),
-     .m_axi_arcache(m_axi_arcache),
-     .m_axi_arvalid(m_axi_arvalid),
-     .m_axi_araddr(m_axi_araddr),
-     .m_axi_arlock(m_axi_arlock),
-     .m_axi_arready(m_axi_arready),
-     .m_axi_rid(m_axi_rid),
-     .m_axi_rdata(m_axi_rdata),
-     .m_axi_rresp(m_axi_rresp),
-     .m_axi_rvalid(m_axi_rvalid),
-     .m_axi_rlast(m_axi_rlast),
-     .m_axi_rready(m_axi_rready));
+    // ahb lite to axi bridge
+    ahbaxibridge ahbaxibridge
+        (.s_ahb_hclk(CPUCLK),
+        .s_ahb_hresetn(peripheral_aresetn),
+        .s_ahb_hsel(HSELEXT),
+        .s_ahb_haddr(HADDR[31:0]),
+        .s_ahb_hprot(HPROT),
+        .s_ahb_htrans(HTRANS),
+        .s_ahb_hsize(HSIZE),
+        .s_ahb_hwrite(HWRITE),
+        .s_ahb_hburst(HBURST),
+        .s_ahb_hwdata(HWDATA),
+        .s_ahb_hready_out(HREADYEXT),
+        .s_ahb_hready_in(HREADY),
+        .s_ahb_hrdata(HRDATAEXT),
+        .s_ahb_hresp(HRESPEXT),
+        .m_axi_awid(m_axi_awid),
+        .m_axi_awlen(m_axi_awlen),
+        .m_axi_awsize(m_axi_awsize),
+        .m_axi_awburst(m_axi_awburst),
+        .m_axi_awcache(m_axi_awcache),
+        .m_axi_awaddr(m_axi_awaddr),
+        .m_axi_awprot(m_axi_awprot),
+        .m_axi_awvalid(m_axi_awvalid),
+        .m_axi_awready(m_axi_awready),
+        .m_axi_awlock(m_axi_awlock),
+        .m_axi_wdata(m_axi_wdata),
+        .m_axi_wstrb(m_axi_wstrb),
+        .m_axi_wlast(m_axi_wlast),
+        .m_axi_wvalid(m_axi_wvalid),
+        .m_axi_wready(m_axi_wready),
+        .m_axi_bid(m_axi_bid),
+        .m_axi_bresp(m_axi_bresp),
+        .m_axi_bvalid(m_axi_bvalid),
+        .m_axi_bready(m_axi_bready),
+        .m_axi_arid(m_axi_arid),
+        .m_axi_arlen(m_axi_arlen),
+        .m_axi_arsize(m_axi_arsize),
+        .m_axi_arburst(m_axi_arburst),
+        .m_axi_arprot(m_axi_arprot),
+        .m_axi_arcache(m_axi_arcache),
+        .m_axi_arvalid(m_axi_arvalid),
+        .m_axi_araddr(m_axi_araddr),
+        .m_axi_arlock(m_axi_arlock),
+        .m_axi_arready(m_axi_arready),
+        .m_axi_rid(m_axi_rid),
+        .m_axi_rdata(m_axi_rdata),
+        .m_axi_rresp(m_axi_rresp),
+        .m_axi_rvalid(m_axi_rvalid),
+        .m_axi_rlast(m_axi_rlast),
+        .m_axi_rready(m_axi_rready));
   end else begin
 
     ahb_to_axi4_burst #(.AW(32), .DW(P.AHBW), .IW(4))
@@ -1380,7 +1183,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   typedef logic [SLV_ID_W-1:0] slv_id_t;
   typedef logic [MST_ID_W-1:0] mst_id_t;
 
-  typedef logic [ADDR_W-1:0] axi_addr_t;
   typedef logic [DATA_W-1:0] axi_data_t;
   typedef logic [STRB_W-1:0] axi_strb_t;
 
@@ -1427,109 +1229,109 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   end
   assign audio_resetn = audio_resetn_ff[1];
 
-  localparam int unsigned IDMA_XBAR_S_PORTS [3] =
-      '{CB_S_IDMA_FE, CB_S_IDMA_FE_AXIS, CB_S_IDMA_BE};
-  localparam int unsigned IDMA_XBAR_M_PORTS [3] =
-      '{CB_M_IDMA_DESC, CB_M_IDMA_REG64, CB_M_IDMA_AXIS};
+  if (P.AXI_IDMA_SUPPORTED || P.AXI_IDMA_REG64_SUPPORTED ||
+      P.AXIS_IDMA_SUPPORTED) begin : gen_idma_xbar
+    for (genvar i = 0; i < XBAR_OUT.idma_n_slv; i++) begin : gen_idma_xbar_s_pack
+        localparam int unsigned S = XBAR_OUT.idma_slv_port[i];
+        localparam int unsigned I = XBAR_OUT.idma_slv_req[i];
 
-  for (genvar i = 0; i < 3; i++) begin : gen_idma_xbar_s_pack
-    localparam int unsigned S = IDMA_XBAR_S_PORTS[i];
+        assign cb_s_axi_awid[S*MST_ID_W +: MST_ID_W] = {{(MST_ID_W-SLV_ID_W){1'b0}}, idma_xbar_mst_req[I].aw.id};
+        assign cb_s_axi_awaddr[S*ADDR_W +: ADDR_W] = idma_xbar_mst_req[I].aw.addr;
+        assign cb_s_axi_awlen[S*AXI_LEN_W +: AXI_LEN_W] = idma_xbar_mst_req[I].aw.len;
+        assign cb_s_axi_awsize[S*AXI_SIZE_W +: AXI_SIZE_W] = idma_xbar_mst_req[I].aw.size;
+        assign cb_s_axi_awburst[S*AXI_BURST_W +: AXI_BURST_W] = idma_xbar_mst_req[I].aw.burst;
+        assign cb_s_axi_awlock[S] = idma_xbar_mst_req[I].aw.lock;
+        assign cb_s_axi_awcache[S*AXI_CACHE_W +: AXI_CACHE_W] = idma_xbar_mst_req[I].aw.cache;
+        assign cb_s_axi_awprot[S*AXI_PROT_W +: AXI_PROT_W] = idma_xbar_mst_req[I].aw.prot;
+        assign cb_s_axi_awqos[S*AXI_QOS_W +: AXI_QOS_W] = idma_xbar_mst_req[I].aw.qos;
+        assign cb_s_axi_awvalid[S] = idma_xbar_mst_req[I].aw_valid;
+        assign idma_xbar_mst_rsp[I].aw_ready = cb_s_axi_awready[S];
 
-    assign cb_s_axi_awid[S*MST_ID_W +: MST_ID_W] = {{(MST_ID_W-SLV_ID_W){1'b0}}, idma_xbar_mst_req[i].aw.id};
-    assign cb_s_axi_awaddr[S*ADDR_W +: ADDR_W] = idma_xbar_mst_req[i].aw.addr;
-    assign cb_s_axi_awlen[S*AXI_LEN_W +: AXI_LEN_W] = idma_xbar_mst_req[i].aw.len;
-    assign cb_s_axi_awsize[S*AXI_SIZE_W +: AXI_SIZE_W] = idma_xbar_mst_req[i].aw.size;
-    assign cb_s_axi_awburst[S*AXI_BURST_W +: AXI_BURST_W] = idma_xbar_mst_req[i].aw.burst;
-    assign cb_s_axi_awlock[S] = idma_xbar_mst_req[i].aw.lock;
-    assign cb_s_axi_awcache[S*AXI_CACHE_W +: AXI_CACHE_W] = idma_xbar_mst_req[i].aw.cache;
-    assign cb_s_axi_awprot[S*AXI_PROT_W +: AXI_PROT_W] = idma_xbar_mst_req[i].aw.prot;
-    assign cb_s_axi_awqos[S*AXI_QOS_W +: AXI_QOS_W] = idma_xbar_mst_req[i].aw.qos;
-    assign cb_s_axi_awvalid[S] = idma_xbar_mst_req[i].aw_valid;
-    assign idma_xbar_mst_rsp[i].aw_ready = cb_s_axi_awready[S];
+        assign cb_s_axi_wdata[S*DATA_W +: DATA_W] = idma_xbar_mst_req[I].w.data;
+        assign cb_s_axi_wstrb[S*STRB_W +: STRB_W] = idma_xbar_mst_req[I].w.strb;
+        assign cb_s_axi_wlast[S] = idma_xbar_mst_req[I].w.last;
+        assign cb_s_axi_wvalid[S] = idma_xbar_mst_req[I].w_valid;
+        assign idma_xbar_mst_rsp[I].w_ready = cb_s_axi_wready[S];
 
-    assign cb_s_axi_wdata[S*DATA_W +: DATA_W] = idma_xbar_mst_req[i].w.data;
-    assign cb_s_axi_wstrb[S*STRB_W +: STRB_W] = idma_xbar_mst_req[i].w.strb;
-    assign cb_s_axi_wlast[S] = idma_xbar_mst_req[i].w.last;
-    assign cb_s_axi_wvalid[S] = idma_xbar_mst_req[i].w_valid;
-    assign idma_xbar_mst_rsp[i].w_ready = cb_s_axi_wready[S];
+        assign cb_s_axi_bready[S] = idma_xbar_mst_req[I].b_ready;
+        assign idma_xbar_mst_rsp[I].b_valid = cb_s_axi_bvalid[S];
+        assign idma_xbar_mst_rsp[I].b.id = cb_s_axi_bid[S*MST_ID_W +: SLV_ID_W];
+        assign idma_xbar_mst_rsp[I].b.resp = cb_s_axi_bresp[S*AXI_RESP_W +: AXI_RESP_W];
+        assign idma_xbar_mst_rsp[I].b.user = '0;
 
-    assign cb_s_axi_bready[S] = idma_xbar_mst_req[i].b_ready;
-    assign idma_xbar_mst_rsp[i].b_valid = cb_s_axi_bvalid[S];
-    assign idma_xbar_mst_rsp[i].b.id = cb_s_axi_bid[S*MST_ID_W +: SLV_ID_W];
-    assign idma_xbar_mst_rsp[i].b.resp = cb_s_axi_bresp[S*AXI_RESP_W +: AXI_RESP_W];
-    assign idma_xbar_mst_rsp[i].b.user = '0;
+        assign cb_s_axi_arid[S*MST_ID_W +: MST_ID_W] = {{(MST_ID_W-SLV_ID_W){1'b0}}, idma_xbar_mst_req[I].ar.id};
+        assign cb_s_axi_araddr[S*ADDR_W +: ADDR_W] = idma_xbar_mst_req[I].ar.addr;
+        assign cb_s_axi_arlen[S*AXI_LEN_W +: AXI_LEN_W] = idma_xbar_mst_req[I].ar.len;
+        assign cb_s_axi_arsize[S*AXI_SIZE_W +: AXI_SIZE_W] = idma_xbar_mst_req[I].ar.size;
+        assign cb_s_axi_arburst[S*AXI_BURST_W +: AXI_BURST_W] = idma_xbar_mst_req[I].ar.burst;
+        assign cb_s_axi_arlock[S] = idma_xbar_mst_req[I].ar.lock;
+        assign cb_s_axi_arcache[S*AXI_CACHE_W +: AXI_CACHE_W] = idma_xbar_mst_req[I].ar.cache;
+        assign cb_s_axi_arprot[S*AXI_PROT_W +: AXI_PROT_W] = idma_xbar_mst_req[I].ar.prot;
+        assign cb_s_axi_arqos[S*AXI_QOS_W +: AXI_QOS_W] = idma_xbar_mst_req[I].ar.qos;
+        assign cb_s_axi_arvalid[S] = idma_xbar_mst_req[I].ar_valid;
+        assign idma_xbar_mst_rsp[I].ar_ready = cb_s_axi_arready[S];
 
-    assign cb_s_axi_arid[S*MST_ID_W +: MST_ID_W] = {{(MST_ID_W-SLV_ID_W){1'b0}}, idma_xbar_mst_req[i].ar.id};
-    assign cb_s_axi_araddr[S*ADDR_W +: ADDR_W] = idma_xbar_mst_req[i].ar.addr;
-    assign cb_s_axi_arlen[S*AXI_LEN_W +: AXI_LEN_W] = idma_xbar_mst_req[i].ar.len;
-    assign cb_s_axi_arsize[S*AXI_SIZE_W +: AXI_SIZE_W] = idma_xbar_mst_req[i].ar.size;
-    assign cb_s_axi_arburst[S*AXI_BURST_W +: AXI_BURST_W] = idma_xbar_mst_req[i].ar.burst;
-    assign cb_s_axi_arlock[S] = idma_xbar_mst_req[i].ar.lock;
-    assign cb_s_axi_arcache[S*AXI_CACHE_W +: AXI_CACHE_W] = idma_xbar_mst_req[i].ar.cache;
-    assign cb_s_axi_arprot[S*AXI_PROT_W +: AXI_PROT_W] = idma_xbar_mst_req[i].ar.prot;
-    assign cb_s_axi_arqos[S*AXI_QOS_W +: AXI_QOS_W] = idma_xbar_mst_req[i].ar.qos;
-    assign cb_s_axi_arvalid[S] = idma_xbar_mst_req[i].ar_valid;
-    assign idma_xbar_mst_rsp[i].ar_ready = cb_s_axi_arready[S];
+        assign cb_s_axi_rready[S] = idma_xbar_mst_req[I].r_ready;
+        assign idma_xbar_mst_rsp[I].r_valid = cb_s_axi_rvalid[S];
+        assign idma_xbar_mst_rsp[I].r.id = cb_s_axi_rid[S*MST_ID_W +: SLV_ID_W];
+        assign idma_xbar_mst_rsp[I].r.data = cb_s_axi_rdata[S*DATA_W +: DATA_W];
+        assign idma_xbar_mst_rsp[I].r.resp = cb_s_axi_rresp[S*AXI_RESP_W +: AXI_RESP_W];
+        assign idma_xbar_mst_rsp[I].r.last = cb_s_axi_rlast[S];
+        assign idma_xbar_mst_rsp[I].r.user = '0;
+    end
 
-    assign cb_s_axi_rready[S] = idma_xbar_mst_req[i].r_ready;
-    assign idma_xbar_mst_rsp[i].r_valid = cb_s_axi_rvalid[S];
-    assign idma_xbar_mst_rsp[i].r.id = cb_s_axi_rid[S*MST_ID_W +: SLV_ID_W];
-    assign idma_xbar_mst_rsp[i].r.data = cb_s_axi_rdata[S*DATA_W +: DATA_W];
-    assign idma_xbar_mst_rsp[i].r.resp = cb_s_axi_rresp[S*AXI_RESP_W +: AXI_RESP_W];
-    assign idma_xbar_mst_rsp[i].r.last = cb_s_axi_rlast[S];
-    assign idma_xbar_mst_rsp[i].r.user = '0;
-  end
+    for (genvar i = 0; i < XBAR_OUT.idma_n_mst; i++) begin : gen_idma_xbar_m_unpack
+        localparam int unsigned M = XBAR_OUT.idma_mst_port[i];
+        localparam int unsigned I = XBAR_OUT.idma_mst_resp[i];
 
-  for (genvar i = 0; i < 3; i++) begin : gen_idma_xbar_m_unpack
-    localparam int unsigned M = IDMA_XBAR_M_PORTS[i];
+        assign idma_xbar_slv_req[I].aw.id = cb_m_axi_awid[M*MST_ID_W +: MST_ID_W];
+        assign idma_xbar_slv_req[I].aw.addr = cb_m_axi_awaddr[M*ADDR_W +: ADDR_W];
+        assign idma_xbar_slv_req[I].aw.len = cb_m_axi_awlen[M*AXI_LEN_W +: AXI_LEN_W];
+        assign idma_xbar_slv_req[I].aw.size = cb_m_axi_awsize[M*AXI_SIZE_W +: AXI_SIZE_W];
+        assign idma_xbar_slv_req[I].aw.burst = cb_m_axi_awburst[M*AXI_BURST_W +: AXI_BURST_W];
+        assign idma_xbar_slv_req[I].aw.lock = cb_m_axi_awlock[M];
+        assign idma_xbar_slv_req[I].aw.cache = cb_m_axi_awcache[M*AXI_CACHE_W +: AXI_CACHE_W];
+        assign idma_xbar_slv_req[I].aw.prot = cb_m_axi_awprot[M*AXI_PROT_W +: AXI_PROT_W];
+        assign idma_xbar_slv_req[I].aw.qos = cb_m_axi_awqos[M*AXI_QOS_W +: AXI_QOS_W];
+        assign idma_xbar_slv_req[I].aw.region = cb_m_axi_awregion[M*AXI_QOS_W +: AXI_QOS_W];
+        assign idma_xbar_slv_req[I].aw.atop = '0;
+        assign idma_xbar_slv_req[I].aw.user = '0;
+        assign idma_xbar_slv_req[I].aw_valid = cb_m_axi_awvalid[M];
+        assign cb_m_axi_awready[M] = idma_xbar_slv_rsp[I].aw_ready;
 
-    assign idma_xbar_slv_req[i].aw.id = cb_m_axi_awid[M*MST_ID_W +: MST_ID_W];
-    assign idma_xbar_slv_req[i].aw.addr = cb_m_axi_awaddr[M*ADDR_W +: ADDR_W];
-    assign idma_xbar_slv_req[i].aw.len = cb_m_axi_awlen[M*AXI_LEN_W +: AXI_LEN_W];
-    assign idma_xbar_slv_req[i].aw.size = cb_m_axi_awsize[M*AXI_SIZE_W +: AXI_SIZE_W];
-    assign idma_xbar_slv_req[i].aw.burst = cb_m_axi_awburst[M*AXI_BURST_W +: AXI_BURST_W];
-    assign idma_xbar_slv_req[i].aw.lock = cb_m_axi_awlock[M];
-    assign idma_xbar_slv_req[i].aw.cache = cb_m_axi_awcache[M*AXI_CACHE_W +: AXI_CACHE_W];
-    assign idma_xbar_slv_req[i].aw.prot = cb_m_axi_awprot[M*AXI_PROT_W +: AXI_PROT_W];
-    assign idma_xbar_slv_req[i].aw.qos = cb_m_axi_awqos[M*AXI_QOS_W +: AXI_QOS_W];
-    assign idma_xbar_slv_req[i].aw.region = cb_m_axi_awregion[M*AXI_QOS_W +: AXI_QOS_W];
-    assign idma_xbar_slv_req[i].aw.atop = '0;
-    assign idma_xbar_slv_req[i].aw.user = '0;
-    assign idma_xbar_slv_req[i].aw_valid = cb_m_axi_awvalid[M];
-    assign cb_m_axi_awready[M] = idma_xbar_slv_rsp[i].aw_ready;
+        assign idma_xbar_slv_req[I].w.data = cb_m_axi_wdata[M*DATA_W +: DATA_W];
+        assign idma_xbar_slv_req[I].w.strb = cb_m_axi_wstrb[M*STRB_W +: STRB_W];
+        assign idma_xbar_slv_req[I].w.last = cb_m_axi_wlast[M];
+        assign idma_xbar_slv_req[I].w.user = '0;
+        assign idma_xbar_slv_req[I].w_valid = cb_m_axi_wvalid[M];
+        assign cb_m_axi_wready[M] = idma_xbar_slv_rsp[I].w_ready;
 
-    assign idma_xbar_slv_req[i].w.data = cb_m_axi_wdata[M*DATA_W +: DATA_W];
-    assign idma_xbar_slv_req[i].w.strb = cb_m_axi_wstrb[M*STRB_W +: STRB_W];
-    assign idma_xbar_slv_req[i].w.last = cb_m_axi_wlast[M];
-    assign idma_xbar_slv_req[i].w.user = '0;
-    assign idma_xbar_slv_req[i].w_valid = cb_m_axi_wvalid[M];
-    assign cb_m_axi_wready[M] = idma_xbar_slv_rsp[i].w_ready;
+        assign idma_xbar_slv_req[I].b_ready = cb_m_axi_bready[M];
+        assign cb_m_axi_bvalid[M] = idma_xbar_slv_rsp[I].b_valid;
+        assign cb_m_axi_bresp[M*AXI_RESP_W +: AXI_RESP_W] = idma_xbar_slv_rsp[I].b.resp;
+        assign cb_m_axi_bid[M*MST_ID_W +: MST_ID_W] = idma_xbar_slv_rsp[I].b.id;
 
-    assign idma_xbar_slv_req[i].b_ready = cb_m_axi_bready[M];
-    assign cb_m_axi_bvalid[M] = idma_xbar_slv_rsp[i].b_valid;
-    assign cb_m_axi_bresp[M*AXI_RESP_W +: AXI_RESP_W] = idma_xbar_slv_rsp[i].b.resp;
-    assign cb_m_axi_bid[M*MST_ID_W +: MST_ID_W] = idma_xbar_slv_rsp[i].b.id;
+        assign idma_xbar_slv_req[I].ar.id = cb_m_axi_arid[M*MST_ID_W +: MST_ID_W];
+        assign idma_xbar_slv_req[I].ar.addr = cb_m_axi_araddr[M*ADDR_W +: ADDR_W];
+        assign idma_xbar_slv_req[I].ar.len = cb_m_axi_arlen[M*AXI_LEN_W +: AXI_LEN_W];
+        assign idma_xbar_slv_req[I].ar.size = cb_m_axi_arsize[M*AXI_SIZE_W +: AXI_SIZE_W];
+        assign idma_xbar_slv_req[I].ar.burst = cb_m_axi_arburst[M*AXI_BURST_W +: AXI_BURST_W];
+        assign idma_xbar_slv_req[I].ar.lock = cb_m_axi_arlock[M];
+        assign idma_xbar_slv_req[I].ar.cache = cb_m_axi_arcache[M*AXI_CACHE_W +: AXI_CACHE_W];
+        assign idma_xbar_slv_req[I].ar.prot = cb_m_axi_arprot[M*AXI_PROT_W +: AXI_PROT_W];
+        assign idma_xbar_slv_req[I].ar.qos = cb_m_axi_arqos[M*AXI_QOS_W +: AXI_QOS_W];
+        assign idma_xbar_slv_req[I].ar.region = cb_m_axi_arregion[M*AXI_QOS_W +: AXI_QOS_W];
+        assign idma_xbar_slv_req[I].ar.user = '0;
+        assign idma_xbar_slv_req[I].ar_valid = cb_m_axi_arvalid[M];
+        assign cb_m_axi_arready[M] = idma_xbar_slv_rsp[I].ar_ready;
 
-    assign idma_xbar_slv_req[i].ar.id = cb_m_axi_arid[M*MST_ID_W +: MST_ID_W];
-    assign idma_xbar_slv_req[i].ar.addr = cb_m_axi_araddr[M*ADDR_W +: ADDR_W];
-    assign idma_xbar_slv_req[i].ar.len = cb_m_axi_arlen[M*AXI_LEN_W +: AXI_LEN_W];
-    assign idma_xbar_slv_req[i].ar.size = cb_m_axi_arsize[M*AXI_SIZE_W +: AXI_SIZE_W];
-    assign idma_xbar_slv_req[i].ar.burst = cb_m_axi_arburst[M*AXI_BURST_W +: AXI_BURST_W];
-    assign idma_xbar_slv_req[i].ar.lock = cb_m_axi_arlock[M];
-    assign idma_xbar_slv_req[i].ar.cache = cb_m_axi_arcache[M*AXI_CACHE_W +: AXI_CACHE_W];
-    assign idma_xbar_slv_req[i].ar.prot = cb_m_axi_arprot[M*AXI_PROT_W +: AXI_PROT_W];
-    assign idma_xbar_slv_req[i].ar.qos = cb_m_axi_arqos[M*AXI_QOS_W +: AXI_QOS_W];
-    assign idma_xbar_slv_req[i].ar.region = cb_m_axi_arregion[M*AXI_QOS_W +: AXI_QOS_W];
-    assign idma_xbar_slv_req[i].ar.user = '0;
-    assign idma_xbar_slv_req[i].ar_valid = cb_m_axi_arvalid[M];
-    assign cb_m_axi_arready[M] = idma_xbar_slv_rsp[i].ar_ready;
-
-    assign idma_xbar_slv_req[i].r_ready = cb_m_axi_rready[M];
-    assign cb_m_axi_rvalid[M] = idma_xbar_slv_rsp[i].r_valid;
-    assign cb_m_axi_rdata[M*DATA_W +: DATA_W] = idma_xbar_slv_rsp[i].r.data;
-    assign cb_m_axi_rresp[M*AXI_RESP_W +: AXI_RESP_W] = idma_xbar_slv_rsp[i].r.resp;
-    assign cb_m_axi_rlast[M] = idma_xbar_slv_rsp[i].r.last;
-    assign cb_m_axi_rid[M*MST_ID_W +: MST_ID_W] = idma_xbar_slv_rsp[i].r.id;
+        assign idma_xbar_slv_req[I].r_ready = cb_m_axi_rready[M];
+        assign cb_m_axi_rvalid[M] = idma_xbar_slv_rsp[I].r_valid;
+        assign cb_m_axi_rdata[M*DATA_W +: DATA_W] = idma_xbar_slv_rsp[I].r.data;
+        assign cb_m_axi_rresp[M*AXI_RESP_W +: AXI_RESP_W] = idma_xbar_slv_rsp[I].r.resp;
+        assign cb_m_axi_rlast[M] = idma_xbar_slv_rsp[I].r.last;
+        assign cb_m_axi_rid[M*MST_ID_W +: MST_ID_W] = idma_xbar_slv_rsp[I].r.id;
+    end
   end
 
   localparam int unsigned AXI_USER_W = 1;
@@ -1638,9 +1440,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
        .m_axi_rlast(BUS_axi_rlast),
        .m_axi_rready(BUS_axi_rready));
   end else begin
-
-
-
 
     // Bundles in each clock domain
     axi_req_t  cpu_req, bus_req;
@@ -1781,100 +1580,100 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   end
 
   if (P.XILINX_XBAR_SUPPORTED) begin
-  axicrossbar axicrossbar (
-    .aclk(BUSCLK),
-    .aresetn(BUSCORERSTn),
+    axicrossbar axicrossbar (
+        .aclk(BUSCLK),
+        .aresetn(BUSCORERSTn),
 
-    // Packed S_AXI (S00=CPU, S01=CDMA)
-    .s_axi_awaddr(cb_s_axi_awaddr),
-    .s_axi_awlen(cb_s_axi_awlen),
-    .s_axi_awsize(cb_s_axi_awsize),
-    .s_axi_awburst(cb_s_axi_awburst),
-    .s_axi_awlock(cb_s_axi_awlock),
-    .s_axi_awcache(cb_s_axi_awcache),
-    .s_axi_awprot(cb_s_axi_awprot),
-    .s_axi_awqos(cb_s_axi_awqos),
-    .s_axi_awvalid(cb_s_axi_awvalid),
-    .s_axi_awready(cb_s_axi_awready),
+        // Packed S_AXI (S00=CPU, S01=CDMA)
+        .s_axi_awaddr(cb_s_axi_awaddr),
+        .s_axi_awlen(cb_s_axi_awlen),
+        .s_axi_awsize(cb_s_axi_awsize),
+        .s_axi_awburst(cb_s_axi_awburst),
+        .s_axi_awlock(cb_s_axi_awlock),
+        .s_axi_awcache(cb_s_axi_awcache),
+        .s_axi_awprot(cb_s_axi_awprot),
+        .s_axi_awqos(cb_s_axi_awqos),
+        .s_axi_awvalid(cb_s_axi_awvalid),
+        .s_axi_awready(cb_s_axi_awready),
 
-    .s_axi_wdata(cb_s_axi_wdata),
-    .s_axi_wstrb(cb_s_axi_wstrb),
-    .s_axi_wlast(cb_s_axi_wlast),
-    .s_axi_wvalid(cb_s_axi_wvalid),
-    .s_axi_wready(cb_s_axi_wready),
+        .s_axi_wdata(cb_s_axi_wdata),
+        .s_axi_wstrb(cb_s_axi_wstrb),
+        .s_axi_wlast(cb_s_axi_wlast),
+        .s_axi_wvalid(cb_s_axi_wvalid),
+        .s_axi_wready(cb_s_axi_wready),
 
-    .s_axi_bresp(cb_s_axi_bresp),
-    .s_axi_bvalid(cb_s_axi_bvalid),
-    .s_axi_bready(cb_s_axi_bready),
+        .s_axi_bresp(cb_s_axi_bresp),
+        .s_axi_bvalid(cb_s_axi_bvalid),
+        .s_axi_bready(cb_s_axi_bready),
 
-    .s_axi_araddr(cb_s_axi_araddr),
-    .s_axi_arlen(cb_s_axi_arlen),
-    .s_axi_arsize(cb_s_axi_arsize),
-    .s_axi_arburst(cb_s_axi_arburst),
-    .s_axi_arlock(cb_s_axi_arlock),
-    .s_axi_arcache(cb_s_axi_arcache),
-    .s_axi_arprot(cb_s_axi_arprot),
-    .s_axi_arqos(cb_s_axi_arqos),
-    .s_axi_arvalid(cb_s_axi_arvalid),
-    .s_axi_arready(cb_s_axi_arready),
+        .s_axi_araddr(cb_s_axi_araddr),
+        .s_axi_arlen(cb_s_axi_arlen),
+        .s_axi_arsize(cb_s_axi_arsize),
+        .s_axi_arburst(cb_s_axi_arburst),
+        .s_axi_arlock(cb_s_axi_arlock),
+        .s_axi_arcache(cb_s_axi_arcache),
+        .s_axi_arprot(cb_s_axi_arprot),
+        .s_axi_arqos(cb_s_axi_arqos),
+        .s_axi_arvalid(cb_s_axi_arvalid),
+        .s_axi_arready(cb_s_axi_arready),
 
-    .s_axi_rdata(cb_s_axi_rdata),
-    .s_axi_rresp(cb_s_axi_rresp),
-    .s_axi_rlast(cb_s_axi_rlast),
-    .s_axi_rvalid(cb_s_axi_rvalid),
-    .s_axi_rready(cb_s_axi_rready),
+        .s_axi_rdata(cb_s_axi_rdata),
+        .s_axi_rresp(cb_s_axi_rresp),
+        .s_axi_rlast(cb_s_axi_rlast),
+        .s_axi_rvalid(cb_s_axi_rvalid),
+        .s_axi_rready(cb_s_axi_rready),
 
-    .s_axi_awid(cb_s_axi_awid),
-    .s_axi_arid(cb_s_axi_arid),
-    .s_axi_bid(cb_s_axi_bid),
-    .s_axi_rid(cb_s_axi_rid),
+        .s_axi_awid(cb_s_axi_awid),
+        .s_axi_arid(cb_s_axi_arid),
+        .s_axi_bid(cb_s_axi_bid),
+        .s_axi_rid(cb_s_axi_rid),
 
-    // Packed M_AXI (M00=DDR/MIG, M01=CDMA regs, M02=VGA regs)
-    .m_axi_awaddr(cb_m_axi_awaddr),
-    .m_axi_awlen(cb_m_axi_awlen),
-    .m_axi_awsize(cb_m_axi_awsize),
-    .m_axi_awburst(cb_m_axi_awburst),
-    .m_axi_awlock(cb_m_axi_awlock),
-    .m_axi_awcache(cb_m_axi_awcache),
-    .m_axi_awprot(cb_m_axi_awprot),
-    .m_axi_awregion(cb_m_axi_awregion),
-    .m_axi_awqos(cb_m_axi_awqos),
-    .m_axi_awvalid(cb_m_axi_awvalid),
-    .m_axi_awready(cb_m_axi_awready),
+        // Packed M_AXI (M00=DDR/MIG, M01=CDMA regs, M02=VGA regs)
+        .m_axi_awaddr(cb_m_axi_awaddr),
+        .m_axi_awlen(cb_m_axi_awlen),
+        .m_axi_awsize(cb_m_axi_awsize),
+        .m_axi_awburst(cb_m_axi_awburst),
+        .m_axi_awlock(cb_m_axi_awlock),
+        .m_axi_awcache(cb_m_axi_awcache),
+        .m_axi_awprot(cb_m_axi_awprot),
+        .m_axi_awregion(cb_m_axi_awregion),
+        .m_axi_awqos(cb_m_axi_awqos),
+        .m_axi_awvalid(cb_m_axi_awvalid),
+        .m_axi_awready(cb_m_axi_awready),
 
-    .m_axi_wdata(cb_m_axi_wdata),
-    .m_axi_wstrb(cb_m_axi_wstrb),
-    .m_axi_wlast(cb_m_axi_wlast),
-    .m_axi_wvalid(cb_m_axi_wvalid),
-    .m_axi_wready(cb_m_axi_wready),
+        .m_axi_wdata(cb_m_axi_wdata),
+        .m_axi_wstrb(cb_m_axi_wstrb),
+        .m_axi_wlast(cb_m_axi_wlast),
+        .m_axi_wvalid(cb_m_axi_wvalid),
+        .m_axi_wready(cb_m_axi_wready),
 
-    .m_axi_bresp(cb_m_axi_bresp),
-    .m_axi_bvalid(cb_m_axi_bvalid),
-    .m_axi_bready(cb_m_axi_bready),
+        .m_axi_bresp(cb_m_axi_bresp),
+        .m_axi_bvalid(cb_m_axi_bvalid),
+        .m_axi_bready(cb_m_axi_bready),
 
-    .m_axi_araddr(cb_m_axi_araddr),
-    .m_axi_arlen(cb_m_axi_arlen),
-    .m_axi_arsize(cb_m_axi_arsize),
-    .m_axi_arburst(cb_m_axi_arburst),
-    .m_axi_arlock(cb_m_axi_arlock),
-    .m_axi_arcache(cb_m_axi_arcache),
-    .m_axi_arprot(cb_m_axi_arprot),
-    .m_axi_arregion(cb_m_axi_arregion),
-    .m_axi_arqos(cb_m_axi_arqos),
-    .m_axi_arvalid(cb_m_axi_arvalid),
-    .m_axi_arready(cb_m_axi_arready),
+        .m_axi_araddr(cb_m_axi_araddr),
+        .m_axi_arlen(cb_m_axi_arlen),
+        .m_axi_arsize(cb_m_axi_arsize),
+        .m_axi_arburst(cb_m_axi_arburst),
+        .m_axi_arlock(cb_m_axi_arlock),
+        .m_axi_arcache(cb_m_axi_arcache),
+        .m_axi_arprot(cb_m_axi_arprot),
+        .m_axi_arregion(cb_m_axi_arregion),
+        .m_axi_arqos(cb_m_axi_arqos),
+        .m_axi_arvalid(cb_m_axi_arvalid),
+        .m_axi_arready(cb_m_axi_arready),
 
-    .m_axi_rdata(cb_m_axi_rdata),
-    .m_axi_rresp(cb_m_axi_rresp),
-    .m_axi_rlast(cb_m_axi_rlast),
-    .m_axi_rvalid(cb_m_axi_rvalid),
-    .m_axi_rready(cb_m_axi_rready),
+        .m_axi_rdata(cb_m_axi_rdata),
+        .m_axi_rresp(cb_m_axi_rresp),
+        .m_axi_rlast(cb_m_axi_rlast),
+        .m_axi_rvalid(cb_m_axi_rvalid),
+        .m_axi_rready(cb_m_axi_rready),
 
-    .m_axi_awid(cb_m_axi_awid),
-    .m_axi_arid(cb_m_axi_arid),
-    .m_axi_bid(cb_m_axi_bid),
-    .m_axi_rid(cb_m_axi_rid)
-  );
+        .m_axi_awid(cb_m_axi_awid),
+        .m_axi_arid(cb_m_axi_arid),
+        .m_axi_bid(cb_m_axi_bid),
+        .m_axi_rid(cb_m_axi_rid)
+    );
   end else begin
     // -----------------------------------------------------------------------------
     // PULP axi_xbar drop-in replacement for Xilinx packed-vector AXI crossbar
@@ -1908,43 +1707,26 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
         NoAddrRules:        N_RULES
     };
 
-    // Connectivity[slv][mst]:
-    // S00 -> all, S01/S02/S03 -> DDR only (M00)
-    // localparam bit [N_SLV-1:0][N_MST-1:0] CONN = '{
-    //     4'b1111, // S00
-    //     4'b0001, // S01
-    //     4'b0001, // S02
-    //     4'b0001  // S03
-    // };
-    // Address map rules (end_addr is exclusive)
-    //localparam axi_pkg::xbar_rule_32_t ADDR_MAP [N_RULES-1:0] = '{
-    localparam axi_pkg::xbar_rule_32_t [N_RULES-1:0] ADDR_MAP  = '{
-        // DDR/MIG on M00
-        '{ idx: 0,
-            start_addr: 32'h8000_0000,
-            end_addr:   axi_addr_t'(64'h8000_0000 + (64'(1) << DDR_ADDR_BITS)) },
+    // The function builds a compact map; end_addr is exclusive.
+    localparam axi_pkg::xbar_rule_32_t [N_RULES-1:0] ADDR_MAP =
+        XBAR_OUT.addr_map[N_RULES-1:0];
+    // XBAR connectivity config
+    localparam bit [XBAR_MAX_SLV-1:0][XBAR_MAX_MST-1:0] XBAR_CONNECTIVITY_FULL =
+        gen_xbar_connectivity(P);
 
-        // register windows
-        '{ idx: CB_M_CDMA_REG,
-            start_addr: axi_addr_t'(P.XILINX_AXI_DMA_BASE[31:0]),
-            end_addr:   axi_addr_t'(P.XILINX_AXI_DMA_BASE[31:0] + P.XILINX_AXI_DMA_RANGE[31:0] + 32'd1) }, // CDMA regs
-        '{ idx: 2, start_addr: 32'h100B_0000, end_addr: 32'h100B_1000 }, // VGA regs
-        '{ idx: 3, start_addr: 32'h100C_0000, end_addr: 32'h100C_1000 },  // USB regs
-        '{ idx: 4, start_addr: 32'h100D_0000, end_addr: 32'h100F_0000 },  // AXI ETH regs
-        '{ idx: 5, start_addr: 32'h100F_0000, end_addr: 32'h100F_2000 }, // LiteDRAM CSR interface
-        '{ idx: 6,
-            start_addr: axi_addr_t'(P.AXI_SDHCI_BASE[31:0]),
-            end_addr:   axi_addr_t'(P.AXI_SDHCI_BASE[31:0] + P.AXI_SDHCI_RANGE[31:0] + 32'd1) }, // SDHCI regs
-        '{ idx: CB_M_IDMA_DESC,
-            start_addr: axi_addr_t'(P.AXI_IDMA_BASE[31:0]),
-            end_addr:   axi_addr_t'(P.AXI_IDMA_BASE[31:0] + P.AXI_IDMA_RANGE[31:0] + 32'd1) }, // iDMA desc64 regs
-        '{ idx: CB_M_IDMA_REG64,
-            start_addr: axi_addr_t'(P.AXI_IDMA_REG64_BASE[31:0]),
-            end_addr:   axi_addr_t'(P.AXI_IDMA_REG64_BASE[31:0] + P.AXI_IDMA_REG64_RANGE[31:0] + 32'd1) }, // iDMA reg64 regs
-        '{ idx: CB_M_IDMA_AXIS,
-            start_addr: axi_addr_t'(P.AXIS_IDMA_BASE[31:0]),
-            end_addr:   axi_addr_t'(P.AXIS_IDMA_BASE[31:0] + P.AXIS_IDMA_RANGE[31:0] + 32'd1) } // iDMA desc64 AXI-Stream regs
-    };
+    // Vivado does not accept a two-dimensional packed part-select here.  Copy
+    // the shared full matrix into the exact parameter type required by axi_xbar.
+    function automatic bit [N_SLV-1:0][N_MST-1:0] resize_xbar_connectivity();
+      bit [N_SLV-1:0][N_MST-1:0] conn;
+
+      conn = '0;
+      for (int unsigned s = 0; s < N_SLV; s++)
+        for (int unsigned m = 0; m < N_MST; m++)
+          conn[s][m] = XBAR_CONNECTIVITY_FULL[s][m];
+      return conn;
+    endfunction
+    localparam bit [N_SLV-1:0][N_MST-1:0] XBAR_CONNECTIVITY =
+        resize_xbar_connectivity();
 
     // ------------------------------
     // Unpack packed S_AXI -> slv_req
@@ -2064,8 +1846,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     axi_xbar #(
         .Cfg            (XBAR_CFG),
         .ATOPs          (1'b0),
-        //.Connectivity   (CONN), // FIXME
-        .Connectivity   ( '1 ), // Cheshire (all connected)
+        .Connectivity   (XBAR_CONNECTIVITY),
 
         .slv_aw_chan_t  (slv_aw_t),
         .mst_aw_chan_t  (mst_aw_t),
@@ -2098,504 +1879,555 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
 
   // M02 -> axi_vga_wrap (AXI slave regs + AXI master scanout), all on BUSCLK
-  axi_vga_wrap #(
-    .AXI_ADDR_W ( ADDR_W   ),
-    .AXI_DATA_W ( DATA_W   ),
-    .AXI_ID_W   ( MST_ID_W ),
-    .AXI_M_ID_W ( SLV_ID_W ),
-    .AXI_USER_W ( 1        )
-  ) axi_vga_wrap_i (
-    .aclk    (BUSCLK),
-    .aresetn (BUSRSTn),
+  if (P.AXI_VGA_SUPPORTED) begin : gen_axi_vga
+    axi_vga_wrap #(
+        .AXI_ADDR_W ( ADDR_W   ),
+        .AXI_DATA_W ( DATA_W   ),
+        .AXI_ID_W   ( MST_ID_W ),
+        .AXI_M_ID_W ( SLV_ID_W ),
+        .AXI_USER_W ( 1        )
+    ) axi_vga_wrap_i (
+        .aclk    (BUSCLK),
+        .aresetn (BUSRSTn),
 
-    // AXI slave regs (from crossbar M02)
-    .s_axi_awid    (cb_m_axi_awid[CB_M_VGA_REG*MST_ID_W +: MST_ID_W]),
-    .s_axi_awaddr  (cb_m_axi_awaddr[CB_M_VGA_REG*ADDR_W +: ADDR_W]),
-    .s_axi_awlen   (cb_m_axi_awlen[CB_M_VGA_REG*AXI_LEN_W +: AXI_LEN_W]),
-    .s_axi_awsize  (cb_m_axi_awsize[CB_M_VGA_REG*AXI_SIZE_W +: AXI_SIZE_W]),
-    .s_axi_awburst (cb_m_axi_awburst[CB_M_VGA_REG*AXI_BURST_W +: AXI_BURST_W]),
-    .s_axi_awlock  (cb_m_axi_awlock[CB_M_VGA_REG]),
-    .s_axi_awcache (cb_m_axi_awcache[CB_M_VGA_REG*AXI_CACHE_W +: AXI_CACHE_W]),
-    .s_axi_awprot  (cb_m_axi_awprot[CB_M_VGA_REG*AXI_PROT_W +: AXI_PROT_W]),
-    .s_axi_awqos   (cb_m_axi_awqos[CB_M_VGA_REG*AXI_QOS_W +: AXI_QOS_W]),
-    .s_axi_awvalid (cb_m_axi_awvalid[CB_M_VGA_REG]),
-    .s_axi_awready (vga_reg_awready),
+        // AXI slave regs (from crossbar M02)
+        .s_axi_awid    (cb_m_axi_awid[CB_M_VGA_REG*MST_ID_W +: MST_ID_W]),
+        .s_axi_awaddr  (cb_m_axi_awaddr[CB_M_VGA_REG*ADDR_W +: ADDR_W]),
+        .s_axi_awlen   (cb_m_axi_awlen[CB_M_VGA_REG*AXI_LEN_W +: AXI_LEN_W]),
+        .s_axi_awsize  (cb_m_axi_awsize[CB_M_VGA_REG*AXI_SIZE_W +: AXI_SIZE_W]),
+        .s_axi_awburst (cb_m_axi_awburst[CB_M_VGA_REG*AXI_BURST_W +: AXI_BURST_W]),
+        .s_axi_awlock  (cb_m_axi_awlock[CB_M_VGA_REG]),
+        .s_axi_awcache (cb_m_axi_awcache[CB_M_VGA_REG*AXI_CACHE_W +: AXI_CACHE_W]),
+        .s_axi_awprot  (cb_m_axi_awprot[CB_M_VGA_REG*AXI_PROT_W +: AXI_PROT_W]),
+        .s_axi_awqos   (cb_m_axi_awqos[CB_M_VGA_REG*AXI_QOS_W +: AXI_QOS_W]),
+        .s_axi_awvalid (cb_m_axi_awvalid[CB_M_VGA_REG]),
+        .s_axi_awready (vga_reg_awready),
 
-    .s_axi_wdata   (cb_m_axi_wdata[CB_M_VGA_REG*DATA_W +: DATA_W]),
-    .s_axi_wstrb   (cb_m_axi_wstrb[CB_M_VGA_REG*STRB_W +: STRB_W]),
-    .s_axi_wlast   (cb_m_axi_wlast[CB_M_VGA_REG]),
-    .s_axi_wvalid  (cb_m_axi_wvalid[CB_M_VGA_REG]),
-    .s_axi_wready  (vga_reg_wready),
+        .s_axi_wdata   (cb_m_axi_wdata[CB_M_VGA_REG*DATA_W +: DATA_W]),
+        .s_axi_wstrb   (cb_m_axi_wstrb[CB_M_VGA_REG*STRB_W +: STRB_W]),
+        .s_axi_wlast   (cb_m_axi_wlast[CB_M_VGA_REG]),
+        .s_axi_wvalid  (cb_m_axi_wvalid[CB_M_VGA_REG]),
+        .s_axi_wready  (vga_reg_wready),
 
-    .s_axi_bresp   (vga_reg_bresp),
-    .s_axi_bvalid  (vga_reg_bvalid),
-    .s_axi_bid     (vga_reg_bid),
-    .s_axi_bready  (cb_m_axi_bready[CB_M_VGA_REG]),
+        .s_axi_bresp   (vga_reg_bresp),
+        .s_axi_bvalid  (vga_reg_bvalid),
+        .s_axi_bid     (vga_reg_bid),
+        .s_axi_bready  (cb_m_axi_bready[CB_M_VGA_REG]),
 
-    .s_axi_arid    (cb_m_axi_arid[CB_M_VGA_REG*MST_ID_W +: MST_ID_W]),
-    .s_axi_araddr  (cb_m_axi_araddr[CB_M_VGA_REG*ADDR_W +: ADDR_W]),
-    .s_axi_arlen   (cb_m_axi_arlen[CB_M_VGA_REG*AXI_LEN_W +: AXI_LEN_W]),
-    .s_axi_arsize  (cb_m_axi_arsize[CB_M_VGA_REG*AXI_SIZE_W +: AXI_SIZE_W]),
-    .s_axi_arburst (cb_m_axi_arburst[CB_M_VGA_REG*AXI_BURST_W +: AXI_BURST_W]),
-    .s_axi_arlock  (cb_m_axi_arlock[CB_M_VGA_REG]),
-    .s_axi_arcache (cb_m_axi_arcache[CB_M_VGA_REG*AXI_CACHE_W +: AXI_CACHE_W]),
-    .s_axi_arprot  (cb_m_axi_arprot[CB_M_VGA_REG*AXI_PROT_W +: AXI_PROT_W]),
-    .s_axi_arqos   (cb_m_axi_arqos[CB_M_VGA_REG*AXI_QOS_W +: AXI_QOS_W]),
-    .s_axi_arvalid (cb_m_axi_arvalid[CB_M_VGA_REG]),
-    .s_axi_arready (vga_reg_arready),
+        .s_axi_arid    (cb_m_axi_arid[CB_M_VGA_REG*MST_ID_W +: MST_ID_W]),
+        .s_axi_araddr  (cb_m_axi_araddr[CB_M_VGA_REG*ADDR_W +: ADDR_W]),
+        .s_axi_arlen   (cb_m_axi_arlen[CB_M_VGA_REG*AXI_LEN_W +: AXI_LEN_W]),
+        .s_axi_arsize  (cb_m_axi_arsize[CB_M_VGA_REG*AXI_SIZE_W +: AXI_SIZE_W]),
+        .s_axi_arburst (cb_m_axi_arburst[CB_M_VGA_REG*AXI_BURST_W +: AXI_BURST_W]),
+        .s_axi_arlock  (cb_m_axi_arlock[CB_M_VGA_REG]),
+        .s_axi_arcache (cb_m_axi_arcache[CB_M_VGA_REG*AXI_CACHE_W +: AXI_CACHE_W]),
+        .s_axi_arprot  (cb_m_axi_arprot[CB_M_VGA_REG*AXI_PROT_W +: AXI_PROT_W]),
+        .s_axi_arqos   (cb_m_axi_arqos[CB_M_VGA_REG*AXI_QOS_W +: AXI_QOS_W]),
+        .s_axi_arvalid (cb_m_axi_arvalid[CB_M_VGA_REG]),
+        .s_axi_arready (vga_reg_arready),
 
-    .s_axi_rdata   (vga_reg_rdata),
-    .s_axi_rresp   (vga_reg_rresp),
-    .s_axi_rlast   (vga_reg_rlast),
-    .s_axi_rvalid  (vga_reg_rvalid),
-    .s_axi_rid     (vga_reg_rid),
-    .s_axi_rready  (cb_m_axi_rready[CB_M_VGA_REG]),
+        .s_axi_rdata   (vga_reg_rdata),
+        .s_axi_rresp   (vga_reg_rresp),
+        .s_axi_rlast   (vga_reg_rlast),
+        .s_axi_rvalid  (vga_reg_rvalid),
+        .s_axi_rid     (vga_reg_rid),
+        .s_axi_rready  (cb_m_axi_rready[CB_M_VGA_REG]),
 
-    // AXI master scanout (to crossbar S02)
-    .m_axi_awid    (vga_m_axi_awid),
-    .m_axi_awaddr  (vga_m_axi_awaddr),
-    .m_axi_awlen   (vga_m_axi_awlen),
-    .m_axi_awsize  (vga_m_axi_awsize),
-    .m_axi_awburst (vga_m_axi_awburst),
-    .m_axi_awlock  (vga_m_axi_awlock),
-    .m_axi_awcache (vga_m_axi_awcache),
-    .m_axi_awprot  (vga_m_axi_awprot),
-    .m_axi_awvalid (vga_m_axi_awvalid),
-    .m_axi_awready (vga_m_axi_awready),
+        // AXI master scanout (to crossbar S02)
+        .m_axi_awid    (vga_m_axi_awid),
+        .m_axi_awaddr  (vga_m_axi_awaddr),
+        .m_axi_awlen   (vga_m_axi_awlen),
+        .m_axi_awsize  (vga_m_axi_awsize),
+        .m_axi_awburst (vga_m_axi_awburst),
+        .m_axi_awlock  (vga_m_axi_awlock),
+        .m_axi_awcache (vga_m_axi_awcache),
+        .m_axi_awprot  (vga_m_axi_awprot),
+        .m_axi_awvalid (vga_m_axi_awvalid),
+        .m_axi_awready (vga_m_axi_awready),
 
-    .m_axi_wdata   (vga_m_axi_wdata),
-    .m_axi_wstrb   (vga_m_axi_wstrb),
-    .m_axi_wlast   (vga_m_axi_wlast),
-    .m_axi_wvalid  (vga_m_axi_wvalid),
-    .m_axi_wready  (vga_m_axi_wready),
+        .m_axi_wdata   (vga_m_axi_wdata),
+        .m_axi_wstrb   (vga_m_axi_wstrb),
+        .m_axi_wlast   (vga_m_axi_wlast),
+        .m_axi_wvalid  (vga_m_axi_wvalid),
+        .m_axi_wready  (vga_m_axi_wready),
 
-    .m_axi_bid     (vga_m_axi_bid),
-    .m_axi_bresp   (vga_m_axi_bresp),
-    .m_axi_bvalid  (vga_m_axi_bvalid),
-    .m_axi_bready  (vga_m_axi_bready),
+        .m_axi_bid     (vga_m_axi_bid),
+        .m_axi_bresp   (vga_m_axi_bresp),
+        .m_axi_bvalid  (vga_m_axi_bvalid),
+        .m_axi_bready  (vga_m_axi_bready),
 
-    .m_axi_arid    (vga_m_axi_arid),
-    .m_axi_araddr  (vga_m_axi_araddr),
-    .m_axi_arlen   (vga_m_axi_arlen),
-    .m_axi_arsize  (vga_m_axi_arsize),
-    .m_axi_arburst (vga_m_axi_arburst),
-    .m_axi_arlock  (vga_m_axi_arlock),
-    .m_axi_arcache (vga_m_axi_arcache),
-    .m_axi_arprot  (vga_m_axi_arprot),
-    .m_axi_arvalid (vga_m_axi_arvalid),
-    .m_axi_arready (vga_m_axi_arready),
+        .m_axi_arid    (vga_m_axi_arid),
+        .m_axi_araddr  (vga_m_axi_araddr),
+        .m_axi_arlen   (vga_m_axi_arlen),
+        .m_axi_arsize  (vga_m_axi_arsize),
+        .m_axi_arburst (vga_m_axi_arburst),
+        .m_axi_arlock  (vga_m_axi_arlock),
+        .m_axi_arcache (vga_m_axi_arcache),
+        .m_axi_arprot  (vga_m_axi_arprot),
+        .m_axi_arvalid (vga_m_axi_arvalid),
+        .m_axi_arready (vga_m_axi_arready),
 
-    .m_axi_rid     (vga_m_axi_rid),
-    .m_axi_rdata   (vga_m_axi_rdata),
-    .m_axi_rresp   (vga_m_axi_rresp),
-    .m_axi_rlast   (vga_m_axi_rlast),
-    .m_axi_rvalid  (vga_m_axi_rvalid),
-    .m_axi_rready  (vga_m_axi_rready),
+        .m_axi_rid     (vga_m_axi_rid),
+        .m_axi_rdata   (vga_m_axi_rdata),
+        .m_axi_rresp   (vga_m_axi_rresp),
+        .m_axi_rlast   (vga_m_axi_rlast),
+        .m_axi_rvalid  (vga_m_axi_rvalid),
+        .m_axi_rready  (vga_m_axi_rready),
 
-    // VGA pins
-    .vga_hsync_o   (vga_hsync),
-    .vga_vsync_o   (vga_vsync),
-    .vga_r_o       (vga_r_5_internal),
-    .vga_g_o       (vga_g_6_internal),
-    .vga_b_o       (vga_b_5_internal)
-  );
+        // VGA pins
+        .vga_hsync_o   (vga_hsync),
+        .vga_vsync_o   (vga_vsync),
+        .vga_r_o       (vga_r_5_internal),
+        .vga_g_o       (vga_g_6_internal),
+        .vga_b_o       (vga_b_5_internal)
+    );
 
-  // M03 -> AXI4-Lite/32 -> USB OHCI control regs
-  if (DATA_W == 32) begin : gen_usb_axi32_to_axilite32
-    axi_req_t       usb_axi_req;
-    axi_resp_t      usb_axi_resp;
-    usb_axil_req_t  usb_axil_req;
-    usb_axil_rsp_t  usb_axil_rsp;
+    assign cb_m_axi_awready[CB_M_VGA_REG] = vga_reg_awready;
+    assign cb_m_axi_wready [CB_M_VGA_REG] = vga_reg_wready;
+    assign cb_m_axi_arready[CB_M_VGA_REG] = vga_reg_arready;
+    assign cb_m_axi_bvalid [CB_M_VGA_REG] = vga_reg_bvalid;
+    assign cb_m_axi_bresp[CB_M_VGA_REG*AXI_RESP_W +: AXI_RESP_W] = vga_reg_bresp;
+    assign cb_m_axi_bid  [CB_M_VGA_REG*MST_ID_W +: MST_ID_W] = vga_reg_bid;
+    assign cb_m_axi_rvalid[CB_M_VGA_REG] = vga_reg_rvalid;
+    assign cb_m_axi_rlast [CB_M_VGA_REG] = vga_reg_rlast;
+    assign cb_m_axi_rresp[CB_M_VGA_REG*AXI_RESP_W +: AXI_RESP_W] = vga_reg_rresp;
+    assign cb_m_axi_rid  [CB_M_VGA_REG*MST_ID_W +: MST_ID_W] = vga_reg_rid;
+    assign cb_m_axi_rdata[CB_M_VGA_REG*DATA_W +: DATA_W] = vga_reg_rdata;
+  end else begin : gen_no_axi_vga
+    // Keep the fixed S02/M02 ports quiescent until the xbar ports are compacted.
+    assign {vga_m_axi_awid, vga_m_axi_awaddr, vga_m_axi_awlen,
+            vga_m_axi_awsize, vga_m_axi_awburst, vga_m_axi_awlock,
+            vga_m_axi_awcache, vga_m_axi_awprot, vga_m_axi_awvalid,
+            vga_m_axi_wdata, vga_m_axi_wstrb, vga_m_axi_wlast,
+            vga_m_axi_wvalid, vga_m_axi_bready, vga_m_axi_arid,
+            vga_m_axi_araddr, vga_m_axi_arlen, vga_m_axi_arsize,
+            vga_m_axi_arburst, vga_m_axi_arlock, vga_m_axi_arcache,
+            vga_m_axi_arprot, vga_m_axi_arvalid, vga_m_axi_rready} = '0;
+    assign {vga_hsync, vga_vsync, vga_r_5_internal, vga_g_6_internal,
+            vga_b_5_internal} = '0;
+  end
 
-    always_comb begin
-      usb_axi_req = '0;
+  // -> AXI4-Lite/32 -> USB OHCI control regs
+  if (P.AXI_USB_SUPPORTED) begin : gen_axi_usb
+    if (DATA_W == 32) begin : gen_usb_axi32_to_axilite32
+        axi_req_t       usb_axi_req;
+        axi_resp_t      usb_axi_resp;
+        usb_axil_req_t  usb_axil_req;
+        usb_axil_rsp_t  usb_axil_rsp;
 
-      usb_axi_req.aw_valid  = cb_m_axi_awvalid[CB_M_USB_REG];
-      usb_axi_req.aw.id     = cb_m_axi_awid[CB_M_USB_REG*MST_ID_W +: MST_ID_W];
-      usb_axi_req.aw.addr   = cb_m_axi_awaddr[CB_M_USB_REG*ADDR_W +: ADDR_W];
-      usb_axi_req.aw.len    = cb_m_axi_awlen[CB_M_USB_REG*AXI_LEN_W +: AXI_LEN_W];
-      usb_axi_req.aw.size   = cb_m_axi_awsize[CB_M_USB_REG*AXI_SIZE_W +: AXI_SIZE_W];
-      usb_axi_req.aw.burst  = cb_m_axi_awburst[CB_M_USB_REG*AXI_BURST_W +: AXI_BURST_W];
-      usb_axi_req.aw.lock   = cb_m_axi_awlock[CB_M_USB_REG];
-      usb_axi_req.aw.cache  = cb_m_axi_awcache[CB_M_USB_REG*AXI_CACHE_W +: AXI_CACHE_W];
-      usb_axi_req.aw.prot   = cb_m_axi_awprot[CB_M_USB_REG*AXI_PROT_W +: AXI_PROT_W];
-      usb_axi_req.aw.qos    = cb_m_axi_awqos[CB_M_USB_REG*AXI_QOS_W +: AXI_QOS_W];
-      usb_axi_req.aw.region = '0;
-      usb_axi_req.aw.atop   = '0;
-      usb_axi_req.aw.user   = '0;
+        always_comb begin
+        usb_axi_req = '0;
 
-      usb_axi_req.w_valid   = cb_m_axi_wvalid[CB_M_USB_REG];
-      usb_axi_req.w.data    = cb_m_axi_wdata[CB_M_USB_REG*DATA_W +: DATA_W];
-      usb_axi_req.w.strb    = cb_m_axi_wstrb[CB_M_USB_REG*STRB_W +: STRB_W];
-      usb_axi_req.w.last    = cb_m_axi_wlast[CB_M_USB_REG];
-      usb_axi_req.w.user    = '0;
+        usb_axi_req.aw_valid  = cb_m_axi_awvalid[CB_M_USB_REG];
+        usb_axi_req.aw.id     = cb_m_axi_awid[CB_M_USB_REG*MST_ID_W +: MST_ID_W];
+        usb_axi_req.aw.addr   = cb_m_axi_awaddr[CB_M_USB_REG*ADDR_W +: ADDR_W];
+        usb_axi_req.aw.len    = cb_m_axi_awlen[CB_M_USB_REG*AXI_LEN_W +: AXI_LEN_W];
+        usb_axi_req.aw.size   = cb_m_axi_awsize[CB_M_USB_REG*AXI_SIZE_W +: AXI_SIZE_W];
+        usb_axi_req.aw.burst  = cb_m_axi_awburst[CB_M_USB_REG*AXI_BURST_W +: AXI_BURST_W];
+        usb_axi_req.aw.lock   = cb_m_axi_awlock[CB_M_USB_REG];
+        usb_axi_req.aw.cache  = cb_m_axi_awcache[CB_M_USB_REG*AXI_CACHE_W +: AXI_CACHE_W];
+        usb_axi_req.aw.prot   = cb_m_axi_awprot[CB_M_USB_REG*AXI_PROT_W +: AXI_PROT_W];
+        usb_axi_req.aw.qos    = cb_m_axi_awqos[CB_M_USB_REG*AXI_QOS_W +: AXI_QOS_W];
+        usb_axi_req.aw.region = '0;
+        usb_axi_req.aw.atop   = '0;
+        usb_axi_req.aw.user   = '0;
 
-      usb_axi_req.b_ready   = cb_m_axi_bready[CB_M_USB_REG];
+        usb_axi_req.w_valid   = cb_m_axi_wvalid[CB_M_USB_REG];
+        usb_axi_req.w.data    = cb_m_axi_wdata[CB_M_USB_REG*DATA_W +: DATA_W];
+        usb_axi_req.w.strb    = cb_m_axi_wstrb[CB_M_USB_REG*STRB_W +: STRB_W];
+        usb_axi_req.w.last    = cb_m_axi_wlast[CB_M_USB_REG];
+        usb_axi_req.w.user    = '0;
 
-      usb_axi_req.ar_valid  = cb_m_axi_arvalid[CB_M_USB_REG];
-      usb_axi_req.ar.id     = cb_m_axi_arid[CB_M_USB_REG*MST_ID_W +: MST_ID_W];
-      usb_axi_req.ar.addr   = cb_m_axi_araddr[CB_M_USB_REG*ADDR_W +: ADDR_W];
-      usb_axi_req.ar.len    = cb_m_axi_arlen[CB_M_USB_REG*AXI_LEN_W +: AXI_LEN_W];
-      usb_axi_req.ar.size   = cb_m_axi_arsize[CB_M_USB_REG*AXI_SIZE_W +: AXI_SIZE_W];
-      usb_axi_req.ar.burst  = cb_m_axi_arburst[CB_M_USB_REG*AXI_BURST_W +: AXI_BURST_W];
-      usb_axi_req.ar.lock   = cb_m_axi_arlock[CB_M_USB_REG];
-      usb_axi_req.ar.cache  = cb_m_axi_arcache[CB_M_USB_REG*AXI_CACHE_W +: AXI_CACHE_W];
-      usb_axi_req.ar.prot   = cb_m_axi_arprot[CB_M_USB_REG*AXI_PROT_W +: AXI_PROT_W];
-      usb_axi_req.ar.qos    = cb_m_axi_arqos[CB_M_USB_REG*AXI_QOS_W +: AXI_QOS_W];
-      usb_axi_req.ar.region = '0;
-      usb_axi_req.ar.user   = '0;
+        usb_axi_req.b_ready   = cb_m_axi_bready[CB_M_USB_REG];
 
-      usb_axi_req.r_ready   = cb_m_axi_rready[CB_M_USB_REG];
-    end
+        usb_axi_req.ar_valid  = cb_m_axi_arvalid[CB_M_USB_REG];
+        usb_axi_req.ar.id     = cb_m_axi_arid[CB_M_USB_REG*MST_ID_W +: MST_ID_W];
+        usb_axi_req.ar.addr   = cb_m_axi_araddr[CB_M_USB_REG*ADDR_W +: ADDR_W];
+        usb_axi_req.ar.len    = cb_m_axi_arlen[CB_M_USB_REG*AXI_LEN_W +: AXI_LEN_W];
+        usb_axi_req.ar.size   = cb_m_axi_arsize[CB_M_USB_REG*AXI_SIZE_W +: AXI_SIZE_W];
+        usb_axi_req.ar.burst  = cb_m_axi_arburst[CB_M_USB_REG*AXI_BURST_W +: AXI_BURST_W];
+        usb_axi_req.ar.lock   = cb_m_axi_arlock[CB_M_USB_REG];
+        usb_axi_req.ar.cache  = cb_m_axi_arcache[CB_M_USB_REG*AXI_CACHE_W +: AXI_CACHE_W];
+        usb_axi_req.ar.prot   = cb_m_axi_arprot[CB_M_USB_REG*AXI_PROT_W +: AXI_PROT_W];
+        usb_axi_req.ar.qos    = cb_m_axi_arqos[CB_M_USB_REG*AXI_QOS_W +: AXI_QOS_W];
+        usb_axi_req.ar.region = '0;
+        usb_axi_req.ar.user   = '0;
 
-    assign usb_reg_awready = usb_axi_resp.aw_ready;
-    assign usb_reg_wready  = usb_axi_resp.w_ready;
-    assign usb_reg_bvalid  = usb_axi_resp.b_valid;
-    assign usb_reg_bresp   = usb_axi_resp.b.resp;
-    assign usb_reg_bid     = usb_axi_resp.b.id;
-    assign usb_reg_arready = usb_axi_resp.ar_ready;
-    assign usb_reg_rvalid  = usb_axi_resp.r_valid;
-    assign usb_reg_rdata   = usb_axi_resp.r.data;
-    assign usb_reg_rresp   = usb_axi_resp.r.resp;
-    assign usb_reg_rlast   = usb_axi_resp.r.last;
-    assign usb_reg_rid     = usb_axi_resp.r.id;
+        usb_axi_req.r_ready   = cb_m_axi_rready[CB_M_USB_REG];
+        end
+
+        assign usb_reg_awready = usb_axi_resp.aw_ready;
+        assign usb_reg_wready  = usb_axi_resp.w_ready;
+        assign usb_reg_bvalid  = usb_axi_resp.b_valid;
+        assign usb_reg_bresp   = usb_axi_resp.b.resp;
+        assign usb_reg_bid     = usb_axi_resp.b.id;
+        assign usb_reg_arready = usb_axi_resp.ar_ready;
+        assign usb_reg_rvalid  = usb_axi_resp.r_valid;
+        assign usb_reg_rdata   = usb_axi_resp.r.data;
+        assign usb_reg_rresp   = usb_axi_resp.r.resp;
+        assign usb_reg_rlast   = usb_axi_resp.r.last;
+        assign usb_reg_rid     = usb_axi_resp.r.id;
 
 
-    axi_req_t       usb_axi_req_cut;
-    axi_resp_t      usb_axi_resp_cut;
+        axi_req_t       usb_axi_req_cut;
+        axi_resp_t      usb_axi_resp_cut;
 
-    axi_cut #(
-      .Bypass     ( 1'b0 ),
-      .aw_chan_t  ( aw_chan_t ),
-      .w_chan_t   ( w_chan_t  ),
-      .b_chan_t   ( b_chan_t  ),
-      .ar_chan_t  ( ar_chan_t ),
-      .r_chan_t   ( r_chan_t  ),
-      .axi_req_t  ( axi_req_t ),
-      .axi_resp_t ( axi_resp_t )
-    ) i_usb_axi_cut (
+        axi_cut #(
+        .Bypass     ( 1'b0 ),
+        .aw_chan_t  ( aw_chan_t ),
+        .w_chan_t   ( w_chan_t  ),
+        .b_chan_t   ( b_chan_t  ),
+        .ar_chan_t  ( ar_chan_t ),
+        .r_chan_t   ( r_chan_t  ),
+        .axi_req_t  ( axi_req_t ),
+        .axi_resp_t ( axi_resp_t )
+        ) i_usb_axi_cut (
+            .clk_i      ( BUSCLK       ),
+            .rst_ni     ( BUSRSTn      ),
+            .slv_req_i  ( usb_axi_req ),
+            .slv_resp_o ( usb_axi_resp ),
+            .mst_req_o  ( usb_axi_req_cut ),
+            .mst_resp_i ( usb_axi_resp_cut )
+        );
+
+
+        axi_to_axi_lite #(
+        .AxiAddrWidth    ( ADDR_W         ),
+        .AxiDataWidth    ( DATA_W         ),
+        .AxiIdWidth      ( MST_ID_W       ),
+        .AxiUserWidth    ( AXI_USER_W     ),
+        //.AxiMaxWriteTxns ( 2              ),
+        .AxiMaxWriteTxns ( 1              ),
+        //.AxiMaxReadTxns  ( 2              ),
+        .AxiMaxReadTxns  ( 1              ),
+        .FallThrough     ( 1'b0           ),
+        .full_req_t      ( axi_req_t      ),
+        .full_resp_t     ( axi_resp_t     ),
+        .lite_req_t      ( usb_axil_req_t ),
+        .lite_resp_t     ( usb_axil_rsp_t )
+        ) mmio_usbregs_axi32 (
         .clk_i      ( BUSCLK       ),
         .rst_ni     ( BUSRSTn      ),
-        .slv_req_i  ( usb_axi_req ),
-        .slv_resp_o ( usb_axi_resp ),
-        .mst_req_o  ( usb_axi_req_cut ),
-        .mst_resp_i ( usb_axi_resp_cut )
+        .test_i     ( 1'b0         ),
+        //.slv_req_i  ( usb_axi_req  ),
+        .slv_req_i  ( usb_axi_req_cut  ),
+        //.slv_resp_o ( usb_axi_resp ),
+        .slv_resp_o ( usb_axi_resp_cut ),
+        .mst_req_o  ( usb_axil_req ),
+        .mst_resp_i ( usb_axil_rsp )
+        );
+
+        wire [31:0] usb_lite_pre_awaddr;
+        wire [2:0]  usb_lite_pre_awprot;
+        wire        usb_lite_pre_awvalid;
+        wire        usb_lite_pre_awready;
+        wire [31:0] usb_lite_pre_wdata;
+        wire [3:0]  usb_lite_pre_wstrb;
+        wire        usb_lite_pre_wvalid;
+        wire        usb_lite_pre_wready;
+        wire [1:0]  usb_lite_pre_bresp;
+        wire        usb_lite_pre_bvalid;
+        wire        usb_lite_pre_bready;
+        wire [31:0] usb_lite_pre_araddr;
+        wire [2:0]  usb_lite_pre_arprot;
+        wire        usb_lite_pre_arvalid;
+        wire        usb_lite_pre_arready;
+        wire [31:0] usb_lite_pre_rdata;
+        wire [1:0]  usb_lite_pre_rresp;
+        wire        usb_lite_pre_rvalid;
+        wire        usb_lite_pre_rready;
+
+        assign usb_lite_pre_awaddr  = usb_axil_req.aw.addr;
+        assign usb_lite_pre_awprot  = usb_axil_req.aw.prot;
+        assign usb_lite_pre_awvalid = usb_axil_req.aw_valid;
+        assign usb_axil_rsp.aw_ready = usb_lite_pre_awready;
+
+        assign usb_lite_pre_wdata   = usb_axil_req.w.data;
+        assign usb_lite_pre_wstrb   = usb_axil_req.w.strb;
+        assign usb_lite_pre_wvalid  = usb_axil_req.w_valid;
+        assign usb_axil_rsp.w_ready = usb_lite_pre_wready;
+
+        assign usb_axil_rsp.b.resp  = usb_lite_pre_bresp;
+        assign usb_axil_rsp.b_valid = usb_lite_pre_bvalid;
+        assign usb_lite_pre_bready  = usb_axil_req.b_ready;
+
+        assign usb_lite_pre_araddr  = usb_axil_req.ar.addr;
+        assign usb_lite_pre_arprot  = usb_axil_req.ar.prot;
+        assign usb_lite_pre_arvalid = usb_axil_req.ar_valid;
+        assign usb_axil_rsp.ar_ready = usb_lite_pre_arready;
+
+        assign usb_axil_rsp.r.data  = usb_lite_pre_rdata;
+        assign usb_axil_rsp.r.resp  = usb_lite_pre_rresp;
+        assign usb_axil_rsp.r_valid = usb_lite_pre_rvalid;
+        assign usb_lite_pre_rready  = usb_axil_req.r_ready;
+
+        axil_register #(
+        .DATA_WIDTH  ( 32 ),
+        .ADDR_WIDTH  ( 32 ),
+        .STRB_WIDTH  ( 4  ),
+        .AW_REG_TYPE ( 1  ),
+        .W_REG_TYPE  ( 1  ),
+        .B_REG_TYPE  ( 1  ),
+        .AR_REG_TYPE ( 1  ),
+        .R_REG_TYPE  ( 1  )
+        ) i_usb_axil_register (
+        .clk             ( BUSCLK ),
+        .rst             ( BUSRST ),
+
+        .s_axil_awaddr   ( usb_lite_pre_awaddr ),
+        .s_axil_awprot   ( usb_lite_pre_awprot ),
+        .s_axil_awvalid  ( usb_lite_pre_awvalid ),
+        .s_axil_awready  ( usb_lite_pre_awready ),
+        .s_axil_wdata    ( usb_lite_pre_wdata ),
+        .s_axil_wstrb    ( usb_lite_pre_wstrb ),
+        .s_axil_wvalid   ( usb_lite_pre_wvalid ),
+        .s_axil_wready   ( usb_lite_pre_wready ),
+        .s_axil_bresp    ( usb_lite_pre_bresp ),
+        .s_axil_bvalid   ( usb_lite_pre_bvalid ),
+        .s_axil_bready   ( usb_lite_pre_bready ),
+        .s_axil_araddr   ( usb_lite_pre_araddr ),
+        .s_axil_arprot   ( usb_lite_pre_arprot ),
+        .s_axil_arvalid  ( usb_lite_pre_arvalid ),
+        .s_axil_arready  ( usb_lite_pre_arready ),
+        .s_axil_rdata    ( usb_lite_pre_rdata ),
+        .s_axil_rresp    ( usb_lite_pre_rresp ),
+        .s_axil_rvalid   ( usb_lite_pre_rvalid ),
+        .s_axil_rready   ( usb_lite_pre_rready ),
+
+        .m_axil_awaddr   ( usb_lite_awaddr ),
+        .m_axil_awprot   ( usb_lite_awprot ),
+        .m_axil_awvalid  ( usb_lite_awvalid ),
+        .m_axil_awready  ( usb_lite_awready ),
+        .m_axil_wdata    ( usb_lite_wdata ),
+        .m_axil_wstrb    ( usb_lite_wstrb ),
+        .m_axil_wvalid   ( usb_lite_wvalid ),
+        .m_axil_wready   ( usb_lite_wready ),
+        .m_axil_bresp    ( usb_lite_bresp ),
+        .m_axil_bvalid   ( usb_lite_bvalid ),
+        .m_axil_bready   ( usb_lite_bready ),
+        .m_axil_araddr   ( usb_lite_araddr ),
+        .m_axil_arprot   ( usb_lite_arprot ),
+        .m_axil_arvalid  ( usb_lite_arvalid ),
+        .m_axil_arready  ( usb_lite_arready ),
+        .m_axil_rdata    ( usb_lite_rdata ),
+        .m_axil_rresp    ( usb_lite_rresp ),
+        .m_axil_rvalid   ( usb_lite_rvalid ),
+        .m_axil_rready   ( usb_lite_rready )
+        );
+    end else begin : gen_usb_axi64_to_axilite32
+        // Switched from axi64_mmio_to_axilite32_v2 to parameterized v3 for MST_ID_W IDs.
+        // This USB register path must be re-tested.
+        axi_mmio_to_axilite32_v3 #(
+        .AXI_ADDR_WIDTH ( ADDR_W   ),
+        .AXI_DATA_WIDTH ( DATA_W   ),
+        .AXI_ID_WIDTH   ( MST_ID_W )
+        ) mmio_usbregs (
+        .aclk(BUSCLK),
+        .aresetn(BUSRSTn),
+
+        // AXI4 slave side from crossbar M03
+        .s_axi_awid    (cb_m_axi_awid[CB_M_USB_REG*MST_ID_W +: MST_ID_W]),
+        .s_axi_awaddr  (cb_m_axi_awaddr[CB_M_USB_REG*ADDR_W +: ADDR_W]),
+        .s_axi_awlen   (cb_m_axi_awlen[CB_M_USB_REG*AXI_LEN_W +: AXI_LEN_W]),
+        .s_axi_awsize  (cb_m_axi_awsize[CB_M_USB_REG*AXI_SIZE_W +: AXI_SIZE_W]),
+        .s_axi_awburst (cb_m_axi_awburst[CB_M_USB_REG*AXI_BURST_W +: AXI_BURST_W]),
+        .s_axi_awvalid (cb_m_axi_awvalid[CB_M_USB_REG]),
+        .s_axi_awready (usb_reg_awready),
+
+        .s_axi_wdata   (cb_m_axi_wdata[CB_M_USB_REG*DATA_W +: DATA_W]),
+        .s_axi_wstrb   (cb_m_axi_wstrb[CB_M_USB_REG*STRB_W +: STRB_W]),
+        .s_axi_wlast   (cb_m_axi_wlast[CB_M_USB_REG]),
+        .s_axi_wvalid  (cb_m_axi_wvalid[CB_M_USB_REG]),
+        .s_axi_wready  (usb_reg_wready),
+
+        .s_axi_bresp   (usb_reg_bresp),
+        .s_axi_bvalid  (usb_reg_bvalid),
+        .s_axi_bid     (usb_reg_bid),
+        .s_axi_bready  (cb_m_axi_bready[CB_M_USB_REG]),
+
+        .s_axi_arid    (cb_m_axi_arid[CB_M_USB_REG*MST_ID_W +: MST_ID_W]),
+        .s_axi_araddr  (cb_m_axi_araddr[CB_M_USB_REG*ADDR_W +: ADDR_W]),
+        .s_axi_arlen   (cb_m_axi_arlen[CB_M_USB_REG*AXI_LEN_W +: AXI_LEN_W]),
+        .s_axi_arsize  (cb_m_axi_arsize[CB_M_USB_REG*AXI_SIZE_W +: AXI_SIZE_W]),
+        .s_axi_arburst (cb_m_axi_arburst[CB_M_USB_REG*AXI_BURST_W +: AXI_BURST_W]),
+        .s_axi_arvalid (cb_m_axi_arvalid[CB_M_USB_REG]),
+        .s_axi_arready (usb_reg_arready),
+
+        .s_axi_rdata   (usb_reg_rdata),
+        .s_axi_rresp   (usb_reg_rresp),
+        .s_axi_rlast   (usb_reg_rlast),
+        .s_axi_rvalid  (usb_reg_rvalid),
+        .s_axi_rid     (usb_reg_rid),
+        .s_axi_rready  (cb_m_axi_rready[CB_M_USB_REG]),
+
+        // AXI4-Lite master side towards USB OHCI regs
+        .m_axil_awaddr (usb_lite_awaddr),
+        .m_axil_awprot (usb_lite_awprot),
+        .m_axil_awvalid(usb_lite_awvalid),
+        .m_axil_awready(usb_lite_awready),
+
+        .m_axil_wdata  (usb_lite_wdata),
+        .m_axil_wstrb  (usb_lite_wstrb),
+        .m_axil_wvalid (usb_lite_wvalid),
+        .m_axil_wready (usb_lite_wready),
+
+        .m_axil_bresp  (usb_lite_bresp),
+        .m_axil_bvalid (usb_lite_bvalid),
+        .m_axil_bready (usb_lite_bready),
+
+        .m_axil_araddr (usb_lite_araddr),
+        .m_axil_arprot (usb_lite_arprot),
+        .m_axil_arvalid(usb_lite_arvalid),
+        .m_axil_arready(usb_lite_arready),
+
+        .m_axil_rdata  (usb_lite_rdata),
+        .m_axil_rresp  (usb_lite_rresp),
+        .m_axil_rvalid (usb_lite_rvalid),
+        .m_axil_rready (usb_lite_rready)
+        );
+    end
+
+    BUFG u_bufg_usb (
+        .I(clk48MHz_raw),
+        .O(clk48MHz)
     );
 
+    (* ASYNC_REG="TRUE" *) logic [1:0] usb_phy_resetn_ff;
+    always_ff @(posedge clk48MHz or posedge BUSRST) begin
+        if (BUSRST)
+        usb_phy_resetn_ff <= 2'b00;            // assert reset immediately
+        else
+        usb_phy_resetn_ff <= {usb_phy_resetn_ff[0], 1'b1};
+    end
+    assign usb_phy_resetn_sync = usb_phy_resetn_ff[1];
 
-    axi_to_axi_lite #(
-      .AxiAddrWidth    ( ADDR_W         ),
-      .AxiDataWidth    ( DATA_W         ),
-      .AxiIdWidth      ( MST_ID_W       ),
-      .AxiUserWidth    ( AXI_USER_W     ),
-      //.AxiMaxWriteTxns ( 2              ),
-      .AxiMaxWriteTxns ( 1              ),
-      //.AxiMaxReadTxns  ( 2              ),
-      .AxiMaxReadTxns  ( 1              ),
-      .FallThrough     ( 1'b0           ),
-      .full_req_t      ( axi_req_t      ),
-      .full_resp_t     ( axi_resp_t     ),
-      .lite_req_t      ( usb_axil_req_t ),
-      .lite_resp_t     ( usb_axil_rsp_t )
-    ) mmio_usbregs_axi32 (
-      .clk_i      ( BUSCLK       ),
-      .rst_ni     ( BUSRSTn      ),
-      .test_i     ( 1'b0         ),
-      //.slv_req_i  ( usb_axi_req  ),
-      .slv_req_i  ( usb_axi_req_cut  ),
-      //.slv_resp_o ( usb_axi_resp ),
-      .slv_resp_o ( usb_axi_resp_cut ),
-      .mst_req_o  ( usb_axil_req ),
-      .mst_resp_i ( usb_axil_rsp )
+    // USB OHCI wrapper (SpinalHDL UsbOhciAxi4_p2_dma32/dma64)
+    // NOTE: phy_clk should be 48 MHz (or another integer multiple of 12 MHz). rmii_clk50 is only a placeholder.
+    usb_ohci_wrap #(
+        .DMA_AXI_DATA_WIDTH ( DATA_W   ),
+        .DMA_AXI_ID_WIDTH   ( SLV_ID_W )
+    ) usb_ohci_i (
+        // Clocks / resets
+        .ctrl_clk     (BUSCLK),
+        .ctrl_aresetn (BUSRSTn),
+        .phy_clk   (clk48MHz),
+        .phy_aresetn(usb_phy_resetn_sync),
+
+        // Control (AXI4/32, AXI-Lite subset)
+        .s_axi_awid    (usb_ctrl_awid),
+        .s_axi_awaddr  (usb_ctrl_awaddr),
+        .s_axi_awlen   (usb_ctrl_awlen),
+        .s_axi_awsize  (usb_ctrl_awsize),
+        .s_axi_awburst (usb_ctrl_awburst),
+        .s_axi_awlock  (usb_ctrl_awlock),
+        .s_axi_awcache (usb_ctrl_awcache),
+        .s_axi_awprot  (usb_ctrl_awprot),
+        .s_axi_awqos   (usb_ctrl_awqos),
+        .s_axi_awvalid (usb_ctrl_awvalid),
+        .s_axi_awready (usb_ctrl_awready),
+
+        .s_axi_wdata   (usb_ctrl_wdata),
+        .s_axi_wstrb   (usb_ctrl_wstrb),
+        .s_axi_wlast   (usb_ctrl_wlast),
+        .s_axi_wvalid  (usb_ctrl_wvalid),
+        .s_axi_wready  (usb_ctrl_wready),
+
+        .s_axi_bresp   (usb_ctrl_bresp),
+        .s_axi_bvalid  (usb_ctrl_bvalid),
+        .s_axi_bid     (usb_ctrl_bid),
+        .s_axi_bready  (usb_ctrl_bready),
+
+        .s_axi_arid    (usb_ctrl_arid),
+        .s_axi_araddr  (usb_ctrl_araddr),
+        .s_axi_arlen   (usb_ctrl_arlen),
+        .s_axi_arsize  (usb_ctrl_arsize),
+        .s_axi_arburst (usb_ctrl_arburst),
+        .s_axi_arlock  (usb_ctrl_arlock),
+        .s_axi_arcache (usb_ctrl_arcache),
+        .s_axi_arprot  (usb_ctrl_arprot),
+        .s_axi_arqos   (usb_ctrl_arqos),
+        .s_axi_arvalid (usb_ctrl_arvalid),
+        .s_axi_arready (usb_ctrl_arready),
+
+        .s_axi_rdata   (usb_ctrl_rdata),
+        .s_axi_rresp   (usb_ctrl_rresp),
+        .s_axi_rlast   (usb_ctrl_rlast),
+        .s_axi_rvalid  (usb_ctrl_rvalid),
+        .s_axi_rid     (usb_ctrl_rid),
+        .s_axi_rready  (usb_ctrl_rready),
+
+        // DMA master (AXI4 DATA_W) into crossbar S03
+        .m_axi_awid    (usb_m_axi_awid),
+        .m_axi_awaddr  (usb_m_axi_awaddr),
+        .m_axi_awlen   (usb_m_axi_awlen),
+        .m_axi_awsize  (usb_m_axi_awsize),
+        .m_axi_awburst (usb_m_axi_awburst),
+        .m_axi_awlock  (usb_m_axi_awlock),
+        .m_axi_awcache (usb_m_axi_awcache),
+        .m_axi_awprot  (usb_m_axi_awprot),
+        .m_axi_awvalid (usb_m_axi_awvalid),
+        .m_axi_awready (usb_m_axi_awready),
+
+        .m_axi_wdata   (usb_m_axi_wdata),
+        .m_axi_wstrb   (usb_m_axi_wstrb),
+        .m_axi_wlast   (usb_m_axi_wlast),
+        .m_axi_wvalid  (usb_m_axi_wvalid),
+        .m_axi_wready  (usb_m_axi_wready),
+
+        .m_axi_bid     (usb_m_axi_bid),
+        .m_axi_bresp   (usb_m_axi_bresp),
+        .m_axi_bvalid  (usb_m_axi_bvalid),
+        .m_axi_bready  (usb_m_axi_bready),
+
+        .m_axi_arid    (usb_m_axi_arid),
+        .m_axi_araddr  (usb_m_axi_araddr),
+        .m_axi_arlen   (usb_m_axi_arlen),
+        .m_axi_arsize  (usb_m_axi_arsize),
+        .m_axi_arburst (usb_m_axi_arburst),
+        .m_axi_arlock  (usb_m_axi_arlock),
+        .m_axi_arcache (usb_m_axi_arcache),
+        .m_axi_arprot  (usb_m_axi_arprot),
+        .m_axi_arvalid (usb_m_axi_arvalid),
+        .m_axi_arready (usb_m_axi_arready),
+
+        .m_axi_rid     (usb_m_axi_rid),
+        .m_axi_rdata   (usb_m_axi_rdata),
+        .m_axi_rresp   (usb_m_axi_rresp),
+        .m_axi_rlast   (usb_m_axi_rlast),
+        .m_axi_rvalid  (usb_m_axi_rvalid),
+        .m_axi_rready  (usb_m_axi_rready),
+
+        // IRQ + D+/D- pins
+        .irq_o         (usb_irq),
+        .usb0_dp       (usb0_dp),
+        .usb0_dm       (usb0_dm),
+        .usb1_dp       (usb1_dp),
+        .usb1_dm       (usb1_dm)
     );
 
-    wire [31:0] usb_lite_pre_awaddr;
-    wire [2:0]  usb_lite_pre_awprot;
-    wire        usb_lite_pre_awvalid;
-    wire        usb_lite_pre_awready;
-    wire [31:0] usb_lite_pre_wdata;
-    wire [3:0]  usb_lite_pre_wstrb;
-    wire        usb_lite_pre_wvalid;
-    wire        usb_lite_pre_wready;
-    wire [1:0]  usb_lite_pre_bresp;
-    wire        usb_lite_pre_bvalid;
-    wire        usb_lite_pre_bready;
-    wire [31:0] usb_lite_pre_araddr;
-    wire [2:0]  usb_lite_pre_arprot;
-    wire        usb_lite_pre_arvalid;
-    wire        usb_lite_pre_arready;
-    wire [31:0] usb_lite_pre_rdata;
-    wire [1:0]  usb_lite_pre_rresp;
-    wire        usb_lite_pre_rvalid;
-    wire        usb_lite_pre_rready;
-
-    assign usb_lite_pre_awaddr  = usb_axil_req.aw.addr;
-    assign usb_lite_pre_awprot  = usb_axil_req.aw.prot;
-    assign usb_lite_pre_awvalid = usb_axil_req.aw_valid;
-    assign usb_axil_rsp.aw_ready = usb_lite_pre_awready;
-
-    assign usb_lite_pre_wdata   = usb_axil_req.w.data;
-    assign usb_lite_pre_wstrb   = usb_axil_req.w.strb;
-    assign usb_lite_pre_wvalid  = usb_axil_req.w_valid;
-    assign usb_axil_rsp.w_ready = usb_lite_pre_wready;
-
-    assign usb_axil_rsp.b.resp  = usb_lite_pre_bresp;
-    assign usb_axil_rsp.b_valid = usb_lite_pre_bvalid;
-    assign usb_lite_pre_bready  = usb_axil_req.b_ready;
-
-    assign usb_lite_pre_araddr  = usb_axil_req.ar.addr;
-    assign usb_lite_pre_arprot  = usb_axil_req.ar.prot;
-    assign usb_lite_pre_arvalid = usb_axil_req.ar_valid;
-    assign usb_axil_rsp.ar_ready = usb_lite_pre_arready;
-
-    assign usb_axil_rsp.r.data  = usb_lite_pre_rdata;
-    assign usb_axil_rsp.r.resp  = usb_lite_pre_rresp;
-    assign usb_axil_rsp.r_valid = usb_lite_pre_rvalid;
-    assign usb_lite_pre_rready  = usb_axil_req.r_ready;
-
-    axil_register #(
-      .DATA_WIDTH  ( 32 ),
-      .ADDR_WIDTH  ( 32 ),
-      .STRB_WIDTH  ( 4  ),
-      .AW_REG_TYPE ( 1  ),
-      .W_REG_TYPE  ( 1  ),
-      .B_REG_TYPE  ( 1  ),
-      .AR_REG_TYPE ( 1  ),
-      .R_REG_TYPE  ( 1  )
-    ) i_usb_axil_register (
-      .clk             ( BUSCLK ),
-      .rst             ( BUSRST ),
-
-      .s_axil_awaddr   ( usb_lite_pre_awaddr ),
-      .s_axil_awprot   ( usb_lite_pre_awprot ),
-      .s_axil_awvalid  ( usb_lite_pre_awvalid ),
-      .s_axil_awready  ( usb_lite_pre_awready ),
-      .s_axil_wdata    ( usb_lite_pre_wdata ),
-      .s_axil_wstrb    ( usb_lite_pre_wstrb ),
-      .s_axil_wvalid   ( usb_lite_pre_wvalid ),
-      .s_axil_wready   ( usb_lite_pre_wready ),
-      .s_axil_bresp    ( usb_lite_pre_bresp ),
-      .s_axil_bvalid   ( usb_lite_pre_bvalid ),
-      .s_axil_bready   ( usb_lite_pre_bready ),
-      .s_axil_araddr   ( usb_lite_pre_araddr ),
-      .s_axil_arprot   ( usb_lite_pre_arprot ),
-      .s_axil_arvalid  ( usb_lite_pre_arvalid ),
-      .s_axil_arready  ( usb_lite_pre_arready ),
-      .s_axil_rdata    ( usb_lite_pre_rdata ),
-      .s_axil_rresp    ( usb_lite_pre_rresp ),
-      .s_axil_rvalid   ( usb_lite_pre_rvalid ),
-      .s_axil_rready   ( usb_lite_pre_rready ),
-
-      .m_axil_awaddr   ( usb_lite_awaddr ),
-      .m_axil_awprot   ( usb_lite_awprot ),
-      .m_axil_awvalid  ( usb_lite_awvalid ),
-      .m_axil_awready  ( usb_lite_awready ),
-      .m_axil_wdata    ( usb_lite_wdata ),
-      .m_axil_wstrb    ( usb_lite_wstrb ),
-      .m_axil_wvalid   ( usb_lite_wvalid ),
-      .m_axil_wready   ( usb_lite_wready ),
-      .m_axil_bresp    ( usb_lite_bresp ),
-      .m_axil_bvalid   ( usb_lite_bvalid ),
-      .m_axil_bready   ( usb_lite_bready ),
-      .m_axil_araddr   ( usb_lite_araddr ),
-      .m_axil_arprot   ( usb_lite_arprot ),
-      .m_axil_arvalid  ( usb_lite_arvalid ),
-      .m_axil_arready  ( usb_lite_arready ),
-      .m_axil_rdata    ( usb_lite_rdata ),
-      .m_axil_rresp    ( usb_lite_rresp ),
-      .m_axil_rvalid   ( usb_lite_rvalid ),
-      .m_axil_rready   ( usb_lite_rready )
-    );
-  end else begin : gen_usb_axi64_to_axilite32
-    // Switched from axi64_mmio_to_axilite32_v2 to parameterized v3 for MST_ID_W IDs.
-    // This USB register path must be re-tested.
-    axi_mmio_to_axilite32_v3 #(
-      .AXI_ADDR_WIDTH ( ADDR_W   ),
-      .AXI_DATA_WIDTH ( DATA_W   ),
-      .AXI_ID_WIDTH   ( MST_ID_W )
-    ) mmio_usbregs (
-      .aclk(BUSCLK),
-      .aresetn(BUSRSTn),
-
-      // AXI4 slave side from crossbar M03
-      .s_axi_awid    (cb_m_axi_awid[CB_M_USB_REG*MST_ID_W +: MST_ID_W]),
-      .s_axi_awaddr  (cb_m_axi_awaddr[CB_M_USB_REG*ADDR_W +: ADDR_W]),
-      .s_axi_awlen   (cb_m_axi_awlen[CB_M_USB_REG*AXI_LEN_W +: AXI_LEN_W]),
-      .s_axi_awsize  (cb_m_axi_awsize[CB_M_USB_REG*AXI_SIZE_W +: AXI_SIZE_W]),
-      .s_axi_awburst (cb_m_axi_awburst[CB_M_USB_REG*AXI_BURST_W +: AXI_BURST_W]),
-      .s_axi_awvalid (cb_m_axi_awvalid[CB_M_USB_REG]),
-      .s_axi_awready (usb_reg_awready),
-
-      .s_axi_wdata   (cb_m_axi_wdata[CB_M_USB_REG*DATA_W +: DATA_W]),
-      .s_axi_wstrb   (cb_m_axi_wstrb[CB_M_USB_REG*STRB_W +: STRB_W]),
-      .s_axi_wlast   (cb_m_axi_wlast[CB_M_USB_REG]),
-      .s_axi_wvalid  (cb_m_axi_wvalid[CB_M_USB_REG]),
-      .s_axi_wready  (usb_reg_wready),
-
-      .s_axi_bresp   (usb_reg_bresp),
-      .s_axi_bvalid  (usb_reg_bvalid),
-      .s_axi_bid     (usb_reg_bid),
-      .s_axi_bready  (cb_m_axi_bready[CB_M_USB_REG]),
-
-      .s_axi_arid    (cb_m_axi_arid[CB_M_USB_REG*MST_ID_W +: MST_ID_W]),
-      .s_axi_araddr  (cb_m_axi_araddr[CB_M_USB_REG*ADDR_W +: ADDR_W]),
-      .s_axi_arlen   (cb_m_axi_arlen[CB_M_USB_REG*AXI_LEN_W +: AXI_LEN_W]),
-      .s_axi_arsize  (cb_m_axi_arsize[CB_M_USB_REG*AXI_SIZE_W +: AXI_SIZE_W]),
-      .s_axi_arburst (cb_m_axi_arburst[CB_M_USB_REG*AXI_BURST_W +: AXI_BURST_W]),
-      .s_axi_arvalid (cb_m_axi_arvalid[CB_M_USB_REG]),
-      .s_axi_arready (usb_reg_arready),
-
-      .s_axi_rdata   (usb_reg_rdata),
-      .s_axi_rresp   (usb_reg_rresp),
-      .s_axi_rlast   (usb_reg_rlast),
-      .s_axi_rvalid  (usb_reg_rvalid),
-      .s_axi_rid     (usb_reg_rid),
-      .s_axi_rready  (cb_m_axi_rready[CB_M_USB_REG]),
-
-      // AXI4-Lite master side towards USB OHCI regs
-      .m_axil_awaddr (usb_lite_awaddr),
-      .m_axil_awprot (usb_lite_awprot),
-      .m_axil_awvalid(usb_lite_awvalid),
-      .m_axil_awready(usb_lite_awready),
-
-      .m_axil_wdata  (usb_lite_wdata),
-      .m_axil_wstrb  (usb_lite_wstrb),
-      .m_axil_wvalid (usb_lite_wvalid),
-      .m_axil_wready (usb_lite_wready),
-
-      .m_axil_bresp  (usb_lite_bresp),
-      .m_axil_bvalid (usb_lite_bvalid),
-      .m_axil_bready (usb_lite_bready),
-
-      .m_axil_araddr (usb_lite_araddr),
-      .m_axil_arprot (usb_lite_arprot),
-      .m_axil_arvalid(usb_lite_arvalid),
-      .m_axil_arready(usb_lite_arready),
-
-      .m_axil_rdata  (usb_lite_rdata),
-      .m_axil_rresp  (usb_lite_rresp),
-      .m_axil_rvalid (usb_lite_rvalid),
-      .m_axil_rready (usb_lite_rready)
-    );
+    assign cb_m_axi_awready[CB_M_USB_REG] = usb_reg_awready;
+    assign cb_m_axi_wready [CB_M_USB_REG] = usb_reg_wready;
+    assign cb_m_axi_arready[CB_M_USB_REG] = usb_reg_arready;
+    assign cb_m_axi_bvalid [CB_M_USB_REG] = usb_reg_bvalid;
+    assign cb_m_axi_bresp[CB_M_USB_REG*AXI_RESP_W +: AXI_RESP_W] = usb_reg_bresp;
+    assign cb_m_axi_bid  [CB_M_USB_REG*MST_ID_W +: MST_ID_W] = usb_reg_bid;
+    assign cb_m_axi_rvalid[CB_M_USB_REG] = usb_reg_rvalid;
+    assign cb_m_axi_rlast [CB_M_USB_REG] = usb_reg_rlast;
+    assign cb_m_axi_rresp[CB_M_USB_REG*AXI_RESP_W +: AXI_RESP_W] = usb_reg_rresp;
+    assign cb_m_axi_rid  [CB_M_USB_REG*MST_ID_W +: MST_ID_W] = usb_reg_rid;
+    assign cb_m_axi_rdata[CB_M_USB_REG*DATA_W +: DATA_W] = usb_reg_rdata;
+  end else begin : gen_no_axi_usb
+    // Keep the fixed S03/M03 ports quiescent until the xbar ports are compacted.
+    assign {usb_m_axi_awid, usb_m_axi_awaddr, usb_m_axi_awlen,
+            usb_m_axi_awsize, usb_m_axi_awburst, usb_m_axi_awlock,
+            usb_m_axi_awcache, usb_m_axi_awprot, usb_m_axi_awvalid,
+            usb_m_axi_wdata, usb_m_axi_wstrb, usb_m_axi_wlast,
+            usb_m_axi_wvalid, usb_m_axi_bready, usb_m_axi_arid,
+            usb_m_axi_araddr, usb_m_axi_arlen, usb_m_axi_arsize,
+            usb_m_axi_arburst, usb_m_axi_arlock, usb_m_axi_arcache,
+            usb_m_axi_arprot, usb_m_axi_arvalid, usb_m_axi_rready} = '0;
+    assign usb_irq = 1'b0;
   end
-
-  BUFG u_bufg_usb (
-    .I(clk48MHz_raw),
-    .O(clk48MHz)
-  );
-
-  (* ASYNC_REG="TRUE" *) logic [1:0] usb_phy_resetn_ff;
-  always_ff @(posedge clk48MHz or posedge BUSRST) begin
-    if (BUSRST)
-      usb_phy_resetn_ff <= 2'b00;            // assert reset immediately
-    else
-      usb_phy_resetn_ff <= {usb_phy_resetn_ff[0], 1'b1};
-  end
-  assign usb_phy_resetn_sync = usb_phy_resetn_ff[1];
-
-  // USB OHCI wrapper (SpinalHDL UsbOhciAxi4_p2_dma32/dma64)
-  // NOTE: phy_clk should be 48 MHz (or another integer multiple of 12 MHz). rmii_clk50 is only a placeholder.
-  usb_ohci_wrap #(
-    .DMA_AXI_DATA_WIDTH ( DATA_W   ),
-    .DMA_AXI_ID_WIDTH   ( SLV_ID_W )
-  ) usb_ohci_i (
-    // Clocks / resets
-    .ctrl_clk     (BUSCLK),
-    .ctrl_aresetn (BUSRSTn),
-    .phy_clk   (clk48MHz),
-    .phy_aresetn(usb_phy_resetn_sync),
-
-    // Control (AXI4/32, AXI-Lite subset)
-    .s_axi_awid    (usb_ctrl_awid),
-    .s_axi_awaddr  (usb_ctrl_awaddr),
-    .s_axi_awlen   (usb_ctrl_awlen),
-    .s_axi_awsize  (usb_ctrl_awsize),
-    .s_axi_awburst (usb_ctrl_awburst),
-    .s_axi_awlock  (usb_ctrl_awlock),
-    .s_axi_awcache (usb_ctrl_awcache),
-    .s_axi_awprot  (usb_ctrl_awprot),
-    .s_axi_awqos   (usb_ctrl_awqos),
-    .s_axi_awvalid (usb_ctrl_awvalid),
-    .s_axi_awready (usb_ctrl_awready),
-
-    .s_axi_wdata   (usb_ctrl_wdata),
-    .s_axi_wstrb   (usb_ctrl_wstrb),
-    .s_axi_wlast   (usb_ctrl_wlast),
-    .s_axi_wvalid  (usb_ctrl_wvalid),
-    .s_axi_wready  (usb_ctrl_wready),
-
-    .s_axi_bresp   (usb_ctrl_bresp),
-    .s_axi_bvalid  (usb_ctrl_bvalid),
-    .s_axi_bid     (usb_ctrl_bid),
-    .s_axi_bready  (usb_ctrl_bready),
-
-    .s_axi_arid    (usb_ctrl_arid),
-    .s_axi_araddr  (usb_ctrl_araddr),
-    .s_axi_arlen   (usb_ctrl_arlen),
-    .s_axi_arsize  (usb_ctrl_arsize),
-    .s_axi_arburst (usb_ctrl_arburst),
-    .s_axi_arlock  (usb_ctrl_arlock),
-    .s_axi_arcache (usb_ctrl_arcache),
-    .s_axi_arprot  (usb_ctrl_arprot),
-    .s_axi_arqos   (usb_ctrl_arqos),
-    .s_axi_arvalid (usb_ctrl_arvalid),
-    .s_axi_arready (usb_ctrl_arready),
-
-    .s_axi_rdata   (usb_ctrl_rdata),
-    .s_axi_rresp   (usb_ctrl_rresp),
-    .s_axi_rlast   (usb_ctrl_rlast),
-    .s_axi_rvalid  (usb_ctrl_rvalid),
-    .s_axi_rid     (usb_ctrl_rid),
-    .s_axi_rready  (usb_ctrl_rready),
-
-    // DMA master (AXI4 DATA_W) into crossbar S03
-    .m_axi_awid    (usb_m_axi_awid),
-    .m_axi_awaddr  (usb_m_axi_awaddr),
-    .m_axi_awlen   (usb_m_axi_awlen),
-    .m_axi_awsize  (usb_m_axi_awsize),
-    .m_axi_awburst (usb_m_axi_awburst),
-    .m_axi_awlock  (usb_m_axi_awlock),
-    .m_axi_awcache (usb_m_axi_awcache),
-    .m_axi_awprot  (usb_m_axi_awprot),
-    .m_axi_awvalid (usb_m_axi_awvalid),
-    .m_axi_awready (usb_m_axi_awready),
-
-    .m_axi_wdata   (usb_m_axi_wdata),
-    .m_axi_wstrb   (usb_m_axi_wstrb),
-    .m_axi_wlast   (usb_m_axi_wlast),
-    .m_axi_wvalid  (usb_m_axi_wvalid),
-    .m_axi_wready  (usb_m_axi_wready),
-
-    .m_axi_bid     (usb_m_axi_bid),
-    .m_axi_bresp   (usb_m_axi_bresp),
-    .m_axi_bvalid  (usb_m_axi_bvalid),
-    .m_axi_bready  (usb_m_axi_bready),
-
-    .m_axi_arid    (usb_m_axi_arid),
-    .m_axi_araddr  (usb_m_axi_araddr),
-    .m_axi_arlen   (usb_m_axi_arlen),
-    .m_axi_arsize  (usb_m_axi_arsize),
-    .m_axi_arburst (usb_m_axi_arburst),
-    .m_axi_arlock  (usb_m_axi_arlock),
-    .m_axi_arcache (usb_m_axi_arcache),
-    .m_axi_arprot  (usb_m_axi_arprot),
-    .m_axi_arvalid (usb_m_axi_arvalid),
-    .m_axi_arready (usb_m_axi_arready),
-
-    .m_axi_rid     (usb_m_axi_rid),
-    .m_axi_rdata   (usb_m_axi_rdata),
-    .m_axi_rresp   (usb_m_axi_rresp),
-    .m_axi_rlast   (usb_m_axi_rlast),
-    .m_axi_rvalid  (usb_m_axi_rvalid),
-    .m_axi_rready  (usb_m_axi_rready),
-
-    // IRQ + D+/D- pins
-    .irq_o         (usb_irq),
-    .usb0_dp       (usb0_dp),
-    .usb0_dm       (usb0_dm),
-    .usb1_dp       (usb1_dp),
-    .usb1_dm       (usb1_dm)
-  );
 
   // latch/synchronize INT request coming from a different clock domain after two flip-flops
   always_ff @(posedge CPUCLK or negedge peripheral_aresetn) begin
@@ -2608,78 +2440,94 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     end
   end
 
-  liteEthRGMIIAxiWrap  #(
-    .RX_BASE(P.AXI_ETH_BASE),
-    .TX_BASE(P.AXI_ETH_BASE + 'h1000),
-    .CSR_BASE(P.AXI_ETH_BASE + 'h2000),
-    .AXI_ADDR_W(ADDR_W),
-    .AXI_DATA_W(DATA_W),
-    .AXI_ID_W(MST_ID_W)
-  ) liteEthAXI   (
-    .bus_clk(BUSCLK),
-    .bus_resetn(BUSRSTn),   // active-low reset (for adapter/shim)
-    .clk200(clk200),    // 200 MHz ref clock
-    .clk200_locked(mmcm1_locked),
+  if (P.AXI_ETH_SUPPORTED) begin : gen_axi_eth
+    liteEthRGMIIAxiWrap  #(
+        .RX_BASE(P.AXI_ETH_BASE),
+        .TX_BASE(P.AXI_ETH_BASE + 'h1000),
+        .CSR_BASE(P.AXI_ETH_BASE + 'h2000),
+        .AXI_ADDR_W(ADDR_W),
+        .AXI_DATA_W(DATA_W),
+        .AXI_ID_W(MST_ID_W)
+    ) liteEthAXI   (
+        .bus_clk(BUSCLK),
+        .bus_resetn(BUSRSTn),   // active-low reset (for adapter/shim)
+        .clk200(clk200),    // 200 MHz ref clock
+        .clk200_locked(mmcm1_locked),
 
-    // ------------------------------------------------------------
-    // AXI4 SLAVE interface (connect directly to crossbar)
-    // ------------------------------------------------------------
-    .s_axi_awid    (cb_m_axi_awid[CB_M_ETH_REG*MST_ID_W +: MST_ID_W]),
-    .s_axi_awaddr  (cb_m_axi_awaddr[CB_M_ETH_REG*ADDR_W +: ADDR_W]),
-    .s_axi_awlen   (cb_m_axi_awlen[CB_M_ETH_REG*AXI_LEN_W +: AXI_LEN_W]),
-    .s_axi_awsize  (cb_m_axi_awsize[CB_M_ETH_REG*AXI_SIZE_W +: AXI_SIZE_W]),
-    .s_axi_awburst (cb_m_axi_awburst[CB_M_ETH_REG*AXI_BURST_W +: AXI_BURST_W]),
-    .s_axi_awvalid (cb_m_axi_awvalid[CB_M_ETH_REG]),
-    .s_axi_awready (liteeth_reg_awready),
+        // ------------------------------------------------------------
+        // AXI4 SLAVE interface (connect directly to crossbar)
+        // ------------------------------------------------------------
+        .s_axi_awid    (cb_m_axi_awid[CB_M_ETH_REG*MST_ID_W +: MST_ID_W]),
+        .s_axi_awaddr  (cb_m_axi_awaddr[CB_M_ETH_REG*ADDR_W +: ADDR_W]),
+        .s_axi_awlen   (cb_m_axi_awlen[CB_M_ETH_REG*AXI_LEN_W +: AXI_LEN_W]),
+        .s_axi_awsize  (cb_m_axi_awsize[CB_M_ETH_REG*AXI_SIZE_W +: AXI_SIZE_W]),
+        .s_axi_awburst (cb_m_axi_awburst[CB_M_ETH_REG*AXI_BURST_W +: AXI_BURST_W]),
+        .s_axi_awvalid (cb_m_axi_awvalid[CB_M_ETH_REG]),
+        .s_axi_awready (liteeth_reg_awready),
 
-    .s_axi_wdata   (cb_m_axi_wdata[CB_M_ETH_REG*DATA_W +: DATA_W]),
-    .s_axi_wstrb   (cb_m_axi_wstrb[CB_M_ETH_REG*STRB_W +: STRB_W]),
-    .s_axi_wlast   (cb_m_axi_wlast[CB_M_ETH_REG]),
-    .s_axi_wvalid  (cb_m_axi_wvalid[CB_M_ETH_REG]),
-    .s_axi_wready  (liteeth_reg_wready),
-
-
-    .s_axi_bresp   (liteeth_reg_bresp),
-    .s_axi_bvalid  (liteeth_reg_bvalid),
-    .s_axi_bid     (liteeth_reg_bid),
-    .s_axi_bready  (cb_m_axi_bready[CB_M_ETH_REG]),
+        .s_axi_wdata   (cb_m_axi_wdata[CB_M_ETH_REG*DATA_W +: DATA_W]),
+        .s_axi_wstrb   (cb_m_axi_wstrb[CB_M_ETH_REG*STRB_W +: STRB_W]),
+        .s_axi_wlast   (cb_m_axi_wlast[CB_M_ETH_REG]),
+        .s_axi_wvalid  (cb_m_axi_wvalid[CB_M_ETH_REG]),
+        .s_axi_wready  (liteeth_reg_wready),
 
 
-    .s_axi_arid    (cb_m_axi_arid[CB_M_ETH_REG*MST_ID_W +: MST_ID_W]),
-    .s_axi_araddr  (cb_m_axi_araddr[CB_M_ETH_REG*ADDR_W +: ADDR_W]),
-    .s_axi_arlen   (cb_m_axi_arlen[CB_M_ETH_REG*AXI_LEN_W +: AXI_LEN_W]),
-    .s_axi_arsize  (cb_m_axi_arsize[CB_M_ETH_REG*AXI_SIZE_W +: AXI_SIZE_W]),
-    .s_axi_arburst (cb_m_axi_arburst[CB_M_ETH_REG*AXI_BURST_W +: AXI_BURST_W]),
-    .s_axi_arvalid (cb_m_axi_arvalid[CB_M_ETH_REG]),
-    .s_axi_arready (liteeth_reg_arready),
-
-    .s_axi_rdata   (liteeth_reg_rdata),
-    .s_axi_rresp   (liteeth_reg_rresp),
-    .s_axi_rlast   (liteeth_reg_rlast),
-    .s_axi_rvalid  (liteeth_reg_rvalid),
-    .s_axi_rid     (liteeth_reg_rid),
-    .s_axi_rready  (cb_m_axi_rready[CB_M_ETH_REG]),
+        .s_axi_bresp   (liteeth_reg_bresp),
+        .s_axi_bvalid  (liteeth_reg_bvalid),
+        .s_axi_bid     (liteeth_reg_bid),
+        .s_axi_bready  (cb_m_axi_bready[CB_M_ETH_REG]),
 
 
-    // ------------------------------------------------------------
-    // LiteEth PHY pins
-    // ------------------------------------------------------------
-    .rgmii_clocks_rx(rgmii_clocks_rx),
-    .rgmii_clocks_tx(rgmii_clocks_tx),
-    .rgmii_int_n(rgmii_int_n),
-    .rgmii_mdc(rgmii_mdc),
-    .rgmii_mdio(rgmii_mdio),
-    .rgmii_rst_n(rgmii_rst_n),
-    .rgmii_rx_ctl(rgmii_rx_ctl),
-    .rgmii_rx_data(rgmii_rx_data),
-    .rgmii_tx_ctl(rgmii_tx_ctl),
-    .rgmii_tx_data(rgmii_tx_data),
+        .s_axi_arid    (cb_m_axi_arid[CB_M_ETH_REG*MST_ID_W +: MST_ID_W]),
+        .s_axi_araddr  (cb_m_axi_araddr[CB_M_ETH_REG*ADDR_W +: ADDR_W]),
+        .s_axi_arlen   (cb_m_axi_arlen[CB_M_ETH_REG*AXI_LEN_W +: AXI_LEN_W]),
+        .s_axi_arsize  (cb_m_axi_arsize[CB_M_ETH_REG*AXI_SIZE_W +: AXI_SIZE_W]),
+        .s_axi_arburst (cb_m_axi_arburst[CB_M_ETH_REG*AXI_BURST_W +: AXI_BURST_W]),
+        .s_axi_arvalid (cb_m_axi_arvalid[CB_M_ETH_REG]),
+        .s_axi_arready (liteeth_reg_arready),
 
-    // ------------------------------------------------------------
-    // Interrupt (BUS clock domain, raw from core)
-    // ------------------------------------------------------------
-    .interrupt(liteeth_irq)
-  );
+        .s_axi_rdata   (liteeth_reg_rdata),
+        .s_axi_rresp   (liteeth_reg_rresp),
+        .s_axi_rlast   (liteeth_reg_rlast),
+        .s_axi_rvalid  (liteeth_reg_rvalid),
+        .s_axi_rid     (liteeth_reg_rid),
+        .s_axi_rready  (cb_m_axi_rready[CB_M_ETH_REG]),
+
+
+        // ------------------------------------------------------------
+        // LiteEth PHY pins
+        // ------------------------------------------------------------
+        .rgmii_clocks_rx(rgmii_clocks_rx),
+        .rgmii_clocks_tx(rgmii_clocks_tx),
+        .rgmii_int_n(rgmii_int_n),
+        .rgmii_mdc(rgmii_mdc),
+        .rgmii_mdio(rgmii_mdio),
+        .rgmii_rst_n(rgmii_rst_n),
+        .rgmii_rx_ctl(rgmii_rx_ctl),
+        .rgmii_rx_data(rgmii_rx_data),
+        .rgmii_tx_ctl(rgmii_tx_ctl),
+        .rgmii_tx_data(rgmii_tx_data),
+
+        // ------------------------------------------------------------
+        // Interrupt (BUS clock domain, raw from core)
+        // ------------------------------------------------------------
+        .interrupt(liteeth_irq)
+    );
+
+    assign cb_m_axi_awready[CB_M_ETH_REG] = liteeth_reg_awready;
+    assign cb_m_axi_wready [CB_M_ETH_REG] = liteeth_reg_wready;
+    assign cb_m_axi_arready[CB_M_ETH_REG] = liteeth_reg_arready;
+    assign cb_m_axi_bvalid [CB_M_ETH_REG] = liteeth_reg_bvalid;
+    assign cb_m_axi_bresp[CB_M_ETH_REG*AXI_RESP_W +: AXI_RESP_W] = liteeth_reg_bresp;
+    assign cb_m_axi_bid  [CB_M_ETH_REG*MST_ID_W +: MST_ID_W] = liteeth_reg_bid;
+    assign cb_m_axi_rvalid[CB_M_ETH_REG] = liteeth_reg_rvalid;
+    assign cb_m_axi_rlast [CB_M_ETH_REG] = liteeth_reg_rlast;
+    assign cb_m_axi_rresp[CB_M_ETH_REG*AXI_RESP_W +: AXI_RESP_W] = liteeth_reg_rresp;
+    assign cb_m_axi_rid  [CB_M_ETH_REG*MST_ID_W +: MST_ID_W] = liteeth_reg_rid;
+    assign cb_m_axi_rdata[CB_M_ETH_REG*DATA_W +: DATA_W] = liteeth_reg_rdata;
+  end else begin : gen_no_axi_eth
+    assign liteeth_irq = 1'b0;
+  end
 
 
   // latch/synchronize INT request coming from a BUS CLK domain
@@ -2988,6 +2836,17 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     //   end
     // end
 
+    assign cb_m_axi_awready[CB_M_SDHCI] = sdhci_reg_awready;
+    assign cb_m_axi_wready [CB_M_SDHCI] = sdhci_reg_wready;
+    assign cb_m_axi_arready[CB_M_SDHCI] = sdhci_reg_arready;
+    assign cb_m_axi_bvalid [CB_M_SDHCI] = sdhci_reg_bvalid;
+    assign cb_m_axi_bresp[CB_M_SDHCI*AXI_RESP_W +: AXI_RESP_W] = sdhci_reg_bresp;
+    assign cb_m_axi_bid  [CB_M_SDHCI*MST_ID_W +: MST_ID_W] = sdhci_reg_bid;
+    assign cb_m_axi_rvalid[CB_M_SDHCI] = sdhci_reg_rvalid;
+    assign cb_m_axi_rlast [CB_M_SDHCI] = sdhci_reg_rlast;
+    assign cb_m_axi_rresp[CB_M_SDHCI*AXI_RESP_W +: AXI_RESP_W] = sdhci_reg_rresp;
+    assign cb_m_axi_rid  [CB_M_SDHCI*MST_ID_W +: MST_ID_W] = sdhci_reg_rid;
+    assign cb_m_axi_rdata[CB_M_SDHCI*DATA_W +: DATA_W] = sdhci_reg_rdata;
   end else begin : gen_no_axi_sdhci
     assign SD_CLK = 1'b0;
     assign SD_CMD = 1'bz;
@@ -3162,6 +3021,17 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
       .cdma_introut  (dma_irq_raw)
     );
+    assign cb_m_axi_awready[CB_M_CDMA_REG] = reg_awready;
+    assign cb_m_axi_wready [CB_M_CDMA_REG] = reg_wready;
+    assign cb_m_axi_arready[CB_M_CDMA_REG] = reg_arready;
+    assign cb_m_axi_bvalid [CB_M_CDMA_REG] = reg_bvalid;
+    assign cb_m_axi_bresp[CB_M_CDMA_REG*AXI_RESP_W +: AXI_RESP_W] = reg_bresp;
+    assign cb_m_axi_bid  [CB_M_CDMA_REG*MST_ID_W +: MST_ID_W] = reg_bid;
+    assign cb_m_axi_rvalid[CB_M_CDMA_REG] = reg_rvalid;
+    assign cb_m_axi_rlast [CB_M_CDMA_REG] = reg_rlast;
+    assign cb_m_axi_rresp[CB_M_CDMA_REG*AXI_RESP_W +: AXI_RESP_W] = reg_rresp;
+    assign cb_m_axi_rid  [CB_M_CDMA_REG*MST_ID_W +: MST_ID_W] = reg_rid;
+    assign cb_m_axi_rdata[CB_M_CDMA_REG*DATA_W +: DATA_W] = reg_rdata;
   end else if (P.AXI_IDMA_SUPPORTED || P.AXI_IDMA_REG64_SUPPORTED ||
                P.AXIS_IDMA_SUPPORTED) begin : gen_idma
     assign reg_awready = 1'b0;
@@ -3557,6 +3427,18 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
      .init_calib_complete(c0_init_calib_complete),
      .device_temp(device_temp));
   end else if (P.LITEDRAM_SUPPORTED) begin
+
+    assign cb_m_axi_awready[CB_M_DRAM_CSR] = litedram_axi_awready;
+    assign cb_m_axi_wready[CB_M_DRAM_CSR]  = litedram_axi_wready;
+    assign cb_m_axi_arready[CB_M_DRAM_CSR] = litedram_axi_arready;
+    assign cb_m_axi_bvalid[CB_M_DRAM_CSR]  = litedram_axi_bvalid;
+    assign cb_m_axi_bresp[CB_M_DRAM_CSR*AXI_RESP_W +: AXI_RESP_W] = litedram_axi_bresp;
+    assign cb_m_axi_bid[CB_M_DRAM_CSR*MST_ID_W +: MST_ID_W] = litedram_axi_bid;
+    assign cb_m_axi_rvalid[CB_M_DRAM_CSR]  = litedram_axi_rvalid;
+    assign cb_m_axi_rlast[CB_M_DRAM_CSR]   = litedram_axi_rlast;
+    assign cb_m_axi_rresp[CB_M_DRAM_CSR*AXI_RESP_W +: AXI_RESP_W] = litedram_axi_rresp;
+    assign cb_m_axi_rid[CB_M_DRAM_CSR*MST_ID_W +: MST_ID_W] = litedram_axi_rid;
+    assign cb_m_axi_rdata[CB_M_DRAM_CSR*DATA_W +: DATA_W] = litedram_axi_rdata;
 
     // ===========================================================================
     // AXI4->AXI-Lite signals (adapter master side)

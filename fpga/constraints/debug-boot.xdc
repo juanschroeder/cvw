@@ -642,8 +642,8 @@ ila_add_probe u_ila_axi -bus BUS_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus gen_idma.idma_i/dbg_idma_req_length -msb 31 -lsb 0 -order lsb2msb
 
 # Exact VGA visible-pixel underrun and response FIFO occupancy.
-ila_add_probe u_ila_axi -net axi_vga_wrap_i/i_axi_vga/pixel_underrun
-ila_add_probe u_ila_axi -bus axi_vga_wrap_i/i_axi_vga/pixel_underrun_count_q -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net gen_axi_vga.axi_vga_wrap_i/i_axi_vga/pixel_underrun
+ila_add_probe u_ila_axi -bus gen_axi_vga.axi_vga_wrap_i/i_axi_vga/pixel_underrun_count_q -msb 31 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus axi_vga_wrap_i/i_axi_vga/r_fifo_usage -msb auto -lsb 0 -order lsb2msb
 #ila_add_probe u_ila_axi -net gen_idma.idma_i/rst_ni
 #ila_add_probe u_ila_axi -bus gen_idma.idma_i/busy -msb 7 -lsb 0 -order lsb2msb

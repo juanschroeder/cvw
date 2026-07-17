@@ -424,6 +424,7 @@ SOURCES := \
 	$(COMMON_CELLS_SOURCES) \
 	$(AXI_SOURCES) \
 	$(COPIED_ROOT)/cvw.sv \
+	$(COPIED_ROOT)/cvwsoc/cvwsoc_pkg.sv \
 	$(WALLY)/testbench/$(TESTBENCH).sv \
 	$(CORE_SOURCES) \
 	$(BRIDGE_RTL) \

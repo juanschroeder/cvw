@@ -390,8 +390,8 @@ set_property PULLUP true [get_ports { rgmii_int_n }]
 
 # Both RGMII and DDR3 are in bank 33 so they cannot be in different IODELAY groups: override anything already set
 # LiteEth
-set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {^liteEthAXI/u_liteeth/IDELAYE2(_[0-9]+)?$}]
-#set_property IODELAY_GROUP DDR3-GROUP [get_cells -hier -regexp {^liteEthAXI/u_liteeth/IDELAYE2(_[0-9]+)?$}]
+set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {^gen_axi_eth\.liteEthAXI/u_liteeth/IDELAYE2(_[0-9]+)?$}]
+#set_property IODELAY_GROUP DDR3-GROUP [get_cells -hier -regexp {^gen_axi_eth/liteEthAXI/u_liteeth/IDELAYE2(_[0-9]+)?$}]
 
 # I2S2: PMOD JA
 # Tested: Dollatek PCM5102A, not exactly but similar to: https://github.com/pschatzmann/arduino-audio-tools/discussions/1641

@@ -112,6 +112,9 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexy
 
 # only tested on the Genesys 2
 if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc"} {
+
+    add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cvwsoc_pkg.sv
+
     set uberddr3_supported [expr {[info exists ::env(UBERDDR3_SUPPORTED)] ? $::env(UBERDDR3_SUPPORTED) : "0"}]
     set litedram_supported  [expr {[info exists ::env(LITEDRAM_SUPPORTED)]  ? $::env(LITEDRAM_SUPPORTED)  : "0"}]
 
