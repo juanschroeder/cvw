@@ -17,98 +17,20 @@ module axi_vga_wrap #(
   parameter int unsigned AXI_DATA_W = 64,
   parameter int unsigned AXI_ID_W   = 4,
   parameter int unsigned AXI_M_ID_W = AXI_ID_W,
-  parameter int unsigned AXI_USER_W = 1
+  parameter int unsigned AXI_USER_W = 1,
+  parameter type s_axi_req_t  = logic,
+  parameter type s_axi_resp_t = logic,
+  parameter type m_axi_req_t  = logic,
+  parameter type m_axi_resp_t = logic
 ) (
   input  logic        aclk,
   input  logic        aresetn,
 
-  // ----------------------------
-  // AXI SLAVE (regs) from xbar M02
-  // ----------------------------
-  input  logic [AXI_ID_W-1:0]   s_axi_awid,
-  input  logic [AXI_ADDR_W-1:0] s_axi_awaddr,
-  input  logic [7:0]  s_axi_awlen,
-  input  logic [2:0]  s_axi_awsize,
-  input  logic [1:0]  s_axi_awburst,
-  input  logic        s_axi_awlock,
-  input  logic [3:0]  s_axi_awcache,
-  input  logic [2:0]  s_axi_awprot,
-  input  logic [3:0]  s_axi_awqos,
-  input  logic        s_axi_awvalid,
-  output logic        s_axi_awready,
-
-  input  logic [AXI_DATA_W-1:0]   s_axi_wdata,
-  input  logic [AXI_DATA_W/8-1:0] s_axi_wstrb,
-  input  logic        s_axi_wlast,
-  input  logic        s_axi_wvalid,
-  output logic        s_axi_wready,
-
-  output logic [AXI_ID_W-1:0] s_axi_bid,
-  output logic [1:0]  s_axi_bresp,
-  output logic        s_axi_bvalid,
-  input  logic        s_axi_bready,
-
-  input  logic [AXI_ID_W-1:0]   s_axi_arid,
-  input  logic [AXI_ADDR_W-1:0] s_axi_araddr,
-  input  logic [7:0]  s_axi_arlen,
-  input  logic [2:0]  s_axi_arsize,
-  input  logic [1:0]  s_axi_arburst,
-  input  logic        s_axi_arlock,
-  input  logic [3:0]  s_axi_arcache,
-  input  logic [2:0]  s_axi_arprot,
-  input  logic [3:0]  s_axi_arqos,
-  input  logic        s_axi_arvalid,
-  output logic        s_axi_arready,
-
-  output logic [AXI_ID_W-1:0]     s_axi_rid,
-  output logic [AXI_DATA_W-1:0]   s_axi_rdata,
-  output logic [1:0]  s_axi_rresp,
-  output logic        s_axi_rlast,
-  output logic        s_axi_rvalid,
-  input  logic        s_axi_rready,
-
-  // ----------------------------
-  // AXI MASTER (scanout) to xbar S02
-  // ----------------------------
-  output logic [AXI_M_ID_W-1:0] m_axi_awid,
-  output logic [AXI_ADDR_W-1:0] m_axi_awaddr,
-  output logic [7:0]  m_axi_awlen,
-  output logic [2:0]  m_axi_awsize,
-  output logic [1:0]  m_axi_awburst,
-  output logic        m_axi_awlock,
-  output logic [3:0]  m_axi_awcache,
-  output logic [2:0]  m_axi_awprot,
-  output logic        m_axi_awvalid,
-  input  logic        m_axi_awready,
-
-  output logic [AXI_DATA_W-1:0]   m_axi_wdata,
-  output logic [AXI_DATA_W/8-1:0] m_axi_wstrb,
-  output logic        m_axi_wlast,
-  output logic        m_axi_wvalid,
-  input  logic        m_axi_wready,
-
-  input  logic [AXI_M_ID_W-1:0] m_axi_bid,
-  input  logic [1:0]  m_axi_bresp,
-  input  logic        m_axi_bvalid,
-  output logic        m_axi_bready,
-
-  output logic [AXI_M_ID_W-1:0] m_axi_arid,
-  output logic [AXI_ADDR_W-1:0] m_axi_araddr,
-  output logic [7:0]  m_axi_arlen,
-  output logic [2:0]  m_axi_arsize,
-  output logic [1:0]  m_axi_arburst,
-  output logic        m_axi_arlock,
-  output logic [3:0]  m_axi_arcache,
-  output logic [2:0]  m_axi_arprot,
-  output logic        m_axi_arvalid,
-  input  logic        m_axi_arready,
-
-  input  logic [AXI_M_ID_W-1:0]   m_axi_rid,
-  input  logic [AXI_DATA_W-1:0]   m_axi_rdata,
-  input  logic [1:0]  m_axi_rresp,
-  input  logic        m_axi_rlast,
-  input  logic        m_axi_rvalid,
-  output logic        m_axi_rready,
+  // AXI slave register port and AXI scanout master port.
+  input  s_axi_req_t  s_axi_req_i,
+  output s_axi_resp_t s_axi_resp_o,
+  output m_axi_req_t  m_axi_req_o,
+  input  m_axi_resp_t m_axi_resp_i,
 
   // VGA pins
   output logic        vga_hsync_o,
@@ -175,89 +97,30 @@ module axi_vga_wrap #(
   axi_req_t  vga_axi_req;
   axi_resp_t vga_axi_resp;
 
-  // AXI SLAVE (regs) discrete -> struct
-  always_comb begin
-    cfg_axi_req = '0;
+  // Stable ILA taps for the scanout read channel.  Keep these as flat nets:
+  // probing fields of packed structs is tool/version dependent.
+  (* mark_debug = "true" *) logic [AXI_ADDR_W-1:0] dbg_scan_araddr;
+  (* mark_debug = "true" *) logic [7:0]            dbg_scan_arlen;
+  (* mark_debug = "true" *) logic [2:0]            dbg_scan_arsize;
+  (* mark_debug = "true" *) logic                  dbg_scan_arvalid;
+  (* mark_debug = "true" *) logic                  dbg_scan_arready;
+  (* mark_debug = "true" *) logic [1:0]            dbg_scan_rresp;
+  (* mark_debug = "true" *) logic                  dbg_scan_rlast;
+  (* mark_debug = "true" *) logic                  dbg_scan_rvalid;
+  (* mark_debug = "true" *) logic                  dbg_scan_rready;
 
-    cfg_axi_req.aw_valid   = s_axi_awvalid;
-    cfg_axi_req.aw.id      = s_axi_awid;
-    cfg_axi_req.aw.addr    = s_axi_awaddr;
-    cfg_axi_req.aw.len     = s_axi_awlen;
-    cfg_axi_req.aw.size    = s_axi_awsize;
-    cfg_axi_req.aw.burst   = s_axi_awburst;
-    cfg_axi_req.aw.lock    = s_axi_awlock;
-    cfg_axi_req.aw.cache   = s_axi_awcache;
-    cfg_axi_req.aw.prot    = s_axi_awprot;
-    cfg_axi_req.aw.qos     = s_axi_awqos;
-    // fields not present on top-level: drive 0
-    cfg_axi_req.aw.region  = '0;
-    cfg_axi_req.aw.atop    = '0;
-    cfg_axi_req.aw.user    = '0;
+  assign dbg_scan_araddr  = vga_axi_req.ar.addr;
+  assign dbg_scan_arlen   = vga_axi_req.ar.len;
+  assign dbg_scan_arsize  = vga_axi_req.ar.size;
+  assign dbg_scan_arvalid = vga_axi_req.ar_valid;
+  assign dbg_scan_arready = m_axi_resp_i.ar_ready;
+  assign dbg_scan_rresp   = m_axi_resp_i.r.resp;
+  assign dbg_scan_rlast   = m_axi_resp_i.r.last;
+  assign dbg_scan_rvalid  = m_axi_resp_i.r_valid;
+  assign dbg_scan_rready  = vga_axi_req.r_ready;
 
-    cfg_axi_req.w_valid    = s_axi_wvalid;
-    cfg_axi_req.w.data     = s_axi_wdata;
-    cfg_axi_req.w.strb     = s_axi_wstrb;
-    cfg_axi_req.w.last     = s_axi_wlast;
-    cfg_axi_req.w.user     = '0;
-
-    cfg_axi_req.b_ready    = s_axi_bready;
-
-    cfg_axi_req.ar_valid   = s_axi_arvalid;
-    cfg_axi_req.ar.id      = s_axi_arid;
-    cfg_axi_req.ar.addr    = s_axi_araddr;
-    cfg_axi_req.ar.len     = s_axi_arlen;
-    cfg_axi_req.ar.size    = s_axi_arsize;
-    cfg_axi_req.ar.burst   = s_axi_arburst;
-    cfg_axi_req.ar.lock    = s_axi_arlock;
-    cfg_axi_req.ar.cache   = s_axi_arcache;
-    cfg_axi_req.ar.prot    = s_axi_arprot;
-    cfg_axi_req.ar.qos     = s_axi_arqos;
-    cfg_axi_req.ar.region  = '0;
-    cfg_axi_req.ar.user    = '0;
-
-    cfg_axi_req.r_ready    = s_axi_rready;
-  end
-
-  // AXI SLAVE (regs) struct -> discrete
-  always_comb begin
-    s_axi_awready = cfg_axi_resp.aw_ready;
-    s_axi_wready  = cfg_axi_resp.w_ready;
-
-    s_axi_bvalid  = cfg_axi_resp.b_valid;
-    s_axi_bresp   = cfg_axi_resp.b.resp;
-    s_axi_bid     = cfg_axi_resp.b.id;
-
-    s_axi_arready = cfg_axi_resp.ar_ready;
-
-    s_axi_rvalid  = cfg_axi_resp.r_valid;
-    s_axi_rdata   = cfg_axi_resp.r.data;
-    s_axi_rresp   = cfg_axi_resp.r.resp;
-    s_axi_rlast   = cfg_axi_resp.r.last;
-    s_axi_rid     = cfg_axi_resp.r.id;
-  end
-
-  // AXI MASTER (scanout) struct -> discrete
-  always_comb begin
-    m_axi_awvalid = vga_axi_req.aw_valid;
-    m_axi_awid    = vga_axi_req.aw.id;
-    m_axi_awaddr  = vga_axi_req.aw.addr;
-    m_axi_awlen   = vga_axi_req.aw.len;
-    m_axi_awsize  = vga_axi_req.aw.size;
-    m_axi_awburst = vga_axi_req.aw.burst;
-    m_axi_awlock  = vga_axi_req.aw.lock;
-    m_axi_awcache = vga_axi_req.aw.cache;
-    m_axi_awprot  = vga_axi_req.aw.prot;
-
-    m_axi_wvalid  = vga_axi_req.w_valid;
-    m_axi_wdata   = vga_axi_req.w.data;
-    m_axi_wstrb   = vga_axi_req.w.strb;
-    m_axi_wlast   = vga_axi_req.w.last;
-
-    m_axi_bready  = vga_axi_req.b_ready;
-
-
-    m_axi_rready  = vga_axi_req.r_ready;
-  end
+  assign cfg_axi_req  = s_axi_req_i;
+  assign s_axi_resp_o = cfg_axi_resp;
 
   // ----------------------------
   // AXI -> regbus (regs path)
@@ -373,40 +236,14 @@ module axi_vga_wrap #(
     .ready_i ( ar_ready_o )
     );
 
-    //assign cross_axi_req.ar_valid = ar_valid_o;
-    assign m_axi_arvalid = ar_valid_o;
-    assign m_axi_araddr  = ar_o.addr;
-    assign m_axi_arid    = ar_o.id;
-    assign m_axi_arlen   = ar_o.len;
-    assign m_axi_arsize  = ar_o.size;
-    assign m_axi_arburst = ar_o.burst;
-    assign m_axi_arlock  = ar_o.lock;
-    assign m_axi_arcache = ar_o.cache;
-    assign m_axi_arprot  = ar_o.prot;
-
-    // AXI MASTER (scanout) discrete -> struct
     always_comb begin
-        vga_axi_resp = '0;
-
-        vga_axi_resp.aw_ready = m_axi_awready;
-        vga_axi_resp.w_ready  = m_axi_wready;
-
-        vga_axi_resp.b_valid  = m_axi_bvalid;
-        vga_axi_resp.b.id     = m_axi_bid;
-        vga_axi_resp.b.resp   = m_axi_bresp;
-        vga_axi_resp.b.user   = '0;
-
-        vga_axi_resp.ar_ready = ar_ready_i;
-
-        vga_axi_resp.r_valid  = m_axi_rvalid;
-        vga_axi_resp.r.id     = m_axi_rid;
-        vga_axi_resp.r.data   = m_axi_rdata;
-        vga_axi_resp.r.resp   = m_axi_rresp;
-        vga_axi_resp.r.last   = m_axi_rlast;
-        vga_axi_resp.r.user   = '0;
+      m_axi_req_o          = vga_axi_req;
+      m_axi_req_o.ar       = ar_o;
+      m_axi_req_o.ar_valid = ar_valid_o;
     end
 
-    assign ar_ready_o             = m_axi_arready;
+    assign vga_axi_resp = m_axi_resp_i;
+    assign ar_ready_o   = m_axi_resp_i.ar_ready;
 
 
 endmodule

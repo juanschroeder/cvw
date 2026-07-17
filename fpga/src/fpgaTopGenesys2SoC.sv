@@ -134,6 +134,34 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   localparam int unsigned STRB_W = P.AHBW/8;
 
+  // These types describe only the AXI port between this board top level and
+  // ahbaxibridge; they are not a general SoC-wide AXI type.
+  //
+  // P.AHBW determines the AXI data width and strobe width here (64-bit data /
+  // 8 strobes in this build; 32-bit data / 4 strobes in a 32-bit-bus build).
+  // The address width is deliberately fixed at 32 bits: ahbaxibridge and
+  // cvwsoc_axi both use 32-bit AXI addresses.  P.PA_BITS may be changed for
+  // the CPU/AHB address bus, but that alone does not widen this AXI/FPGA path;
+  // supporting addresses above 32 bits requires a coordinated wrapper and
+  // address-map change.
+  //
+  // cvwsoc_pkg is compiled without this module instance and cannot refer to
+  // its parameter P, therefore the P.AHBW-dependent typedefs remain here.
+  typedef logic [31:0]       cpu_axi_addr_t;
+  // ahbaxibridge's Verilog port is physically 4 bits wide, but this build sets
+  // NUM_THREADS=1 and the bridge therefore drives AWID and ARID to 0 on every
+  // transaction.  The packed CPU-side type keeps only two zero-valued ID bits;
+  // no transaction identity is lost.  At the PULP crossbar boundary, the
+  // crossbar prepends its 3-bit ingress-port number, producing the 5-bit DDR
+  // target ID needed to route responses back to the originating master.
+  typedef logic [1:0]        cpu_axi_id_t;
+  typedef logic [P.AHBW-1:0] cpu_axi_data_t;
+  typedef logic [STRB_W-1:0] cpu_axi_strb_t;
+  typedef logic              cpu_axi_user_t;
+  `AXI_TYPEDEF_ALL_CT(cpu_axi, cpu_axi_req_t, cpu_axi_resp_t,
+                      cpu_axi_addr_t, cpu_axi_id_t, cpu_axi_data_t,
+                      cpu_axi_strb_t, cpu_axi_user_t)
+
   logic CPUCLK;
   logic bus_struct_reset;
   logic peripheral_reset;
@@ -163,7 +191,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic [3:0] SDCCSin;
   (* mark_debug = "true" *) logic RVVIStall;
 
-  // Flat AXI interface from the AHB-to-AXI bridge into cvwsoc_axi.
+  // Flat AXI interface from the AHB-to-AXI bridge.  It is packed into the
+  // Packed request/response structs at the cvwsoc_axi boundary.
   (* mark_debug = "true" *) logic [3:0] m_axi_awid;
   (* mark_debug = "true" *) logic [7:0] m_axi_awlen;
   (* mark_debug = "true" *) logic [2:0] m_axi_awsize;
@@ -191,6 +220,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   (* mark_debug = "true" *) logic [P.AHBW-1:0] m_axi_rdata;
   (* mark_debug = "true" *) logic [1:0] m_axi_rresp;
   (* mark_debug = "true" *) logic m_axi_rvalid, m_axi_rlast, m_axi_rready;
+  cpu_axi_req_t  bridge_axi_req;
+  cpu_axi_resp_t bridge_axi_resp;
 
 `ifndef P_WISHBONE_ETH_SUPPORTED
   wire phy_ref_clk_raw;
@@ -207,6 +238,51 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   assign GPIOIN = {25'b0, SDCCD, SDCWP, 1'b0, GPI};
   assign GPO = GPIOOUT[4:0];
   assign SDCCS = SDCCSin[0];
+
+  assign bridge_axi_req.aw.id     = m_axi_awid[1:0];
+  assign bridge_axi_req.aw.addr   = m_axi_awaddr;
+  assign bridge_axi_req.aw.len    = m_axi_awlen;
+  assign bridge_axi_req.aw.size   = m_axi_awsize;
+  assign bridge_axi_req.aw.burst  = m_axi_awburst;
+  assign bridge_axi_req.aw.lock   = m_axi_awlock;
+  assign bridge_axi_req.aw.cache  = m_axi_awcache;
+  assign bridge_axi_req.aw.prot   = m_axi_awprot;
+  assign bridge_axi_req.aw.qos    = '0;
+  assign bridge_axi_req.aw.region = '0;
+  assign bridge_axi_req.aw.atop   = '0;
+  assign bridge_axi_req.aw.user   = '0;
+  assign bridge_axi_req.aw_valid  = m_axi_awvalid;
+  assign bridge_axi_req.w.data    = m_axi_wdata;
+  assign bridge_axi_req.w.strb    = m_axi_wstrb;
+  assign bridge_axi_req.w.last    = m_axi_wlast;
+  assign bridge_axi_req.w.user    = '0;
+  assign bridge_axi_req.w_valid   = m_axi_wvalid;
+  assign bridge_axi_req.b_ready   = m_axi_bready;
+  assign bridge_axi_req.ar.id     = m_axi_arid[1:0];
+  assign bridge_axi_req.ar.addr   = m_axi_araddr;
+  assign bridge_axi_req.ar.len    = m_axi_arlen;
+  assign bridge_axi_req.ar.size   = m_axi_arsize;
+  assign bridge_axi_req.ar.burst  = m_axi_arburst;
+  assign bridge_axi_req.ar.lock   = m_axi_arlock;
+  assign bridge_axi_req.ar.cache  = m_axi_arcache;
+  assign bridge_axi_req.ar.prot   = m_axi_arprot;
+  assign bridge_axi_req.ar.qos    = '0;
+  assign bridge_axi_req.ar.region = '0;
+  assign bridge_axi_req.ar.user   = '0;
+  assign bridge_axi_req.ar_valid  = m_axi_arvalid;
+  assign bridge_axi_req.r_ready   = m_axi_rready;
+
+  assign m_axi_awready = bridge_axi_resp.aw_ready;
+  assign m_axi_wready  = bridge_axi_resp.w_ready;
+  assign m_axi_bid     = {2'b00, bridge_axi_resp.b.id};
+  assign m_axi_bresp   = bridge_axi_resp.b.resp;
+  assign m_axi_bvalid  = bridge_axi_resp.b_valid;
+  assign m_axi_arready = bridge_axi_resp.ar_ready;
+  assign m_axi_rid     = {2'b00, bridge_axi_resp.r.id};
+  assign m_axi_rdata   = bridge_axi_resp.r.data;
+  assign m_axi_rresp   = bridge_axi_resp.r.resp;
+  assign m_axi_rvalid  = bridge_axi_resp.r_valid;
+  assign m_axi_rlast   = bridge_axi_resp.r.last;
 
   mmcm mmcm(
     .clk_out1(audio_clk), .clk_out2(clk167), .clk_out3(clk200),
@@ -386,7 +462,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     );
   end;
 
-  cvwsoc_axi #(.P(P)) u_cvwsoc_axi (
+  cvwsoc_axi #(
+    .P(P),
+    .cpu_axi_req_t(cpu_axi_req_t),
+    .cpu_axi_resp_t(cpu_axi_resp_t)
+  ) u_cvwsoc_axi (
     .CPUCLK_i(CPUCLK),
     .clk167_i(clk167),
     .clk200_i(clk200),
@@ -446,41 +526,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .i2s_tx_sclk,
     .i2s_tx_sdout,
 
-    .m_axi_awid_i(m_axi_awid),
-    .m_axi_awlen_i(m_axi_awlen),
-    .m_axi_awsize_i(m_axi_awsize),
-    .m_axi_awburst_i(m_axi_awburst),
-    .m_axi_awcache_i(m_axi_awcache),
-    .m_axi_awaddr_i(m_axi_awaddr),
-    .m_axi_awprot_i(m_axi_awprot),
-    .m_axi_awvalid_i(m_axi_awvalid),
-    .m_axi_awready_o(m_axi_awready),
-    .m_axi_awlock_i(m_axi_awlock),
-    .m_axi_wdata_i(m_axi_wdata),
-    .m_axi_wstrb_i(m_axi_wstrb),
-    .m_axi_wlast_i(m_axi_wlast),
-    .m_axi_wvalid_i(m_axi_wvalid),
-    .m_axi_wready_o(m_axi_wready),
-    .m_axi_bid_o(m_axi_bid),
-    .m_axi_bresp_o(m_axi_bresp),
-    .m_axi_bvalid_o(m_axi_bvalid),
-    .m_axi_bready_i(m_axi_bready),
-    .m_axi_arid_i(m_axi_arid),
-    .m_axi_arlen_i(m_axi_arlen),
-    .m_axi_arsize_i(m_axi_arsize),
-    .m_axi_arburst_i(m_axi_arburst),
-    .m_axi_arprot_i(m_axi_arprot),
-    .m_axi_arcache_i(m_axi_arcache),
-    .m_axi_arvalid_i(m_axi_arvalid),
-    .m_axi_araddr_i(m_axi_araddr),
-    .m_axi_arlock_i(m_axi_arlock),
-    .m_axi_arready_o(m_axi_arready),
-    .m_axi_rid_o(m_axi_rid),
-    .m_axi_rdata_o(m_axi_rdata),
-    .m_axi_rresp_o(m_axi_rresp),
-    .m_axi_rvalid_o(m_axi_rvalid),
-    .m_axi_rlast_o(m_axi_rlast),
-    .m_axi_rready_i(m_axi_rready),
+    .cpu_axi_req_i(bridge_axi_req),
+    .cpu_axi_resp_o(bridge_axi_resp),
     .cpu_axi_irq_o(cpu_axi_irq)
   );
 

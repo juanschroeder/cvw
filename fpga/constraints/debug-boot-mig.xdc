@@ -11,7 +11,6 @@ ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/s_axi_rvalid
 ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/s_axi_rready
 # Check: is this one optimized?
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/s_axi_rresp -msb 1 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rresp -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/s_axi_rlast
 ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/s_axi_rdata -msb 63 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/s_axi_rid -msb 3 -lsb 0 -order lsb2msb
@@ -33,5 +32,4 @@ ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/s_axi_wdata -msb 63 -lsb 0 -order
 
 ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/s_axi_bvalid
 ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/s_axi_bready
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_bresp -msb 1 -lsb 0 -order lsb2msb
 ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/s_axi_bid -msb 3 -lsb 0 -order lsb2msb

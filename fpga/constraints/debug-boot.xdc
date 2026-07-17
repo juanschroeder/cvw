@@ -328,8 +328,8 @@ connect_debug_port u_ila_axi/clk [get_nets u_cvwsoc_axi/BUSCLK]
 
 
 
-# between CDC and crossbar
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
+# between CDC and crossbar (FIX! Naming has changed)
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
 #ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_axi_arlen -msb 7 -lsb 0 -order lsb2msb
 # some bits are optimized away?
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_axi_arlen -msb 3 -lsb 0 -order lsb2msb
@@ -363,36 +363,11 @@ ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_axi_araddr  -msb 31 -lsb 0 -order 
 
 # crossbar side to DDR
 # these ones repeat the DDR3 ones below
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arlen -msb 7 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arsize -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arburst -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_arvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_arready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arid -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_rvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_rready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rresp -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_rlast
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rdata -msb auto -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rid -msb 3 -lsb 0 -order lsb2msb
-
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_awvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_awready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awaddr  -msb 31 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awlen -msb 7 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_wvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_wready
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_wlast
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_wdata -msb auto -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_bvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_bready
 
 
 
 
 # ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/user_port_axi_0_bready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_bresp -msb 1 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/user_port_axi_0_bid -msb 3 -lsb 0 -order lsb2msb
 
 # CPU CDC output -> XBAR CPU-master input: cpu_cdc_to_xbar_axi_*
@@ -439,197 +414,198 @@ ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_axi_araddr  -msb 31 -lsb 0 -order 
 
 # XBAR -> iDMA register-slave port at 0x10080000: xbar_to_idma_cfg_axi_*
 # Packed crossbar M07 == CB_M_IDMA_DESC.
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awid -msb 39 -lsb 35 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awaddr -msb 255 -lsb 224 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awlen -msb 63 -lsb 56 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awsize -msb 23 -lsb 21 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awburst -msb 15 -lsb 14 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awlock -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awcache -msb 31 -lsb 28 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awprot -msb 23 -lsb 21 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awqos -msb 31 -lsb 28 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awregion -msb 31 -lsb 28 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awvalid -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awready -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_wdata -msb 511 -lsb 448 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_wstrb -msb 63 -lsb 56 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_wlast -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_wvalid -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_wready -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_bid -msb 39 -lsb 35 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_bresp -msb 15 -lsb 14 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_bvalid -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_bready -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arid -msb 39 -lsb 35 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_araddr -msb 255 -lsb 224 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arlen -msb 63 -lsb 56 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arsize -msb 23 -lsb 21 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arburst -msb 15 -lsb 14 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arlock -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arcache -msb 31 -lsb 28 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arprot -msb 23 -lsb 21 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arqos -msb 31 -lsb 28 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arregion -msb 31 -lsb 28 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arvalid -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arready -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rid -msb 39 -lsb 35 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rdata -msb 511 -lsb 448 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rresp -msb 15 -lsb 14 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rlast -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rvalid -msb 7 -lsb 7 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rready -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awid -msb 39 -lsb 35 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awaddr -msb 255 -lsb 224 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awlen -msb 63 -lsb 56 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awsize -msb 23 -lsb 21 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awburst -msb 15 -lsb 14 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awlock -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awcache -msb 31 -lsb 28 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awprot -msb 23 -lsb 21 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awqos -msb 31 -lsb 28 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awregion -msb 31 -lsb 28 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awvalid -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_awready -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_wdata -msb 511 -lsb 448 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_wstrb -msb 63 -lsb 56 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_wlast -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_wvalid -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_wready -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_bid -msb 39 -lsb 35 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_bresp -msb 15 -lsb 14 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_bvalid -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_bready -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arid -msb 39 -lsb 35 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_araddr -msb 255 -lsb 224 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arlen -msb 63 -lsb 56 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arsize -msb 23 -lsb 21 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arburst -msb 15 -lsb 14 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arlock -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arcache -msb 31 -lsb 28 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arprot -msb 23 -lsb 21 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arqos -msb 31 -lsb 28 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arregion -msb 31 -lsb 28 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arvalid -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_arready -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_rid -msb 39 -lsb 35 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_rdata -msb 511 -lsb 448 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_rresp -msb 15 -lsb 14 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_rlast -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_rvalid -msb 7 -lsb 7 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_m_axi_rready -msb 7 -lsb 7 -order lsb2msb
 
 # iDMA master -> XBAR master-input port: idma_m_axi_* descriptor fetch.
 # Packed crossbar S04 == CB_S_IDMA_FE, iDMA descriptor frontend AXI master.
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awid -msb 24 -lsb 20 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awaddr -msb 159 -lsb 128 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awlen -msb 39 -lsb 32 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awsize -msb 14 -lsb 12 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awburst -msb 9 -lsb 8 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awlock -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awcache -msb 19 -lsb 16 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awprot -msb 14 -lsb 12 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awqos -msb 19 -lsb 16 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awvalid -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awready -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_wdata -msb 319 -lsb 256 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_wstrb -msb 39 -lsb 32 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_wlast -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_wvalid -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_wready -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_bid -msb 24 -lsb 20 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_bresp -msb 9 -lsb 8 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_bvalid -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_bready -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arid -msb 24 -lsb 20 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_araddr -msb 159 -lsb 128 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arlen -msb 39 -lsb 32 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arsize -msb 14 -lsb 12 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arburst -msb 9 -lsb 8 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arlock -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arcache -msb 19 -lsb 16 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arprot -msb 14 -lsb 12 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arqos -msb 19 -lsb 16 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arvalid -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arready -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rid -msb 24 -lsb 20 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rdata -msb 319 -lsb 256 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rresp -msb 9 -lsb 8 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rlast -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rvalid -msb 4 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rready -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awid -msb 24 -lsb 20 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awaddr -msb 159 -lsb 128 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awlen -msb 39 -lsb 32 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awsize -msb 14 -lsb 12 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awburst -msb 9 -lsb 8 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awlock -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awcache -msb 19 -lsb 16 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awprot -msb 14 -lsb 12 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awqos -msb 19 -lsb 16 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awvalid -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awready -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_wdata -msb 319 -lsb 256 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_wstrb -msb 39 -lsb 32 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_wlast -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_wvalid -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_wready -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_bid -msb 24 -lsb 20 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_bresp -msb 9 -lsb 8 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_bvalid -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_bready -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arid -msb 24 -lsb 20 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_araddr -msb 159 -lsb 128 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arlen -msb 39 -lsb 32 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arsize -msb 14 -lsb 12 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arburst -msb 9 -lsb 8 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arlock -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arcache -msb 19 -lsb 16 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arprot -msb 14 -lsb 12 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arqos -msb 19 -lsb 16 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arvalid -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arready -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rid -msb 24 -lsb 20 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rdata -msb 319 -lsb 256 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rresp -msb 9 -lsb 8 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rlast -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rvalid -msb 4 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rready -msb 4 -lsb 4 -order lsb2msb
 
 # AXI->AXIS desc64 descriptor-fetch frontend.
 # Packed crossbar S05 == CB_S_IDMA_FE_AXIS.
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awid -msb 29 -lsb 25 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awaddr -msb 191 -lsb 160 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awlen -msb 47 -lsb 40 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awsize -msb 17 -lsb 15 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awburst -msb 11 -lsb 10 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awlock -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awcache -msb 23 -lsb 20 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awprot -msb 17 -lsb 15 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awqos -msb 23 -lsb 20 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awvalid -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_awready -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_wdata -msb 383 -lsb 320 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_wstrb -msb 47 -lsb 40 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_wlast -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_wvalid -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_wready -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_bid -msb 29 -lsb 25 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_bresp -msb 11 -lsb 10 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_bvalid -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_bready -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arid -msb 29 -lsb 25 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_araddr -msb 191 -lsb 160 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arlen -msb 47 -lsb 40 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arsize -msb 17 -lsb 15 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arburst -msb 11 -lsb 10 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arlock -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arcache -msb 23 -lsb 20 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arprot -msb 17 -lsb 15 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arqos -msb 23 -lsb 20 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arvalid -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arready -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rid -msb 29 -lsb 25 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rdata -msb 383 -lsb 320 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rresp -msb 11 -lsb 10 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rlast -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rvalid -msb 5 -lsb 5 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rready -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awid -msb 29 -lsb 25 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awaddr -msb 191 -lsb 160 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awlen -msb 47 -lsb 40 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awsize -msb 17 -lsb 15 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awburst -msb 11 -lsb 10 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awlock -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awcache -msb 23 -lsb 20 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awprot -msb 17 -lsb 15 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awqos -msb 23 -lsb 20 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awvalid -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_awready -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_wdata -msb 383 -lsb 320 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_wstrb -msb 47 -lsb 40 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_wlast -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_wvalid -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_wready -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_bid -msb 29 -lsb 25 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_bresp -msb 11 -lsb 10 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_bvalid -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_bready -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arid -msb 29 -lsb 25 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_araddr -msb 191 -lsb 160 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arlen -msb 47 -lsb 40 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arsize -msb 17 -lsb 15 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arburst -msb 11 -lsb 10 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arlock -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arcache -msb 23 -lsb 20 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arprot -msb 17 -lsb 15 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arqos -msb 23 -lsb 20 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arvalid -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arready -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rid -msb 29 -lsb 25 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rdata -msb 383 -lsb 320 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rresp -msb 11 -lsb 10 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rlast -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rvalid -msb 5 -lsb 5 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rready -msb 5 -lsb 5 -order lsb2msb
 
 # VGA framebuffer scanout master read path.
 # Packed crossbar S02 == CB_S_VGA.
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arid -msb 14 -lsb 10 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_araddr -msb 95 -lsb 64 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arlen -msb 23 -lsb 16 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arsize -msb 8 -lsb 6 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arburst -msb 5 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arvalid -msb 2 -lsb 2 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arready -msb 2 -lsb 2 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rid -msb 14 -lsb 10 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rresp -msb 5 -lsb 4 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rlast -msb 2 -lsb 2 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rvalid -msb 2 -lsb 2 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rready -msb 2 -lsb 2 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arid -msb 14 -lsb 10 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_araddr -msb 95 -lsb 64 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arlen -msb 23 -lsb 16 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arsize -msb 8 -lsb 6 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arburst -msb 5 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arvalid -msb 2 -lsb 2 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arready -msb 2 -lsb 2 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rid -msb 14 -lsb 10 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rresp -msb 5 -lsb 4 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rlast -msb 2 -lsb 2 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rvalid -msb 2 -lsb 2 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rready -msb 2 -lsb 2 -order lsb2msb
 
 # Shared iDMA backend payload-data read path.
 # Packed crossbar S06 == CB_S_IDMA_BE.
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arid -msb 34 -lsb 30 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_araddr -msb 223 -lsb 192 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arlen -msb 55 -lsb 48 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arsize -msb 20 -lsb 18 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arburst -msb 13 -lsb 12 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arvalid -msb 6 -lsb 6 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_arready -msb 6 -lsb 6 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rid -msb 34 -lsb 30 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rresp -msb 13 -lsb 12 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rlast -msb 6 -lsb 6 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rvalid -msb 6 -lsb 6 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_s_axi_rready -msb 6 -lsb 6 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arid -msb 34 -lsb 30 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_araddr -msb 223 -lsb 192 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arlen -msb 55 -lsb 48 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arsize -msb 20 -lsb 18 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arburst -msb 13 -lsb 12 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arvalid -msb 6 -lsb 6 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_arready -msb 6 -lsb 6 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rid -msb 34 -lsb 30 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rresp -msb 13 -lsb 12 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rlast -msb 6 -lsb 6 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rvalid -msb 6 -lsb 6 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_xilinx_xbar/cb_s_axi_rready -msb 6 -lsb 6 -order lsb2msb
 
 # XBAR -> DDR slave port: xbar_to_ddr_axi_*
-# Use the named DDR/MIG-facing slice of packed crossbar M00.
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awid -msb 4 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awaddr -msb 29 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awlen -msb 7 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awsize -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awburst -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_awlock
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awcache -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awprot -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awqos -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awregion -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_awvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_awready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_wdata -msb 63 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_wstrb -msb 7 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_wlast
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_wvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_wready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_bid -msb 4 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_bresp -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_bvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_bready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arid -msb 4 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_araddr -msb 29 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arlen -msb 7 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arsize -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arburst -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_arlock
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arcache -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arprot -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arqos -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arregion -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_arvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_arready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rid -msb 4 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rdata -msb 63 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rresp -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_rlast
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_rvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_rready
+# Current packed-crossbar DDR boundary: ddr_axi_* aliases of ddr_req/ddr_rsp.
+# These are valid probe names; leave them commented until this ILA needs them.
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_awid -msb 4 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_awaddr -msb 29 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_awlen -msb 7 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_awsize -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_awburst -msb 1 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_awlock
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_awcache -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_awprot -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_awqos -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_awregion -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_awvalid
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_awready
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_wdata -msb 63 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_wstrb -msb 7 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_wlast
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_wvalid
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_wready
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_bid -msb 4 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_bresp -msb 1 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_bvalid
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_bready
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_arid -msb 4 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_araddr -msb 29 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_arlen -msb 7 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_arsize -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_arburst -msb 1 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_arlock
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_arcache -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_arprot -msb 2 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_arqos -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_arregion -msb 3 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_arvalid
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_arready
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_rid -msb 4 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_rdata -msb 63 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr_axi_rresp -msb 1 -lsb 0 -order lsb2msb
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_rlast
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_rvalid
+# ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_rready
 
 
 # iDMA internal signals.
@@ -686,10 +662,6 @@ ila_add_probe u_ila_axi -net u_cvwsoc_axi/c0_init_calib_complete
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_axi_awprot -msb 2 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_axi_arcache -msb 3 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_axi_awcache -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arprot -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awprot -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arcache -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awcache -msb 3 -lsb 0 -order lsb2msb
 
 
 #######################################################

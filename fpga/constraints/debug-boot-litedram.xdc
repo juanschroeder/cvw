@@ -12,7 +12,6 @@
 # ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/user_port_axi_0_rready
 # #Check: is this one optimized?
 # # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/user_port_axi_0_rresp -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rresp -msb 1 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/user_port_axi_0_rlast
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/user_port_axi_0_rdata -msb auto -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/user_port_axi_0_rid -msb 3 -lsb 0 -order lsb2msb

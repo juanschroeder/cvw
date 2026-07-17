@@ -243,70 +243,8 @@ connect_debug_port u_ila_axi/clk [get_nets u_cvwsoc_axi/BUSCLK]
 
 
 # AXI CROSSBAR PROBES
-# BUS_cb_axi_*: (master) signals going from crossbar to MIG (DDR)
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arregion -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arqos  -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awregion  -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awqos  -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awid  -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awlen -msb 7 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awsize  -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awburst -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awcache  -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awaddr   -msb 31 -lsb 0 -order lsb2msb
-# # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_awprot  -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_awvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_awready
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_awlock
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_wdata -msb 63 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_wstrb -msb 7 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_wlast
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_wvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_wready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_bid  -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_bresp -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_bvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_bready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arid  -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arlen -msb 7 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arsize  -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arburst -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arprot  -msb 2 -lsb 0 -order lsb2msb
-#   ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_arcache  -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_arvalid
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_araddr  -msb 31 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_arlock
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_arready
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rid  -msb 3 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rdata -msb 63 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/BUS_cb_axi_rresp -msb 1 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_rvalid
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_rlast
-# ila_add_probe u_ila_axi -net u_cvwsoc_axi/BUS_cb_axi_rready
 
 
-# ** cb_m_axi signals ** : full master side of crossbar (slave side of peripherals) ()
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_awvalid  -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_wvalid  -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_wready  -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_bready -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_bvalid -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arvalid -msb 2 -lsb 0 -order lsb2msb
-#ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arlen -msb 23 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arlen -msb 23 -lsb 16 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arsize -msb 8 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arburst -msb 5 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arid -msb 3 -lsb 0 -order lsb2msb
-#ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_araddr -msb 95 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_araddr -msb 95 -lsb 64 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_arready -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rready -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rvalid -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rresp -msb 5 -lsb 0 -order lsb2msb
-#ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rdata -msb 191 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rdata -msb 191 -lsb 128 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_rlast -msb 2 -lsb 0 -order lsb2msb
-# ila_add_probe u_ila_axi -bus u_cvwsoc_axi/cb_m_axi_wlast -msb 2 -lsb 0 -order lsb2msb
 #CDMA
 # ila_add_probe u_ila_axi -net u_cvwsoc_axi/cdma_m_axi_awvalid
 # ila_add_probe u_ila_axi -net u_cvwsoc_axi/cdma_m_axi_awready
@@ -385,16 +323,17 @@ ila_add_probe u_ila_axi -net u_cvwsoc_axi/gen_axi_vga.axi_vga_wrap_i/dbg_reg_rsp
 #ila_add_probe u_ila_axi -net [get_nets -hier -regexp {^u_cvwsoc_axi/gen_axi_vga/axi_vga_wrap_i/i_axi_vga/reg_rsp_o\[ready\]$}]
 ila_add_probe u_ila_axi -net u_cvwsoc_axi/dbg_reg_rsp_ready
 
-# AXI bus from VGA master
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/vga_m_axi_araddr -msb 31 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/vga_m_axi_arlen -msb 7 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/vga_m_axi_arsize -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/vga_m_axi_arvalid
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/vga_m_axi_arready
-ila_add_probe u_ila_axi -bus u_cvwsoc_axi/vga_m_axi_rresp -msb 1 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/vga_m_axi_rlast
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/vga_m_axi_rvalid
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/vga_m_axi_rready
+# AXI scanout read channel from the VGA master.  These are flat debug aliases
+# inside axi_vga_wrap; do not probe packed-struct fields directly.
+ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_axi_vga/axi_vga_wrap_i/dbg_scan_araddr -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_axi_vga/axi_vga_wrap_i/dbg_scan_arlen -msb 7 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_axi_vga/axi_vga_wrap_i/dbg_scan_arsize -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net u_cvwsoc_axi/gen_axi_vga/axi_vga_wrap_i/dbg_scan_arvalid
+ila_add_probe u_ila_axi -net u_cvwsoc_axi/gen_axi_vga/axi_vga_wrap_i/dbg_scan_arready
+ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_axi_vga/axi_vga_wrap_i/dbg_scan_rresp -msb 1 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_axi -net u_cvwsoc_axi/gen_axi_vga/axi_vga_wrap_i/dbg_scan_rlast
+ila_add_probe u_ila_axi -net u_cvwsoc_axi/gen_axi_vga/axi_vga_wrap_i/dbg_scan_rvalid
+ila_add_probe u_ila_axi -net u_cvwsoc_axi/gen_axi_vga/axi_vga_wrap_i/dbg_scan_rready
 
 ##########################################################3
 
