@@ -13,6 +13,7 @@
 `include "axi_stream/typedef.svh"
 
 import cvw::*;
+import cvwsoc_pkg::*;
 
 
 // Enable one external-memory model. SDHCI is opt-in; AXI RAM is the default.
@@ -70,6 +71,7 @@ module testbench_cvwsoc #(
       tmp.AXI_ETH_SUPPORTED = 1'b0;
       tmp.LITEDRAM_SUPPORTED = 1'b0;
       tmp.UBERDDR3_SUPPORTED = 1'b0;
+      tmp.EXT_MEM_RANGE = (64'd1 << EXT_MEM_ADDR_WIDTH) - 1;
       // Veri-lator $readmemh complains when boot.mem is bigger than size
       tmp.BOOTROM_RANGE = 64'h1FFFF;
       tmp.AXI_DUMMY_SUPPORTED = 1'b1;
@@ -94,22 +96,21 @@ module testbench_cvwsoc #(
   localparam BUSW = P.AHBW; // AXI width = AHB width
   localparam cvw_t SOC_P = cvwsoc_sim_cfg(P);
   localparam int unsigned AXI_ID_WIDTH = 4;
-  localparam int unsigned XBAR_NUM_SLV_PORTS = 4;
-  localparam int unsigned XBAR_NUM_MST_PORTS = 6;
-  localparam int unsigned XBAR_NUM_ADDR_RULES = 6;
+  localparam xbar_out_t XBAR_OUT = gen_xbar_out(SOC_P);
+  localparam int unsigned XBAR_NUM_SLV_PORTS = XBAR_OUT.n_slv;
+  localparam int unsigned XBAR_NUM_MST_PORTS = XBAR_OUT.n_mst;
+  localparam int unsigned XBAR_NUM_ADDR_RULES = XBAR_OUT.n_rules;
   localparam int unsigned AXI_MST_ID_WIDTH = AXI_ID_WIDTH + $clog2(XBAR_NUM_SLV_PORTS);
-  localparam logic [31:0] EXT_RAM_BASE_ADDR = 32'h8000_0000;
-  localparam logic [31:0] EXT_RAM_END_ADDR = EXT_RAM_BASE_ADDR + (32'd1 << EXT_MEM_ADDR_WIDTH);
-  localparam logic [31:0] SDHCI_BASE_ADDR = SOC_P.AXI_SDHCI_BASE[31:0];
-  localparam logic [31:0] SDHCI_END_ADDR = SDHCI_BASE_ADDR + SOC_P.AXI_SDHCI_RANGE[31:0] + 32'd1;
-  localparam logic [31:0] AXI_IDMA_BASE_ADDR = SOC_P.AXI_IDMA_BASE[31:0];
-  localparam logic [31:0] AXI_IDMA_END_ADDR = AXI_IDMA_BASE_ADDR + SOC_P.AXI_IDMA_RANGE[31:0] + 32'd1;
-  localparam logic [31:0] AXI_IDMA_REG64_BASE_ADDR = SOC_P.AXI_IDMA_REG64_BASE[31:0];
-  localparam logic [31:0] AXI_IDMA_REG64_END_ADDR = AXI_IDMA_REG64_BASE_ADDR + SOC_P.AXI_IDMA_REG64_RANGE[31:0] + 32'd1;
-  localparam logic [31:0] AXIS_IDMA_BASE_ADDR = SOC_P.AXIS_IDMA_BASE[31:0];
-  localparam logic [31:0] AXIS_IDMA_END_ADDR = AXIS_IDMA_BASE_ADDR + SOC_P.AXIS_IDMA_RANGE[31:0] + 32'd1;
-  localparam logic [31:0] AXI_DUMMY_BASE_ADDR = SOC_P.AXI_DUMMY_BASE[31:0];
-  localparam logic [31:0] AXI_DUMMY_END_ADDR = AXI_DUMMY_BASE_ADDR + SOC_P.AXI_DUMMY_RANGE[31:0] + 32'd1;
+  localparam int unsigned CB_S_CPU = XBAR_OUT.s_cpu;
+  localparam int unsigned CB_S_IDMA_FE = XBAR_OUT.s_idma_fe;
+  localparam int unsigned CB_S_IDMA_FE_AXIS = XBAR_OUT.s_idma_fe_axis;
+  localparam int unsigned CB_S_IDMA_BE = XBAR_OUT.s_idma_be;
+  localparam int unsigned CB_M_DDR = XBAR_OUT.m_ddr;
+  localparam int unsigned CB_M_SDHCI = XBAR_OUT.m_sdhci;
+  localparam int unsigned CB_M_DUMMY = XBAR_OUT.m_dummy;
+  localparam int unsigned CB_M_IDMA_DESC = XBAR_OUT.m_idma_desc;
+  localparam int unsigned CB_M_IDMA_REG64 = XBAR_OUT.m_idma_reg64;
+  localparam int unsigned CB_M_IDMA_AXIS = XBAR_OUT.m_idma_axis;
   localparam longint unsigned HEARTBEAT_CYCLES = 10_000_000;
   localparam longint unsigned HEARTBEAT_SPEED_INTERVAL_CYCLES_DEFAULT = HEARTBEAT_CYCLES;
   localparam logic [P.XLEN-1:0] KERNEL_ENTRY_PC = 64'h0000_0000_8020_0000;
@@ -165,14 +166,22 @@ module testbench_cvwsoc #(
     NoAddrRules:        XBAR_NUM_ADDR_RULES
   };
 
-  localparam axi_pkg::xbar_rule_32_t [XBAR_NUM_ADDR_RULES-1:0] XBAR_ADDR_MAP = '{
-    '{ idx: 0, start_addr: EXT_RAM_BASE_ADDR, end_addr: EXT_RAM_END_ADDR },
-    '{ idx: 1, start_addr: SDHCI_BASE_ADDR, end_addr: SDHCI_END_ADDR },
-    '{ idx: 2, start_addr: AXI_DUMMY_BASE_ADDR, end_addr: AXI_DUMMY_END_ADDR },
-    '{ idx: 3, start_addr: AXI_IDMA_BASE_ADDR, end_addr: AXI_IDMA_END_ADDR },
-    '{ idx: 4, start_addr: AXI_IDMA_REG64_BASE_ADDR, end_addr: AXI_IDMA_REG64_END_ADDR },
-    '{ idx: 5, start_addr: AXIS_IDMA_BASE_ADDR, end_addr: AXIS_IDMA_END_ADDR }
-  };
+  localparam axi_pkg::xbar_rule_32_t [XBAR_NUM_ADDR_RULES-1:0] XBAR_ADDR_MAP =
+      XBAR_OUT.addr_map[XBAR_NUM_ADDR_RULES-1:0];
+  localparam bit [XBAR_MAX_SLV-1:0][XBAR_MAX_MST-1:0] XBAR_CONNECTIVITY_FULL =
+      gen_xbar_connectivity(SOC_P);
+  function automatic bit [XBAR_NUM_SLV_PORTS-1:0][XBAR_NUM_MST_PORTS-1:0]
+      resize_xbar_connectivity();
+    bit [XBAR_NUM_SLV_PORTS-1:0][XBAR_NUM_MST_PORTS-1:0] conn;
+
+    conn = '0;
+    for (int unsigned s = 0; s < XBAR_NUM_SLV_PORTS; s++)
+      for (int unsigned m = 0; m < XBAR_NUM_MST_PORTS; m++)
+        conn[s][m] = XBAR_CONNECTIVITY_FULL[s][m];
+    return conn;
+  endfunction
+  localparam bit [XBAR_NUM_SLV_PORTS-1:0][XBAR_NUM_MST_PORTS-1:0]
+      XBAR_CONNECTIVITY = resize_xbar_connectivity();
 
   // ---------------------------------------------------------------------------
   // Clocks / resets
@@ -668,10 +677,8 @@ module testbench_cvwsoc #(
     .dst_resp_i (cdc_axi_resp)
   );
 
-  // Slave port 0 is CPU traffic through the CDC. Slave ports 1 and 3 are the
-  // two desc64 descriptor-fetch masters. Slave port 2 is the shared backend.
-  assign slv_req[0] = cdc_axi_req;
-  assign cdc_axi_resp = slv_resp[0];
+  assign slv_req[CB_S_CPU] = cdc_axi_req;
+  assign cdc_axi_resp = slv_resp[CB_S_CPU];
 
   logic dbg_idmar64_irq_pending;
   logic dbg_idmar64_irq_enable;
@@ -947,13 +954,6 @@ module testbench_cvwsoc #(
   end
   assign audio_clk = audio_clk_div_q[1];
 
-  assign idma_slv_req[0] = mst_req[3];
-  assign idma_slv_req[1] = mst_req[4];
-  assign idma_slv_req[2] = mst_req[5];
-  assign mst_resp[3] = idma_slv_resp[0];
-  assign mst_resp[4] = idma_slv_resp[1];
-  assign mst_resp[5] = idma_slv_resp[2];
-
   initial begin
     axis_stall_period = '0;
     axis_stall_cycles = '0;
@@ -996,8 +996,8 @@ module testbench_cvwsoc #(
       .testmode_i        ( 1'b0          ),
       .axi_mst_fe_req_o  ( idma_fe_req   ),
       .axi_mst_fe_rsp_i  ( idma_fe_resp  ),
-      .axi_mst_be_req_o  ( slv_req[2]    ),
-      .axi_mst_be_rsp_i  ( slv_resp[2]   ),
+      .axi_mst_be_req_o  ( slv_req[CB_S_IDMA_BE]    ),
+      .axi_mst_be_rsp_i  ( slv_resp[CB_S_IDMA_BE]   ),
       .axi_slv_req_i     ( idma_slv_req  ),
       .axi_slv_rsp_o     ( idma_slv_resp ),
       .axis_write_req_o  ( idma_axis_req ),
@@ -1007,10 +1007,28 @@ module testbench_cvwsoc #(
       .axis_irq_o        ( idma_axis_irq )
     );
 
-    assign slv_req[1] = idma_fe_req[0];
-    assign idma_fe_resp[0] = slv_resp[1];
-    assign slv_req[3] = idma_fe_req[1];
-    assign idma_fe_resp[1] = slv_resp[3];
+    if (SOC_P.AXI_IDMA_SUPPORTED) begin
+      assign slv_req[CB_S_IDMA_FE] = idma_fe_req[0];
+      assign idma_fe_resp[0] = slv_resp[CB_S_IDMA_FE];
+      assign idma_slv_req[0] = mst_req[CB_M_IDMA_DESC];
+      assign mst_resp[CB_M_IDMA_DESC] = idma_slv_resp[0];
+    end else begin
+      assign idma_fe_resp[0] = '0;
+    end
+    if (SOC_P.AXIS_IDMA_SUPPORTED) begin
+      assign slv_req[CB_S_IDMA_FE_AXIS] = idma_fe_req[1];
+      assign idma_fe_resp[1] = slv_resp[CB_S_IDMA_FE_AXIS];
+      assign idma_slv_req[2] = mst_req[CB_M_IDMA_AXIS];
+      assign mst_resp[CB_M_IDMA_AXIS] = idma_slv_resp[2];
+    end else begin
+      assign idma_fe_resp[1] = '0;
+    end
+    if (SOC_P.AXI_IDMA_REG64_SUPPORTED) begin
+      assign idma_slv_req[1] = mst_req[CB_M_IDMA_REG64];
+      assign mst_resp[CB_M_IDMA_REG64] = idma_slv_resp[1];
+    end else begin
+      assign idma_slv_req[1] = '0;
+    end
 
     if (SOC_P.AXIS_I2S_SUPPORTED) begin
         logic [31:0] fifo_axis_tdata;
@@ -1152,16 +1170,16 @@ module testbench_cvwsoc #(
     assign dbg_idmar64_sel_irq_status = idma_i.sel_irq_status;
     assign dbg_idmar64_sel_irq_enable = idma_i.sel_irq_enable;
     assign dbg_idmar64_sel_irq = idma_i.sel_irq;
-    assign dbg_idmar64_axi_aw_valid = mst_req[4].aw_valid;
-    assign dbg_idmar64_axi_aw_ready = mst_resp[4].aw_ready;
-    assign dbg_idmar64_axi_aw_addr = mst_req[4].aw.addr;
-    assign dbg_idmar64_axi_w_valid = mst_req[4].w_valid;
-    assign dbg_idmar64_axi_w_ready = mst_resp[4].w_ready;
-    assign dbg_idmar64_axi_w_data = mst_req[4].w.data;
-    assign dbg_idmar64_axi_w_strb = mst_req[4].w.strb;
-    assign dbg_idmar64_axi_b_valid = mst_resp[4].b_valid;
-    assign dbg_idmar64_axi_b_ready = mst_req[4].b_ready;
-    assign dbg_idmar64_axi_b_resp = mst_resp[4].b.resp;
+    assign dbg_idmar64_axi_aw_valid = mst_req[CB_M_IDMA_REG64].aw_valid;
+    assign dbg_idmar64_axi_aw_ready = mst_resp[CB_M_IDMA_REG64].aw_ready;
+    assign dbg_idmar64_axi_aw_addr = mst_req[CB_M_IDMA_REG64].aw.addr;
+    assign dbg_idmar64_axi_w_valid = mst_req[CB_M_IDMA_REG64].w_valid;
+    assign dbg_idmar64_axi_w_ready = mst_resp[CB_M_IDMA_REG64].w_ready;
+    assign dbg_idmar64_axi_w_data = mst_req[CB_M_IDMA_REG64].w.data;
+    assign dbg_idmar64_axi_w_strb = mst_req[CB_M_IDMA_REG64].w.strb;
+    assign dbg_idmar64_axi_b_valid = mst_resp[CB_M_IDMA_REG64].b_valid;
+    assign dbg_idmar64_axi_b_ready = mst_req[CB_M_IDMA_REG64].b_ready;
+    assign dbg_idmar64_axi_aw_valid = mst_req[CB_M_IDMA_REG64].aw_valid;
     assign dbg_idmar64_reg_req_valid = idma_i.dma_reg_req.valid;
     assign dbg_idmar64_reg_req_write = idma_i.dma_reg_req.write;
     assign dbg_idmar64_reg_req_addr = idma_i.dma_reg_req.addr[31:0];
@@ -1184,87 +1202,87 @@ module testbench_cvwsoc #(
     assign dbg_idmad64_irq_enable = idma_i.desc64_irq_enable;
     assign dbg_idmad64_irq_clear_wr = idma_i.desc64_irq_clear_wr;
     assign dbg_idmad64_irq_enable_wr = idma_i.desc64_irq_enable_wr;
-    assign dbg_idmad64_mmio_aw_valid = mst_req[3].aw_valid;
-    assign dbg_idmad64_mmio_aw_ready = mst_resp[3].aw_ready;
-    assign dbg_idmad64_mmio_aw_addr = mst_req[3].aw.addr;
-    assign dbg_idmad64_mmio_w_valid = mst_req[3].w_valid;
-    assign dbg_idmad64_mmio_w_ready = mst_resp[3].w_ready;
-    assign dbg_idmad64_mmio_w_data = mst_req[3].w.data;
-    assign dbg_idmad64_mmio_w_strb = mst_req[3].w.strb;
-    assign dbg_idmad64_mmio_b_valid = mst_resp[3].b_valid;
-    assign dbg_idmad64_mmio_b_ready = mst_req[3].b_ready;
-    assign dbg_idmad64_mmio_b_resp = mst_resp[3].b.resp;
-    assign dbg_idmad64_mmio_ar_valid = mst_req[3].ar_valid;
-    assign dbg_idmad64_mmio_ar_ready = mst_resp[3].ar_ready;
-    assign dbg_idmad64_mmio_ar_addr = mst_req[3].ar.addr;
-    assign dbg_idmad64_mmio_r_valid = mst_resp[3].r_valid;
-    assign dbg_idmad64_mmio_r_ready = mst_req[3].r_ready;
-    assign dbg_idmad64_mmio_r_data = mst_resp[3].r.data;
-    assign dbg_idmad64_mmio_r_resp = mst_resp[3].r.resp;
-    assign dbg_idmad64_desc_ar_valid = slv_req[1].ar_valid;
-    assign dbg_idmad64_desc_ar_ready = slv_resp[1].ar_ready;
-    assign dbg_idmad64_desc_ar_addr = slv_req[1].ar.addr;
-    assign dbg_idmad64_desc_ar_len = slv_req[1].ar.len;
-    assign dbg_idmad64_desc_r_valid = slv_resp[1].r_valid;
-    assign dbg_idmad64_desc_r_ready = slv_req[1].r_ready;
-    assign dbg_idmad64_desc_r_data = slv_resp[1].r.data;
-    assign dbg_idmad64_desc_r_last = slv_resp[1].r.last;
-    assign dbg_idmad64_desc_aw_valid = slv_req[1].aw_valid;
-    assign dbg_idmad64_desc_aw_ready = slv_resp[1].aw_ready;
-    assign dbg_idmad64_desc_aw_addr = slv_req[1].aw.addr;
-    assign dbg_idmad64_desc_w_valid = slv_req[1].w_valid;
-    assign dbg_idmad64_desc_w_ready = slv_resp[1].w_ready;
-    assign dbg_idmad64_desc_w_data = slv_req[1].w.data;
-    assign dbg_idmad64_desc_w_strb = slv_req[1].w.strb;
-    assign dbg_idmad64_desc_b_valid = slv_resp[1].b_valid;
-    assign dbg_idmad64_desc_b_ready = slv_req[1].b_ready;
-    assign dbg_idmad64_be_ar_valid = slv_req[2].ar_valid;
-    assign dbg_idmad64_be_ar_ready = slv_resp[2].ar_ready;
-    assign dbg_idmad64_be_ar_addr = slv_req[2].ar.addr;
-    assign dbg_idmad64_be_ar_len = slv_req[2].ar.len;
-    assign dbg_idmad64_be_r_valid = slv_resp[2].r_valid;
-    assign dbg_idmad64_be_r_ready = slv_req[2].r_ready;
-    assign dbg_idmad64_be_r_data = slv_resp[2].r.data;
-    assign dbg_idmad64_be_r_last = slv_resp[2].r.last;
-    assign dbg_idmad64_be_aw_valid = slv_req[2].aw_valid;
-    assign dbg_idmad64_be_aw_ready = slv_resp[2].aw_ready;
-    assign dbg_idmad64_be_aw_addr = slv_req[2].aw.addr;
-    assign dbg_idmad64_be_aw_len = slv_req[2].aw.len;
-    assign dbg_idmad64_be_w_valid = slv_req[2].w_valid;
-    assign dbg_idmad64_be_w_ready = slv_resp[2].w_ready;
-    assign dbg_idmad64_be_w_data = slv_req[2].w.data;
-    assign dbg_idmad64_be_w_strb = slv_req[2].w.strb;
-    assign dbg_idmad64_be_b_valid = slv_resp[2].b_valid;
-    assign dbg_idmad64_be_b_ready = slv_req[2].b_ready;
+    assign dbg_idmad64_mmio_aw_valid = mst_req[CB_M_IDMA_DESC].aw_valid;
+    assign dbg_idmad64_mmio_aw_ready = mst_resp[CB_M_IDMA_DESC].aw_ready;
+    assign dbg_idmad64_mmio_aw_addr = mst_req[CB_M_IDMA_DESC].aw.addr;
+    assign dbg_idmad64_mmio_w_valid = mst_req[CB_M_IDMA_DESC].w_valid;
+    assign dbg_idmad64_mmio_w_ready = mst_resp[CB_M_IDMA_DESC].w_ready;
+    assign dbg_idmad64_mmio_w_data = mst_req[CB_M_IDMA_DESC].w.data;
+    assign dbg_idmad64_mmio_w_strb = mst_req[CB_M_IDMA_DESC].w.strb;
+    assign dbg_idmad64_mmio_b_valid = mst_resp[CB_M_IDMA_DESC].b_valid;
+    assign dbg_idmad64_mmio_b_ready = mst_req[CB_M_IDMA_DESC].b_ready;
+    assign dbg_idmad64_mmio_b_resp = mst_resp[CB_M_IDMA_DESC].b.resp;
+    assign dbg_idmad64_mmio_ar_valid = mst_req[CB_M_IDMA_DESC].ar_valid;
+    assign dbg_idmad64_mmio_ar_ready = mst_resp[CB_M_IDMA_DESC].ar_ready;
+    assign dbg_idmad64_mmio_ar_addr = mst_req[CB_M_IDMA_DESC].ar.addr;
+    assign dbg_idmad64_mmio_r_valid = mst_resp[CB_M_IDMA_DESC].r_valid;
+    assign dbg_idmad64_mmio_r_ready = mst_req[CB_M_IDMA_DESC].r_ready;
+    assign dbg_idmad64_mmio_r_data = mst_resp[CB_M_IDMA_DESC].r.data;
+    assign dbg_idmad64_mmio_r_resp = mst_resp[CB_M_IDMA_DESC].r.resp;
+    assign dbg_idmad64_desc_ar_valid = slv_req[CB_S_IDMA_FE].ar_valid;
+    assign dbg_idmad64_desc_ar_ready = slv_resp[CB_S_IDMA_FE].ar_ready;
+    assign dbg_idmad64_desc_ar_addr = slv_req[CB_S_IDMA_FE].ar.addr;
+    assign dbg_idmad64_desc_ar_len = slv_req[CB_S_IDMA_FE].ar.len;
+    assign dbg_idmad64_desc_r_valid = slv_resp[CB_S_IDMA_FE].r_valid;
+    assign dbg_idmad64_desc_r_ready = slv_req[CB_S_IDMA_FE].r_ready;
+    assign dbg_idmad64_desc_r_data = slv_resp[CB_S_IDMA_FE].r.data;
+    assign dbg_idmad64_desc_r_last = slv_resp[CB_S_IDMA_FE].r.last;
+    assign dbg_idmad64_desc_aw_valid = slv_req[CB_S_IDMA_FE].aw_valid;
+    assign dbg_idmad64_desc_aw_ready = slv_resp[CB_S_IDMA_FE].aw_ready;
+    assign dbg_idmad64_desc_aw_addr = slv_req[CB_S_IDMA_FE].aw.addr;
+    assign dbg_idmad64_desc_w_valid = slv_req[CB_S_IDMA_FE].w_valid;
+    assign dbg_idmad64_desc_w_ready = slv_resp[CB_S_IDMA_FE].w_ready;
+    assign dbg_idmad64_desc_w_data = slv_req[CB_S_IDMA_FE].w.data;
+    assign dbg_idmad64_desc_w_strb = slv_req[CB_S_IDMA_FE].w.strb;
+    assign dbg_idmad64_desc_b_valid = slv_resp[CB_S_IDMA_FE].b_valid;
+    assign dbg_idmad64_desc_b_ready = slv_req[CB_S_IDMA_FE].b_ready;
+    assign dbg_idmad64_be_ar_valid = slv_req[CB_S_IDMA_BE].ar_valid;
+    assign dbg_idmad64_be_ar_ready = slv_resp[CB_S_IDMA_BE].ar_ready;
+    assign dbg_idmad64_be_ar_addr = slv_req[CB_S_IDMA_BE].ar.addr;
+    assign dbg_idmad64_be_ar_len = slv_req[CB_S_IDMA_BE].ar.len;
+    assign dbg_idmad64_be_r_valid = slv_resp[CB_S_IDMA_BE].r_valid;
+    assign dbg_idmad64_be_r_ready = slv_req[CB_S_IDMA_BE].r_ready;
+    assign dbg_idmad64_be_r_data = slv_resp[CB_S_IDMA_BE].r.data;
+    assign dbg_idmad64_be_r_last = slv_resp[CB_S_IDMA_BE].r.last;
+    assign dbg_idmad64_be_aw_valid = slv_req[CB_S_IDMA_BE].aw_valid;
+    assign dbg_idmad64_be_aw_ready = slv_resp[CB_S_IDMA_BE].aw_ready;
+    assign dbg_idmad64_be_aw_addr = slv_req[CB_S_IDMA_BE].aw.addr;
+    assign dbg_idmad64_be_aw_len = slv_req[CB_S_IDMA_BE].aw.len;
+    assign dbg_idmad64_be_w_valid = slv_req[CB_S_IDMA_BE].w_valid;
+    assign dbg_idmad64_be_w_ready = slv_resp[CB_S_IDMA_BE].w_ready;
+    assign dbg_idmad64_be_w_data = slv_req[CB_S_IDMA_BE].w.data;
+    assign dbg_idmad64_be_w_strb = slv_req[CB_S_IDMA_BE].w.strb;
+    assign dbg_idmad64_be_b_valid = slv_resp[CB_S_IDMA_BE].b_valid;
+    assign dbg_idmad64_be_b_ready = slv_req[CB_S_IDMA_BE].b_ready;
 
     assign dbg_idmaaxis_irq = idma_axis_irq;
-    assign dbg_idmaaxis_mmio_aw_valid = mst_req[5].aw_valid;
-    assign dbg_idmaaxis_mmio_aw_ready = mst_resp[5].aw_ready;
-    assign dbg_idmaaxis_mmio_aw_addr = mst_req[5].aw.addr;
-    assign dbg_idmaaxis_mmio_w_valid = mst_req[5].w_valid;
-    assign dbg_idmaaxis_mmio_w_ready = mst_resp[5].w_ready;
-    assign dbg_idmaaxis_mmio_w_data = mst_req[5].w.data;
-    assign dbg_idmaaxis_mmio_w_strb = mst_req[5].w.strb;
-    assign dbg_idmaaxis_mmio_b_valid = mst_resp[5].b_valid;
-    assign dbg_idmaaxis_mmio_b_ready = mst_req[5].b_ready;
-    assign dbg_idmaaxis_mmio_b_resp = mst_resp[5].b.resp;
-    assign dbg_idmaaxis_mmio_ar_valid = mst_req[5].ar_valid;
-    assign dbg_idmaaxis_mmio_ar_ready = mst_resp[5].ar_ready;
-    assign dbg_idmaaxis_mmio_ar_addr = mst_req[5].ar.addr;
-    assign dbg_idmaaxis_mmio_r_valid = mst_resp[5].r_valid;
-    assign dbg_idmaaxis_mmio_r_ready = mst_req[5].r_ready;
-    assign dbg_idmaaxis_mmio_r_data = mst_resp[5].r.data;
-    assign dbg_idmaaxis_mmio_r_resp = mst_resp[5].r.resp;
+    assign dbg_idmaaxis_mmio_aw_valid = mst_req[CB_M_IDMA_AXIS].aw_valid;
+    assign dbg_idmaaxis_mmio_aw_ready = mst_resp[CB_M_IDMA_AXIS].aw_ready;
+    assign dbg_idmaaxis_mmio_aw_addr = mst_req[CB_M_IDMA_AXIS].aw.addr;
+    assign dbg_idmaaxis_mmio_w_valid = mst_req[CB_M_IDMA_AXIS].w_valid;
+    assign dbg_idmaaxis_mmio_w_ready = mst_resp[CB_M_IDMA_AXIS].w_ready;
+    assign dbg_idmaaxis_mmio_w_data = mst_req[CB_M_IDMA_AXIS].w.data;
+    assign dbg_idmaaxis_mmio_w_strb = mst_req[CB_M_IDMA_AXIS].w.strb;
+    assign dbg_idmaaxis_mmio_b_valid = mst_resp[CB_M_IDMA_AXIS].b_valid;
+    assign dbg_idmaaxis_mmio_b_ready = mst_req[CB_M_IDMA_AXIS].b_ready;
+    assign dbg_idmaaxis_mmio_b_resp = mst_resp[CB_M_IDMA_AXIS].b.resp;
+    assign dbg_idmaaxis_mmio_ar_valid = mst_req[CB_M_IDMA_AXIS].ar_valid;
+    assign dbg_idmaaxis_mmio_ar_ready = mst_resp[CB_M_IDMA_AXIS].ar_ready;
+    assign dbg_idmaaxis_mmio_ar_addr = mst_req[CB_M_IDMA_AXIS].ar.addr;
+    assign dbg_idmaaxis_mmio_r_valid = mst_resp[CB_M_IDMA_AXIS].r_valid;
+    assign dbg_idmaaxis_mmio_r_ready = mst_req[CB_M_IDMA_AXIS].r_ready;
+    assign dbg_idmaaxis_mmio_r_data = mst_resp[CB_M_IDMA_AXIS].r.data;
+    assign dbg_idmaaxis_mmio_r_resp = mst_resp[CB_M_IDMA_AXIS].r.resp;
 
-    assign dbg_idmaaxis_desc_ar_valid = slv_req[3].ar_valid;
-    assign dbg_idmaaxis_desc_ar_ready = slv_resp[3].ar_ready;
-    assign dbg_idmaaxis_desc_ar_addr = slv_req[3].ar.addr;
-    assign dbg_idmaaxis_desc_ar_len = slv_req[3].ar.len;
-    assign dbg_idmaaxis_desc_r_valid = slv_resp[3].r_valid;
-    assign dbg_idmaaxis_desc_r_ready = slv_req[3].r_ready;
-    assign dbg_idmaaxis_desc_r_data = slv_resp[3].r.data;
-    assign dbg_idmaaxis_desc_r_last = slv_resp[3].r.last;
-    assign dbg_idmaaxis_desc_r_resp = slv_resp[3].r.resp;
+    assign dbg_idmaaxis_desc_ar_valid = slv_req[CB_S_IDMA_FE_AXIS].ar_valid;
+    assign dbg_idmaaxis_desc_ar_ready = slv_resp[CB_S_IDMA_FE_AXIS].ar_ready;
+    assign dbg_idmaaxis_desc_ar_addr = slv_req[CB_S_IDMA_FE_AXIS].ar.addr;
+    assign dbg_idmaaxis_desc_ar_len = slv_req[CB_S_IDMA_FE_AXIS].ar.len;
+    assign dbg_idmaaxis_desc_r_valid = slv_resp[CB_S_IDMA_FE_AXIS].r_valid;
+    assign dbg_idmaaxis_desc_r_ready = slv_req[CB_S_IDMA_FE_AXIS].r_ready;
+    assign dbg_idmaaxis_desc_r_data = slv_resp[CB_S_IDMA_FE_AXIS].r.data;
+    assign dbg_idmaaxis_desc_r_last = slv_resp[CB_S_IDMA_FE_AXIS].r.last;
+    assign dbg_idmaaxis_desc_r_resp = slv_resp[CB_S_IDMA_FE_AXIS].r.resp;
 
     assign dbg_idmaaxis_arb_fe_valid = idma_i.fe_arb_i.idma_req_fe_valid;
     assign dbg_idmaaxis_arb_fe_ready = idma_i.fe_arb_i.idma_req_fe_ready;
@@ -1311,15 +1329,15 @@ module testbench_cvwsoc #(
     assign dbg_idmaaxis_meta_aw_protocol =
         idma_i.backend_i.aw_req_dp.dst_protocol;
 
-    assign dbg_idmaaxis_read_ar_valid = slv_req[2].ar_valid;
-    assign dbg_idmaaxis_read_ar_ready = slv_resp[2].ar_ready;
-    assign dbg_idmaaxis_read_ar_addr = slv_req[2].ar.addr;
-    assign dbg_idmaaxis_read_ar_len = slv_req[2].ar.len;
-    assign dbg_idmaaxis_read_r_valid = slv_resp[2].r_valid;
-    assign dbg_idmaaxis_read_r_ready = slv_req[2].r_ready;
-    assign dbg_idmaaxis_read_r_data = slv_resp[2].r.data;
-    assign dbg_idmaaxis_read_r_last = slv_resp[2].r.last;
-    assign dbg_idmaaxis_read_r_resp = slv_resp[2].r.resp;
+    assign dbg_idmaaxis_read_ar_valid = slv_req[CB_S_IDMA_BE].ar_valid;
+    assign dbg_idmaaxis_read_ar_ready = slv_resp[CB_S_IDMA_BE].ar_ready;
+    assign dbg_idmaaxis_read_ar_addr = slv_req[CB_S_IDMA_BE].ar.addr;
+    assign dbg_idmaaxis_read_ar_len = slv_req[CB_S_IDMA_BE].ar.len;
+    assign dbg_idmaaxis_read_r_valid = slv_resp[CB_S_IDMA_BE].r_valid;
+    assign dbg_idmaaxis_read_r_ready = slv_req[CB_S_IDMA_BE].r_ready;
+    assign dbg_idmaaxis_read_r_data = slv_resp[CB_S_IDMA_BE].r.data;
+    assign dbg_idmaaxis_read_r_last = slv_resp[CB_S_IDMA_BE].r.last;
+    assign dbg_idmaaxis_read_r_resp = slv_resp[CB_S_IDMA_BE].r.resp;
 
     assign dbg_idmaaxis_axis_w_req_valid =
         idma_i.backend_i.i_idma_transport_layer.w_dp_req_valid;
@@ -1492,9 +1510,6 @@ module testbench_cvwsoc #(
     end
 
   end else begin : gen_no_idma
-    assign slv_req[1] = '0;
-    assign slv_req[2] = '0;
-    assign slv_req[3] = '0;
     assign idma_slv_resp = '0;
     assign AXI_IDMAIntr = 1'b0;
     assign idma_axis_req = '0;
@@ -1715,7 +1730,7 @@ module testbench_cvwsoc #(
   axi_xbar #(
     .Cfg           (XBAR_CFG),
     .ATOPs         (1'b0),
-    .Connectivity  ('1),
+    .Connectivity  (XBAR_CONNECTIVITY),
     .slv_aw_chan_t (slv_aw_t),
     .mst_aw_chan_t (mst_aw_t),
     .w_chan_t      (axi_w_t),
@@ -1752,41 +1767,41 @@ module testbench_cvwsoc #(
   ) ext_ram_i (
     .clk           (bus_clk),
     .rst           (bus_reset),
-    .s_axi_awid    (mst_req[0].aw.id),
-    .s_axi_awaddr  (mst_req[0].aw.addr[EXT_MEM_ADDR_WIDTH-1:0]),
-    .s_axi_awlen   (mst_req[0].aw.len),
-    .s_axi_awsize  (mst_req[0].aw.size),
-    .s_axi_awburst (mst_req[0].aw.burst),
-    .s_axi_awlock  (mst_req[0].aw.lock),
-    .s_axi_awcache (mst_req[0].aw.cache),
-    .s_axi_awprot  (mst_req[0].aw.prot),
-    .s_axi_awvalid (mst_req[0].aw_valid),
-    .s_axi_awready (mst_resp[0].aw_ready),
-    .s_axi_wdata   (mst_req[0].w.data),
-    .s_axi_wstrb   (mst_req[0].w.strb),
-    .s_axi_wlast   (mst_req[0].w.last),
-    .s_axi_wvalid  (mst_req[0].w_valid),
-    .s_axi_wready  (mst_resp[0].w_ready),
-    .s_axi_bid     (mst_resp[0].b.id),
-    .s_axi_bresp   (mst_resp[0].b.resp),
-    .s_axi_bvalid  (mst_resp[0].b_valid),
-    .s_axi_bready  (mst_req[0].b_ready),
-    .s_axi_arid    (mst_req[0].ar.id),
-    .s_axi_araddr  (mst_req[0].ar.addr[EXT_MEM_ADDR_WIDTH-1:0]),
-    .s_axi_arlen   (mst_req[0].ar.len),
-    .s_axi_arsize  (mst_req[0].ar.size),
-    .s_axi_arburst (mst_req[0].ar.burst),
-    .s_axi_arlock  (mst_req[0].ar.lock),
-    .s_axi_arcache (mst_req[0].ar.cache),
-    .s_axi_arprot  (mst_req[0].ar.prot),
-    .s_axi_arvalid (mst_req[0].ar_valid),
-    .s_axi_arready (mst_resp[0].ar_ready),
-    .s_axi_rid     (mst_resp[0].r.id),
-    .s_axi_rdata   (mst_resp[0].r.data),
-    .s_axi_rresp   (mst_resp[0].r.resp),
-    .s_axi_rlast   (mst_resp[0].r.last),
-    .s_axi_rvalid  (mst_resp[0].r_valid),
-    .s_axi_rready  (mst_req[0].r_ready)
+    .s_axi_awid    (mst_req[CB_M_DDR].aw.id),
+    .s_axi_awaddr  (mst_req[CB_M_DDR].aw.addr[EXT_MEM_ADDR_WIDTH-1:0]),
+    .s_axi_awlen   (mst_req[CB_M_DDR].aw.len),
+    .s_axi_awsize  (mst_req[CB_M_DDR].aw.size),
+    .s_axi_awburst (mst_req[CB_M_DDR].aw.burst),
+    .s_axi_awlock  (mst_req[CB_M_DDR].aw.lock),
+    .s_axi_awcache (mst_req[CB_M_DDR].aw.cache),
+    .s_axi_awprot  (mst_req[CB_M_DDR].aw.prot),
+    .s_axi_awvalid (mst_req[CB_M_DDR].aw_valid),
+    .s_axi_awready (mst_resp[CB_M_DDR].aw_ready),
+    .s_axi_wdata   (mst_req[CB_M_DDR].w.data),
+    .s_axi_wstrb   (mst_req[CB_M_DDR].w.strb),
+    .s_axi_wlast   (mst_req[CB_M_DDR].w.last),
+    .s_axi_wvalid  (mst_req[CB_M_DDR].w_valid),
+    .s_axi_wready  (mst_resp[CB_M_DDR].w_ready),
+    .s_axi_bid     (mst_resp[CB_M_DDR].b.id),
+    .s_axi_bresp   (mst_resp[CB_M_DDR].b.resp),
+    .s_axi_bvalid  (mst_resp[CB_M_DDR].b_valid),
+    .s_axi_bready  (mst_req[CB_M_DDR].b_ready),
+    .s_axi_arid    (mst_req[CB_M_DDR].ar.id),
+    .s_axi_araddr  (mst_req[CB_M_DDR].ar.addr[EXT_MEM_ADDR_WIDTH-1:0]),
+    .s_axi_arlen   (mst_req[CB_M_DDR].ar.len),
+    .s_axi_arsize  (mst_req[CB_M_DDR].ar.size),
+    .s_axi_arburst (mst_req[CB_M_DDR].ar.burst),
+    .s_axi_arlock  (mst_req[CB_M_DDR].ar.lock),
+    .s_axi_arcache (mst_req[CB_M_DDR].ar.cache),
+    .s_axi_arprot  (mst_req[CB_M_DDR].ar.prot),
+    .s_axi_arvalid (mst_req[CB_M_DDR].ar_valid),
+    .s_axi_arready (mst_resp[CB_M_DDR].ar_ready),
+    .s_axi_rid     (mst_resp[CB_M_DDR].r.id),
+    .s_axi_rdata   (mst_resp[CB_M_DDR].r.data),
+    .s_axi_rresp   (mst_resp[CB_M_DDR].r.resp),
+    .s_axi_rlast   (mst_resp[CB_M_DDR].r.last),
+    .s_axi_rvalid  (mst_resp[CB_M_DDR].r_valid),
+    .s_axi_rready  (mst_req[CB_M_DDR].r_ready)
   );
 
 `ifdef SIM_AXI_SDHCI
@@ -1952,41 +1967,41 @@ module testbench_cvwsoc #(
       //.aclk(sdhci_clk),
       .aresetn(~bus_reset),
 
-    .s_axi_awid    (mst_req[1].aw.id),
-    .s_axi_awaddr  (mst_req[1].aw.addr[PERIPH_ADDR_WIDTH-1:0]),
-    .s_axi_awlen   (mst_req[1].aw.len),
-    .s_axi_awsize  (mst_req[1].aw.size),
-    .s_axi_awburst (mst_req[1].aw.burst),
-    .s_axi_awlock  (mst_req[1].aw.lock),
-    .s_axi_awcache (mst_req[1].aw.cache),
-    .s_axi_awprot  (mst_req[1].aw.prot),
-    .s_axi_awvalid (mst_req[1].aw_valid),
-    .s_axi_awready (mst_resp[1].aw_ready),
-    .s_axi_wdata   (mst_req[1].w.data),
-    .s_axi_wstrb   (mst_req[1].w.strb),
-    .s_axi_wlast   (mst_req[1].w.last),
-    .s_axi_wvalid  (mst_req[1].w_valid),
-    .s_axi_wready  (mst_resp[1].w_ready),
-    .s_axi_bid     (mst_resp[1].b.id),
-    .s_axi_bresp   (mst_resp[1].b.resp),
-    .s_axi_bvalid  (mst_resp[1].b_valid),
-    .s_axi_bready  (mst_req[1].b_ready),
-    .s_axi_arid    (mst_req[1].ar.id),
-    .s_axi_araddr  (mst_req[1].ar.addr[PERIPH_ADDR_WIDTH-1:0]),
-    .s_axi_arlen   (mst_req[1].ar.len),
-    .s_axi_arsize  (mst_req[1].ar.size),
-    .s_axi_arburst (mst_req[1].ar.burst),
-    .s_axi_arlock  (mst_req[1].ar.lock),
-    .s_axi_arcache (mst_req[1].ar.cache),
-    .s_axi_arprot  (mst_req[1].ar.prot),
-    .s_axi_arvalid (mst_req[1].ar_valid),
-    .s_axi_arready (mst_resp[1].ar_ready),
-    .s_axi_rid     (mst_resp[1].r.id),
-    .s_axi_rdata   (mst_resp[1].r.data),
-    .s_axi_rresp   (mst_resp[1].r.resp),
-    .s_axi_rlast   (mst_resp[1].r.last),
-    .s_axi_rvalid  (mst_resp[1].r_valid),
-    .s_axi_rready  (mst_req[1].r_ready),
+    .s_axi_awid    (mst_req[CB_M_SDHCI].aw.id),
+    .s_axi_awaddr  (mst_req[CB_M_SDHCI].aw.addr[PERIPH_ADDR_WIDTH-1:0]),
+    .s_axi_awlen   (mst_req[CB_M_SDHCI].aw.len),
+    .s_axi_awsize  (mst_req[CB_M_SDHCI].aw.size),
+    .s_axi_awburst (mst_req[CB_M_SDHCI].aw.burst),
+    .s_axi_awlock  (mst_req[CB_M_SDHCI].aw.lock),
+    .s_axi_awcache (mst_req[CB_M_SDHCI].aw.cache),
+    .s_axi_awprot  (mst_req[CB_M_SDHCI].aw.prot),
+    .s_axi_awvalid (mst_req[CB_M_SDHCI].aw_valid),
+    .s_axi_awready (mst_resp[CB_M_SDHCI].aw_ready),
+    .s_axi_wdata   (mst_req[CB_M_SDHCI].w.data),
+    .s_axi_wstrb   (mst_req[CB_M_SDHCI].w.strb),
+    .s_axi_wlast   (mst_req[CB_M_SDHCI].w.last),
+    .s_axi_wvalid  (mst_req[CB_M_SDHCI].w_valid),
+    .s_axi_wready  (mst_resp[CB_M_SDHCI].w_ready),
+    .s_axi_bid     (mst_resp[CB_M_SDHCI].b.id),
+    .s_axi_bresp   (mst_resp[CB_M_SDHCI].b.resp),
+    .s_axi_bvalid  (mst_resp[CB_M_SDHCI].b_valid),
+    .s_axi_bready  (mst_req[CB_M_SDHCI].b_ready),
+    .s_axi_arid    (mst_req[CB_M_SDHCI].ar.id),
+    .s_axi_araddr  (mst_req[CB_M_SDHCI].ar.addr[PERIPH_ADDR_WIDTH-1:0]),
+    .s_axi_arlen   (mst_req[CB_M_SDHCI].ar.len),
+    .s_axi_arsize  (mst_req[CB_M_SDHCI].ar.size),
+    .s_axi_arburst (mst_req[CB_M_SDHCI].ar.burst),
+    .s_axi_arlock  (mst_req[CB_M_SDHCI].ar.lock),
+    .s_axi_arcache (mst_req[CB_M_SDHCI].ar.cache),
+    .s_axi_arprot  (mst_req[CB_M_SDHCI].ar.prot),
+    .s_axi_arvalid (mst_req[CB_M_SDHCI].ar_valid),
+    .s_axi_arready (mst_resp[CB_M_SDHCI].ar_ready),
+    .s_axi_rid     (mst_resp[CB_M_SDHCI].r.id),
+    .s_axi_rdata   (mst_resp[CB_M_SDHCI].r.data),
+    .s_axi_rresp   (mst_resp[CB_M_SDHCI].r.resp),
+    .s_axi_rlast   (mst_resp[CB_M_SDHCI].r.last),
+    .s_axi_rvalid  (mst_resp[CB_M_SDHCI].r_valid),
+    .s_axi_rready  (mst_req[CB_M_SDHCI].r_ready),
 
     // SDHCI pins
     .sd_clk_o(sd_clk_o),
@@ -2028,11 +2043,10 @@ module testbench_cvwsoc #(
   );
 
   assign sd_cd_ni = '0;
-  assign mst_resp[1].b.user = '0;
-  assign mst_resp[1].r.user = '0;
+  assign mst_resp[CB_M_SDHCI].b.user = '0;
+  assign mst_resp[CB_M_SDHCI].r.user = '0;
 
 `else
-  assign mst_resp[1] = '0;
   assign AXI_DummyIntr = 1'b0;
 `endif
 
@@ -2046,47 +2060,47 @@ module testbench_cvwsoc #(
   ) axi_dummy_ram_i (
     .clk           (bus_clk),
     .rst           (bus_reset),
-    .s_axi_awid    (mst_req[2].aw.id),
-    .s_axi_awaddr  (mst_req[2].aw.addr[PERIPH_ADDR_WIDTH-1:0]),
-    .s_axi_awlen   (mst_req[2].aw.len),
-    .s_axi_awsize  (mst_req[2].aw.size),
-    .s_axi_awburst (mst_req[2].aw.burst),
-    .s_axi_awlock  (mst_req[2].aw.lock),
-    .s_axi_awcache (mst_req[2].aw.cache),
-    .s_axi_awprot  (mst_req[2].aw.prot),
-    .s_axi_awvalid (mst_req[2].aw_valid),
-    .s_axi_awready (mst_resp[2].aw_ready),
-    .s_axi_wdata   (mst_req[2].w.data),
-    .s_axi_wstrb   (mst_req[2].w.strb),
-    .s_axi_wlast   (mst_req[2].w.last),
-    .s_axi_wvalid  (mst_req[2].w_valid),
-    .s_axi_wready  (mst_resp[2].w_ready),
-    .s_axi_bid     (mst_resp[2].b.id),
-    .s_axi_bresp   (mst_resp[2].b.resp),
-    .s_axi_bvalid  (mst_resp[2].b_valid),
-    .s_axi_bready  (mst_req[2].b_ready),
-    .s_axi_arid    (mst_req[2].ar.id),
-    .s_axi_araddr  (mst_req[2].ar.addr[PERIPH_ADDR_WIDTH-1:0]),
-    .s_axi_arlen   (mst_req[2].ar.len),
-    .s_axi_arsize  (mst_req[2].ar.size),
-    .s_axi_arburst (mst_req[2].ar.burst),
-    .s_axi_arlock  (mst_req[2].ar.lock),
-    .s_axi_arcache (mst_req[2].ar.cache),
-    .s_axi_arprot  (mst_req[2].ar.prot),
-    .s_axi_arvalid (mst_req[2].ar_valid),
-    .s_axi_arready (mst_resp[2].ar_ready),
-    .s_axi_rid     (mst_resp[2].r.id),
-    .s_axi_rdata   (mst_resp[2].r.data),
-    .s_axi_rresp   (mst_resp[2].r.resp),
-    .s_axi_rlast   (mst_resp[2].r.last),
-    .s_axi_rvalid  (mst_resp[2].r_valid),
-    .s_axi_rready  (mst_req[2].r_ready)
+    .s_axi_awid    (mst_req[CB_M_DUMMY].aw.id),
+    .s_axi_awaddr  (mst_req[CB_M_DUMMY].aw.addr[PERIPH_ADDR_WIDTH-1:0]),
+    .s_axi_awlen   (mst_req[CB_M_DUMMY].aw.len),
+    .s_axi_awsize  (mst_req[CB_M_DUMMY].aw.size),
+    .s_axi_awburst (mst_req[CB_M_DUMMY].aw.burst),
+    .s_axi_awlock  (mst_req[CB_M_DUMMY].aw.lock),
+    .s_axi_awcache (mst_req[CB_M_DUMMY].aw.cache),
+    .s_axi_awprot  (mst_req[CB_M_DUMMY].aw.prot),
+    .s_axi_awvalid (mst_req[CB_M_DUMMY].aw_valid),
+    .s_axi_awready (mst_resp[CB_M_DUMMY].aw_ready),
+    .s_axi_wdata   (mst_req[CB_M_DUMMY].w.data),
+    .s_axi_wstrb   (mst_req[CB_M_DUMMY].w.strb),
+    .s_axi_wlast   (mst_req[CB_M_DUMMY].w.last),
+    .s_axi_wvalid  (mst_req[CB_M_DUMMY].w_valid),
+    .s_axi_wready  (mst_resp[CB_M_DUMMY].w_ready),
+    .s_axi_bid     (mst_resp[CB_M_DUMMY].b.id),
+    .s_axi_bresp   (mst_resp[CB_M_DUMMY].b.resp),
+    .s_axi_bvalid  (mst_resp[CB_M_DUMMY].b_valid),
+    .s_axi_bready  (mst_req[CB_M_DUMMY].b_ready),
+    .s_axi_arid    (mst_req[CB_M_DUMMY].ar.id),
+    .s_axi_araddr  (mst_req[CB_M_DUMMY].ar.addr[PERIPH_ADDR_WIDTH-1:0]),
+    .s_axi_arlen   (mst_req[CB_M_DUMMY].ar.len),
+    .s_axi_arsize  (mst_req[CB_M_DUMMY].ar.size),
+    .s_axi_arburst (mst_req[CB_M_DUMMY].ar.burst),
+    .s_axi_arlock  (mst_req[CB_M_DUMMY].ar.lock),
+    .s_axi_arcache (mst_req[CB_M_DUMMY].ar.cache),
+    .s_axi_arprot  (mst_req[CB_M_DUMMY].ar.prot),
+    .s_axi_arvalid (mst_req[CB_M_DUMMY].ar_valid),
+    .s_axi_arready (mst_resp[CB_M_DUMMY].ar_ready),
+    .s_axi_rid     (mst_resp[CB_M_DUMMY].r.id),
+    .s_axi_rdata   (mst_resp[CB_M_DUMMY].r.data),
+    .s_axi_rresp   (mst_resp[CB_M_DUMMY].r.resp),
+    .s_axi_rlast   (mst_resp[CB_M_DUMMY].r.last),
+    .s_axi_rvalid  (mst_resp[CB_M_DUMMY].r_valid),
+    .s_axi_rready  (mst_req[CB_M_DUMMY].r_ready)
   );
-  assign mst_resp[2].b.user = '0;
-  assign mst_resp[2].r.user = '0;
+  assign mst_resp[CB_M_DUMMY].b.user = '0;
+  assign mst_resp[CB_M_DUMMY].r.user = '0;
 
 `else
-  assign mst_resp[2] = '0;
+  assign mst_resp[CB_M_DUMMY] = '0;
 `endif
 
   // ---------------------------------------------------------------------------
@@ -2141,8 +2155,8 @@ module testbench_cvwsoc #(
   //-----------------------------------------------
   //-----------------------------------------------
 
-  assign mst_resp[0].b.user = '0;
-  assign mst_resp[0].r.user = '0;
+  assign mst_resp[CB_M_DDR].b.user = '0;
+  assign mst_resp[CB_M_DDR].r.user = '0;
 
   // ---------------------------------------------------------------------------
   // Runtime controls
@@ -2418,14 +2432,14 @@ module testbench_cvwsoc #(
       $dumpvars(0, testbench_cvwsoc.cdc_axi_req.w_valid);
       $dumpvars(0, testbench_cvwsoc.cdc_axi_req.ar.addr);
       $dumpvars(0, testbench_cvwsoc.cdc_axi_req.ar_valid);
-      $dumpvars(0, testbench_cvwsoc.mst_req[0].aw.addr);
-      $dumpvars(0, testbench_cvwsoc.mst_req[0].aw_valid);
-      $dumpvars(0, testbench_cvwsoc.mst_req[0].ar.addr);
-      $dumpvars(0, testbench_cvwsoc.mst_req[0].ar_valid);
-      $dumpvars(0, testbench_cvwsoc.mst_req[1].aw.addr);
-      $dumpvars(0, testbench_cvwsoc.mst_req[1].aw_valid);
-      $dumpvars(0, testbench_cvwsoc.mst_req[1].ar.addr);
-      $dumpvars(0, testbench_cvwsoc.mst_req[1].ar_valid);
+      $dumpvars(0, testbench_cvwsoc.mst_req[CB_M_DDR].aw.addr);
+      $dumpvars(0, testbench_cvwsoc.mst_req[CB_M_DDR].aw_valid);
+      $dumpvars(0, testbench_cvwsoc.mst_req[CB_M_DDR].ar.addr);
+      $dumpvars(0, testbench_cvwsoc.mst_req[CB_M_DDR].ar_valid);
+      $dumpvars(0, testbench_cvwsoc.mst_req[CB_M_SDHCI].aw.addr);
+      $dumpvars(0, testbench_cvwsoc.mst_req[CB_M_SDHCI].aw_valid);
+      $dumpvars(0, testbench_cvwsoc.mst_req[CB_M_SDHCI].ar.addr);
+      $dumpvars(0, testbench_cvwsoc.mst_req[CB_M_DDR].aw.addr);
     end
   endtask
 

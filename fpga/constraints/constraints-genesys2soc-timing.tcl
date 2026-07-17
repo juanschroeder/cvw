@@ -129,7 +129,7 @@ if {[llength $dst]} {
   error "Did not match any OHCI BufferCC stage-0 D pins"
 }
 
-set_false_path -to [must_get_pins {(^|.*/)usb_phy_resetn_ff_reg\[[01]\]/CLR$}]
+set_false_path -to [must_get_pins {.*gen_axi_usb\.usb_phy_resetn_ff_reg\[[01]\]/CLR$}]
 
 
 # ccToggle -> BufferCC first stage (this one was NOT covered by your old regexes)
@@ -205,7 +205,7 @@ set_output_delay -clock [get_clocks SDHCIDClk] -min  3.000 $sdhci_io_ports
 set_false_path -to [must_get_pins {(^|.*/)sdhci_irq_ff1_reg(\[[01]\])?/D$}]
 
 ## VGA ##
-set_false_path -to [must_get_pins {(^|.*/)axi_vga_wrap_i/i_axi_to_reg/.*spill_register_flushable_i.*/(CLR|R)$}]
+set_false_path -to [must_get_pins {.*gen_axi_vga\.axi_vga_wrap_i/i_axi_to_reg/.*spill_register_flushable_i.*/(CLR|R)$}]
 
 # I2S IDMA audio FIFO Gray pointer CDC.
 set audio_fifo_sync [get_pins -hier -quiet -regexp {.*axis_audio_fifo_i/fifo_inst/(wr|rd)_ptr_gray_sync[12]_reg_reg\[[0-9]+\]/D$}]

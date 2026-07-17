@@ -42,6 +42,10 @@ if {$board=="ArtyA7"} {
     add_files  {../src/fpgaTop.sv}
 }
 
+if {$board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
+    add_files  ../../addins/cvwsoc/cvwsoc_axi.sv
+}
+
 # read in ip
 import_ip IP/sysrst.srcs/sources_1/ip/sysrst/sysrst.xci
 if {! ($board == "genesys2soc" || $board == "genesys2rv32soc" || $board=="genesys2rv32w64soc")} {
@@ -112,6 +116,9 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexy
 
 # only tested on the Genesys 2
 if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc"} {
+
+    add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cvwsoc_pkg.sv
+
     set uberddr3_supported [expr {[info exists ::env(UBERDDR3_SUPPORTED)] ? $::env(UBERDDR3_SUPPORTED) : "0"}]
     set litedram_supported  [expr {[info exists ::env(LITEDRAM_SUPPORTED)]  ? $::env(LITEDRAM_SUPPORTED)  : "0"}]
 
