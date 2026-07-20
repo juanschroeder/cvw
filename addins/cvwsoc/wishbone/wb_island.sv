@@ -136,7 +136,7 @@ module wb_island import cvw::*; #(
 
   //-------------------------------------------------------
 
-  if (P.WISHBONE_ETH_SUPPORTED == 1) begin : wbuart
+  if (P.WISHBONE_ETH_SUPPORTED == 1) begin : wbeth
 
     wire unused_rmii_rst_n;
 
@@ -209,7 +209,7 @@ module wb_island import cvw::*; #(
   logic [31:0] stub_rdata;
   logic        stub_ack, stub_err;
 
-  if (P.WISHBONE_STUB_SUPPORTED == 1) begin : wbuart
+  if (P.WISHBONE_STUB_SUPPORTED == 1) begin : wbstub
 
     wb_stub #(.AW(AW)) u_stub (
       .clk(clk), .rst(rst),
