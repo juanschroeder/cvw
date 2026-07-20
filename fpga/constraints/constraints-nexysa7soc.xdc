@@ -55,6 +55,8 @@ set_property PULLTYPE PULLUP [get_ports SDCCmd]
 set_property PULLTYPE PULLUP [get_ports SDCCD]
 #set_property PULLTYPE PULLUP [get_ports SDCCLK]
 #set_property PULLTYPE PULLUP [get_ports SDCWP]
+create_generated_clock -name SPISDCClock -source [get_pins mmcm/clk_out3] \
+  -multiply_by 1 -divide_by 1 [get_pins wallypipelinedsoc/SPICLK]
 set_output_delay -clock [get_clocks SPISDCClock] -min -add_delay 2.500 [get_ports {SDCCS}]
 set_output_delay -clock [get_clocks SPISDCClock] -max -add_delay 10.000 [get_ports {SDCCS}]
 set_input_delay -clock [get_clocks SPISDCClock] -min -add_delay 2.500 [get_ports {SDCIn}]
@@ -80,255 +82,255 @@ set_output_delay -clock [get_clocks SPISDCClock] 0.000 [get_ports SDCCLK]
 ##### DDR2 #####
 set_property IO_BUFFER_TYPE NONE [get_ports {ddr2_ck_n[*]} ]
 set_property IO_BUFFER_TYPE NONE [get_ports {ddr2_ck_p[*]} ]
-          
+
 #create_clock -period 5 [get_ports sys_clk_i]
-          
-# PadFunction: IO_L23P_T3_34 
+
+# PadFunction: IO_L23P_T3_34
 set_property SLEW FAST [get_ports {ddr2_dq[0]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[0]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[0]}]
 set_property PACKAGE_PIN R7 [get_ports {ddr2_dq[0]}]
 
-# PadFunction: IO_L20N_T3_34 
+# PadFunction: IO_L20N_T3_34
 set_property SLEW FAST [get_ports {ddr2_dq[1]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[1]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[1]}]
 set_property PACKAGE_PIN V6 [get_ports {ddr2_dq[1]}]
 
-# PadFunction: IO_L24P_T3_34 
+# PadFunction: IO_L24P_T3_34
 set_property SLEW FAST [get_ports {ddr2_dq[2]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[2]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[2]}]
 set_property PACKAGE_PIN R8 [get_ports {ddr2_dq[2]}]
 
-# PadFunction: IO_L22P_T3_34 
+# PadFunction: IO_L22P_T3_34
 set_property SLEW FAST [get_ports {ddr2_dq[3]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[3]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[3]}]
 set_property PACKAGE_PIN U7 [get_ports {ddr2_dq[3]}]
 
-# PadFunction: IO_L20P_T3_34 
+# PadFunction: IO_L20P_T3_34
 set_property SLEW FAST [get_ports {ddr2_dq[4]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[4]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[4]}]
 set_property PACKAGE_PIN V7 [get_ports {ddr2_dq[4]}]
 
-# PadFunction: IO_L19P_T3_34 
+# PadFunction: IO_L19P_T3_34
 set_property SLEW FAST [get_ports {ddr2_dq[5]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[5]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[5]}]
 set_property PACKAGE_PIN R6 [get_ports {ddr2_dq[5]}]
 
-# PadFunction: IO_L22N_T3_34 
+# PadFunction: IO_L22N_T3_34
 set_property SLEW FAST [get_ports {ddr2_dq[6]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[6]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[6]}]
 set_property PACKAGE_PIN U6 [get_ports {ddr2_dq[6]}]
 
-# PadFunction: IO_L19N_T3_VREF_34 
+# PadFunction: IO_L19N_T3_VREF_34
 set_property SLEW FAST [get_ports {ddr2_dq[7]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[7]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[7]}]
 set_property PACKAGE_PIN R5 [get_ports {ddr2_dq[7]}]
 
-# PadFunction: IO_L12P_T1_MRCC_34 
+# PadFunction: IO_L12P_T1_MRCC_34
 set_property SLEW FAST [get_ports {ddr2_dq[8]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[8]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[8]}]
 set_property PACKAGE_PIN T5 [get_ports {ddr2_dq[8]}]
 
-# PadFunction: IO_L8N_T1_34 
+# PadFunction: IO_L8N_T1_34
 set_property SLEW FAST [get_ports {ddr2_dq[9]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[9]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[9]}]
 set_property PACKAGE_PIN U3 [get_ports {ddr2_dq[9]}]
 
-# PadFunction: IO_L10P_T1_34 
+# PadFunction: IO_L10P_T1_34
 set_property SLEW FAST [get_ports {ddr2_dq[10]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[10]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[10]}]
 set_property PACKAGE_PIN V5 [get_ports {ddr2_dq[10]}]
 
-# PadFunction: IO_L8P_T1_34 
+# PadFunction: IO_L8P_T1_34
 set_property SLEW FAST [get_ports {ddr2_dq[11]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[11]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[11]}]
 set_property PACKAGE_PIN U4 [get_ports {ddr2_dq[11]}]
 
-# PadFunction: IO_L10N_T1_34 
+# PadFunction: IO_L10N_T1_34
 set_property SLEW FAST [get_ports {ddr2_dq[12]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[12]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[12]}]
 set_property PACKAGE_PIN V4 [get_ports {ddr2_dq[12]}]
 
-# PadFunction: IO_L12N_T1_MRCC_34 
+# PadFunction: IO_L12N_T1_MRCC_34
 set_property SLEW FAST [get_ports {ddr2_dq[13]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[13]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[13]}]
 set_property PACKAGE_PIN T4 [get_ports {ddr2_dq[13]}]
 
-# PadFunction: IO_L7N_T1_34 
+# PadFunction: IO_L7N_T1_34
 set_property SLEW FAST [get_ports {ddr2_dq[14]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[14]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[14]}]
 set_property PACKAGE_PIN V1 [get_ports {ddr2_dq[14]}]
 
-# PadFunction: IO_L11N_T1_SRCC_34 
+# PadFunction: IO_L11N_T1_SRCC_34
 set_property SLEW FAST [get_ports {ddr2_dq[15]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dq[15]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dq[15]}]
 set_property PACKAGE_PIN T3 [get_ports {ddr2_dq[15]}]
 
-# PadFunction: IO_L18N_T2_34 
+# PadFunction: IO_L18N_T2_34
 set_property SLEW FAST [get_ports {ddr2_addr[12]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[12]}]
 set_property PACKAGE_PIN N6 [get_ports {ddr2_addr[12]}]
 
-# PadFunction: IO_L5P_T0_34 
+# PadFunction: IO_L5P_T0_34
 set_property SLEW FAST [get_ports {ddr2_addr[11]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[11]}]
 set_property PACKAGE_PIN K5 [get_ports {ddr2_addr[11]}]
 
-# PadFunction: IO_L15N_T2_DQS_34 
+# PadFunction: IO_L15N_T2_DQS_34
 set_property SLEW FAST [get_ports {ddr2_addr[10]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[10]}]
 set_property PACKAGE_PIN R2 [get_ports {ddr2_addr[10]}]
 
-# PadFunction: IO_L13P_T2_MRCC_34 
+# PadFunction: IO_L13P_T2_MRCC_34
 set_property SLEW FAST [get_ports {ddr2_addr[9]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[9]}]
 set_property PACKAGE_PIN N5 [get_ports {ddr2_addr[9]}]
 
-# PadFunction: IO_L5N_T0_34 
+# PadFunction: IO_L5N_T0_34
 set_property SLEW FAST [get_ports {ddr2_addr[8]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[8]}]
 set_property PACKAGE_PIN L4 [get_ports {ddr2_addr[8]}]
 
-# PadFunction: IO_L3N_T0_DQS_34 
+# PadFunction: IO_L3N_T0_DQS_34
 set_property SLEW FAST [get_ports {ddr2_addr[7]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[7]}]
 set_property PACKAGE_PIN N1 [get_ports {ddr2_addr[7]}]
 
-# PadFunction: IO_L4N_T0_34 
+# PadFunction: IO_L4N_T0_34
 set_property SLEW FAST [get_ports {ddr2_addr[6]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[6]}]
 set_property PACKAGE_PIN M2 [get_ports {ddr2_addr[6]}]
 
-# PadFunction: IO_L13N_T2_MRCC_34 
+# PadFunction: IO_L13N_T2_MRCC_34
 set_property SLEW FAST [get_ports {ddr2_addr[5]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[5]}]
 set_property PACKAGE_PIN P5 [get_ports {ddr2_addr[5]}]
 
-# PadFunction: IO_L2N_T0_34 
+# PadFunction: IO_L2N_T0_34
 set_property SLEW FAST [get_ports {ddr2_addr[4]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[4]}]
 set_property PACKAGE_PIN L3 [get_ports {ddr2_addr[4]}]
 
-# PadFunction: IO_L17N_T2_34 
+# PadFunction: IO_L17N_T2_34
 set_property SLEW FAST [get_ports {ddr2_addr[3]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[3]}]
 set_property PACKAGE_PIN T1 [get_ports {ddr2_addr[3]}]
 
-# PadFunction: IO_L18P_T2_34 
+# PadFunction: IO_L18P_T2_34
 set_property SLEW FAST [get_ports {ddr2_addr[2]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[2]}]
 set_property PACKAGE_PIN M6 [get_ports {ddr2_addr[2]}]
 
-# PadFunction: IO_L14P_T2_SRCC_34 
+# PadFunction: IO_L14P_T2_SRCC_34
 set_property SLEW FAST [get_ports {ddr2_addr[1]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[1]}]
 set_property PACKAGE_PIN P4 [get_ports {ddr2_addr[1]}]
 
-# PadFunction: IO_L16P_T2_34 
+# PadFunction: IO_L16P_T2_34
 set_property SLEW FAST [get_ports {ddr2_addr[0]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_addr[0]}]
 set_property PACKAGE_PIN M4 [get_ports {ddr2_addr[0]}]
 
-# PadFunction: IO_L17P_T2_34 
+# PadFunction: IO_L17P_T2_34
 set_property SLEW FAST [get_ports {ddr2_ba[2]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_ba[2]}]
 set_property PACKAGE_PIN R1 [get_ports {ddr2_ba[2]}]
 
-# PadFunction: IO_L14N_T2_SRCC_34 
+# PadFunction: IO_L14N_T2_SRCC_34
 set_property SLEW FAST [get_ports {ddr2_ba[1]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_ba[1]}]
 set_property PACKAGE_PIN P3 [get_ports {ddr2_ba[1]}]
 
-# PadFunction: IO_L15P_T2_DQS_34 
+# PadFunction: IO_L15P_T2_DQS_34
 set_property SLEW FAST [get_ports {ddr2_ba[0]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_ba[0]}]
 set_property PACKAGE_PIN P2 [get_ports {ddr2_ba[0]}]
 
-# PadFunction: IO_L16N_T2_34 
+# PadFunction: IO_L16N_T2_34
 set_property SLEW FAST [get_ports {ddr2_ras_n}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_ras_n}]
 set_property PACKAGE_PIN N4 [get_ports {ddr2_ras_n}]
 
-# PadFunction: IO_L1P_T0_34 
+# PadFunction: IO_L1P_T0_34
 set_property SLEW FAST [get_ports {ddr2_cas_n}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_cas_n}]
 set_property PACKAGE_PIN L1 [get_ports {ddr2_cas_n}]
 
-# PadFunction: IO_L3P_T0_DQS_34 
+# PadFunction: IO_L3P_T0_DQS_34
 set_property SLEW FAST [get_ports {ddr2_we_n}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_we_n}]
 set_property PACKAGE_PIN N2 [get_ports {ddr2_we_n}]
 
-# PadFunction: IO_L1N_T0_34 
+# PadFunction: IO_L1N_T0_34
 set_property SLEW FAST [get_ports {ddr2_cke[0]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_cke[0]}]
 set_property PACKAGE_PIN M1 [get_ports {ddr2_cke[0]}]
 
-# PadFunction: IO_L4P_T0_34 
+# PadFunction: IO_L4P_T0_34
 set_property SLEW FAST [get_ports {ddr2_odt[0]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_odt[0]}]
 set_property PACKAGE_PIN M3 [get_ports {ddr2_odt[0]}]
 
-# PadFunction: IO_0_34 
+# PadFunction: IO_0_34
 set_property SLEW FAST [get_ports {ddr2_cs_n[0]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_cs_n[0]}]
 set_property PACKAGE_PIN K6 [get_ports {ddr2_cs_n[0]}]
 
-# PadFunction: IO_L23N_T3_34 
+# PadFunction: IO_L23N_T3_34
 set_property SLEW FAST [get_ports {ddr2_dm[0]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dm[0]}]
 set_property PACKAGE_PIN T6 [get_ports {ddr2_dm[0]}]
 
-# PadFunction: IO_L7P_T1_34 
+# PadFunction: IO_L7P_T1_34
 set_property SLEW FAST [get_ports {ddr2_dm[1]}]
 set_property IOSTANDARD SSTL18_II [get_ports {ddr2_dm[1]}]
 set_property PACKAGE_PIN U1 [get_ports {ddr2_dm[1]}]
 
-# PadFunction: IO_L21P_T3_DQS_34 
+# PadFunction: IO_L21P_T3_DQS_34
 set_property SLEW FAST [get_ports {ddr2_dqs_p[0]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dqs_p[0]}]
 set_property IOSTANDARD DIFF_SSTL18_II [get_ports {ddr2_dqs_p[0]}]
 set_property PACKAGE_PIN U9 [get_ports {ddr2_dqs_p[0]}]
 
-# PadFunction: IO_L21N_T3_DQS_34 
+# PadFunction: IO_L21N_T3_DQS_34
 set_property SLEW FAST [get_ports {ddr2_dqs_n[0]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dqs_n[0]}]
 set_property IOSTANDARD DIFF_SSTL18_II [get_ports {ddr2_dqs_n[0]}]
 set_property PACKAGE_PIN V9 [get_ports {ddr2_dqs_n[0]}]
 
-# PadFunction: IO_L9P_T1_DQS_34 
+# PadFunction: IO_L9P_T1_DQS_34
 set_property SLEW FAST [get_ports {ddr2_dqs_p[1]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dqs_p[1]}]
 set_property IOSTANDARD DIFF_SSTL18_II [get_ports {ddr2_dqs_p[1]}]
 set_property PACKAGE_PIN U2 [get_ports {ddr2_dqs_p[1]}]
 
-# PadFunction: IO_L9N_T1_DQS_34 
+# PadFunction: IO_L9N_T1_DQS_34
 set_property SLEW FAST [get_ports {ddr2_dqs_n[1]}]
 set_property IN_TERM UNTUNED_SPLIT_50 [get_ports {ddr2_dqs_n[1]}]
 set_property IOSTANDARD DIFF_SSTL18_II [get_ports {ddr2_dqs_n[1]}]
 set_property PACKAGE_PIN V2 [get_ports {ddr2_dqs_n[1]}]
 
-# PadFunction: IO_L6P_T0_34 
+# PadFunction: IO_L6P_T0_34
 set_property SLEW FAST [get_ports {ddr2_ck_p[0]}]
 set_property IOSTANDARD DIFF_SSTL18_II [get_ports {ddr2_ck_p[0]}]
 set_property PACKAGE_PIN L6 [get_ports {ddr2_ck_p[0]}]
 
-# PadFunction: IO_L6N_T0_VREF_34 
+# PadFunction: IO_L6N_T0_VREF_34
 set_property SLEW FAST [get_ports {ddr2_ck_n[0]}]
 set_property IOSTANDARD DIFF_SSTL18_II [get_ports {ddr2_ck_n[0]}]
 set_property PACKAGE_PIN L5 [get_ports {ddr2_ck_n[0]}]
@@ -375,7 +377,7 @@ set_property LOC OLOGIC_X1Y57 [get_cells  -hier -filter {NAME =~ */ddr_phy_4lane
 
 set_property LOC PLLE2_ADV_X1Y1 [get_cells -hier -filter {NAME =~ */u_ddr2_infrastructure/plle2_i}]
 set_property LOC MMCME2_ADV_X1Y1 [get_cells -hier -filter {NAME =~ */u_ddr2_infrastructure/gen_mmcm.mmcm_i}]
-          
+
 
 
 
@@ -413,7 +415,8 @@ set_property -dict { PACKAGE_PIN A9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMI
 set_property -dict { PACKAGE_PIN B3    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_RST_N }]; #IO_L10P_T1_AD15P_35 Sch=eth_rstn
 set_property -dict { PACKAGE_PIN D9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_CRS_DV }]; #IO_L6N_T0_VREF_16 Sch=eth_crsdv
 # RXERR not used?
-set_property -dict { PACKAGE_PIN C10   IOSTANDARD LVCMOS33 } [get_ports { ETH_RXERR }]; #IO_L13N_T2_MRCC_16 Sch=eth_rxerr
+# ETH_RXERR is not a port of fpgaTop; leave its board pin unconstrained.
+#set_property -dict { PACKAGE_PIN C10   IOSTANDARD LVCMOS33 } [get_ports { ETH_RXERR }]; #IO_L13N_T2_MRCC_16 Sch=eth_rxerr
 set_property -dict { PACKAGE_PIN C11   IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_RX_DATA[0] }]; #IO_L13P_T2_MRCC_16 Sch=eth_rxd[0]
 set_property -dict { PACKAGE_PIN D10   IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_RX_DATA[1] }]; #IO_L19N_T3_VREF_16 Sch=eth_rxd[1]
 set_property -dict { PACKAGE_PIN B9    IOSTANDARD LVCMOS33 } [get_ports { WB_RMII_TX_EN }]; #IO_L11N_T1_SRCC_16 Sch=eth_txen
@@ -451,4 +454,3 @@ set_property -dict { PACKAGE_PIN K1    IOSTANDARD LVCMOS33 } [get_ports { usb1_d
 set_property -dict { PACKAGE_PIN E7    IOSTANDARD LVCMOS33 } [get_ports { usb1_dm }];
 # Not enough but helps
 set_property PULLDOWN true [get_ports {usb0_dp usb0_dm usb1_dp usb1_dm}]
-

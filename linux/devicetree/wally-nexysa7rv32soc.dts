@@ -45,11 +45,12 @@
       reg = <0x00>;
       status = "okay";
       compatible = "riscv";
-      riscv,isa-base = "rv64i";
-      riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "sstc", "svade", "svadu", "svinval", "svnapot", "svpbmt", "zba", "zbb", "zbc", "zbs", "zca", "zcb", "zcd", "zfa", "zfh", "zkn", "zkt", "zicbom", "zicboz", "zicntr", "zicond", "zicsr", "zifencei", "zihpm";
+      riscv,isa = "rv32imafdc_zicbom_zicboz_zicbop_zicsr_zifencei"; //needed?
+      riscv,isa-base = "rv32i";
+      riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "zicbom", "zicboz", "zicbop", "zicsr", "zifencei";
       riscv,cboz-block-size = <64>;
       riscv,cbom-block-size = <64>;
-      mmu-type = "riscv,sv48";
+      mmu-type = "riscv,sv32";
 
       interrupt-controller {
         #interrupt-cells = <0x01>;
@@ -182,8 +183,8 @@
       clock-output-names = "busclk";
     };
 
-    /*
-    cdma0: dma@100A0000 {
+   /*
+   cdma0: dma@100A0000 {
         compatible = "xlnx,axi-cdma-1.00.a";
         reg = <0x0 0x100A0000 0x0 0x1000>;
 
@@ -216,6 +217,54 @@
     };
     */
 
+    /* AXI/AXI Stream DMA controller */
+    idma: dma-controller@10082000  {
+      model = "eth,idma-engine";
+      compatible = "eth,idma-engine";
+      reg = <0x0 0x10082000 0x0 0x1000>;
+      interrupt-parent = <&plic>;
+      interrupts = <13>;
+      eth,input-slots = <2>;
+      eth,pending-slots = <8>; // PendingFifoDepth
+      #dma-cells = <1>;
+      dma-channels = <32>;
+      dma-requests = <127>;
+      dma-noncoherent; // non-default
+      memory-region = <&uncached_memory_idma>;
+    };
+
+    i2s_tx: audio-dai {
+            compatible = "cvwsoc,i2s";
+            #sound-dai-cells = <0>;
+
+            dmas = <&idma 0>;
+            dma-names = "tx";
+
+            status = "okay";
+    };
+
+    pcm5102a: codec {
+            compatible = "ti,pcm5102a";
+            #sound-dai-cells = <0>;
+    };
+
+    sound {
+            compatible = "simple-audio-card";
+            simple-audio-card,name = "CVWSoC PCM5102A";
+            simple-audio-card,format = "i2s";
+
+            simple-audio-card,bitclock-master = <&sound_cpu>;
+            simple-audio-card,frame-master = <&sound_cpu>;
+
+            sound_cpu: simple-audio-card,cpu {
+                    sound-dai = <&i2s_tx>;
+            };
+
+            simple-audio-card,codec {
+                    sound-dai = <&pcm5102a>;
+            };
+    };
+
     usb@100C0000 {
         compatible = "generic-ohci";
         reg = <0x0 0x100C0000 0x0 0x1000>;
@@ -226,8 +275,35 @@
     };
 
 
+    // SDHCI base clock (divided in Hw)
+    sdhci_clk: sdhci-clk {
+        #clock-cells = <0>;
+        compatible = "fixed-factor-clock";
+        clocks = <&busclk>;
+        clock-div = <4>;
+        clock-mult = <1>;
+        clock-output-names = "sdhci_clk";
+    };
+
+    /*
+    mmc@10090000 {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        reg = <0 0x10090000 0x0 0x2000>;
+        compatible = "sdhci"; // generic 'custom' driver (not mainline)
+        bus-width = <4>;
+        clocks = <&sdhci_clk>;
+        max-frequency = <25000000>;
+        disable-wp;
+        no-1-8-v;
+        interrupts = <17>;
+        interrupt-parent = <&plic>;
+    };
+    */
+
   };
 
+  // Remark: u-boot might dynamically add its reserved regions, so they should match
   reserved-memory {
     #address-cells = <2>;
     #size-cells = <2>;
