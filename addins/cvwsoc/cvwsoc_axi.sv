@@ -28,7 +28,7 @@ import cvw::*;
 import cvwsoc_pkg::*;
 
 module cvwsoc_axi #(
-    parameter cvw_t P = '{default: 0, AHBW: 64},
+    parameter cvwsoc_t C,
     parameter type cpu_axi_req_t  = logic,
     parameter type cpu_axi_resp_t = logic
   )
@@ -44,21 +44,24 @@ module cvwsoc_axi #(
     input logic         rst_req_i,
     input logic         resetn_comb_i,
 
-    inout logic [31:0]  ddr3_dq,
-    inout logic [3:0]   ddr3_dqs_n,
-    inout logic [3:0]   ddr3_dqs_p,
-    output logic [14:0] ddr3_addr,
-    output logic [2:0]  ddr3_ba,
-    output logic         ddr3_ras_n,
-    output logic         ddr3_cas_n,
-    output logic         ddr3_we_n,
-    output logic         ddr3_reset_n,
-    output logic [0:0]  ddr3_ck_p,
-    output logic [0:0]  ddr3_ck_n,
-    output logic [0:0]  ddr3_cke,
-    output logic [0:0]  ddr3_cs_n,
-    output logic [3:0]  ddr3_dm,
-    output logic [0:0]  ddr3_odt
+    // Common DDR2/DDR3 physical interface.  Its widths follow C.mem_type;
+    // board tops map these generic pins to their board-specific port names.
+    inout logic [(C.mem_type == CVWSOC_MEM_XILINX_DDR2 ? 16 : 32)-1:0] ddr_dq,
+    inout logic [(C.mem_type == CVWSOC_MEM_XILINX_DDR2 ? 2 : 4)-1:0] ddr_dqs_n,
+    inout logic [(C.mem_type == CVWSOC_MEM_XILINX_DDR2 ? 2 : 4)-1:0] ddr_dqs_p,
+    output logic [(C.mem_type == CVWSOC_MEM_XILINX_DDR2 ? 13 : 15)-1:0] ddr_addr,
+    output logic [2:0]  ddr_ba,
+    output logic        ddr_ras_n,
+    output logic        ddr_cas_n,
+    output logic        ddr_we_n,
+    // DDR2 does not use reset_n; its board top leaves this generic output open.
+    output logic        ddr_reset_n,
+    output logic [0:0] ddr_ck_p,
+    output logic [0:0] ddr_ck_n,
+    output logic [0:0] ddr_cke,
+    output logic [0:0] ddr_cs_n,
+    output logic [(C.mem_type == CVWSOC_MEM_XILINX_DDR2 ? 2 : 4)-1:0] ddr_dm,
+    output logic [0:0] ddr_odt
     , 
     input  logic          rgmii_clocks_rx,
     output logic          rgmii_clocks_tx,
@@ -100,6 +103,8 @@ module cvwsoc_axi #(
     output logic [3:0] cpu_axi_irq_o
   );
 
+  // P remains a local alias to preserve the existing logical-SoC uses below.
+  localparam cvw_t P = C.wally;
   localparam int unsigned ADDR_W    = 32; // FIXME
   localparam int unsigned DATA_W    = P.AHBW;
   localparam int unsigned STRB_W    = DATA_W/8;
@@ -160,7 +165,8 @@ module cvwsoc_axi #(
   localparam bit [N_SLV-1:0][N_MST-1:0] XBAR_CONNECTIVITY =
       resize_xbar_connectivity();
 
-  localparam int unsigned MIG_ADDR_WIDTH = 30;
+  localparam int unsigned MIG_ADDR_WIDTH =
+      (C.mem_type == CVWSOC_MEM_XILINX_DDR2) ? 27 : 30;
   localparam int unsigned DDR_ADDR_BITS = MIG_ADDR_WIDTH;
 
   // MMCM Signals
@@ -2221,32 +2227,32 @@ module cvwsoc_axi #(
   assign BUSRSTn      = ~BUSRST;
 
 
-  if (!P.LITEDRAM_SUPPORTED & !P.UBERDDR3_SUPPORTED) begin
+  if (C.mem_type == CVWSOC_MEM_XILINX_DDR3) begin
 
     // no need to access DDR while not fully functional
     assign init_error = 1'b0;
 
     // No LiteDRAM CSR interface when using Xilinx MIG — tie M05 responses to 0
 
-  // DDR3 Controller
-  ddr3 ddr3
+  // Xilinx DDR3 Controller
+  ddr3 ddr
     (
      // ddr3 I/O
-     .ddr3_dq(ddr3_dq),
-     .ddr3_dqs_n(ddr3_dqs_n),
-     .ddr3_dqs_p(ddr3_dqs_p),
-     .ddr3_addr(ddr3_addr),
-     .ddr3_ba(ddr3_ba),
-     .ddr3_ras_n(ddr3_ras_n),
-     .ddr3_cas_n(ddr3_cas_n),
-     .ddr3_we_n(ddr3_we_n),
-     .ddr3_reset_n(ddr3_reset_n),
-     .ddr3_ck_p(ddr3_ck_p),
-     .ddr3_ck_n(ddr3_ck_n),
-     .ddr3_cke(ddr3_cke),
-     .ddr3_cs_n(ddr3_cs_n),
-     .ddr3_dm(ddr3_dm),
-     .ddr3_odt(ddr3_odt),
+     .ddr3_dq(ddr_dq),
+     .ddr3_dqs_n(ddr_dqs_n),
+     .ddr3_dqs_p(ddr_dqs_p),
+     .ddr3_addr(ddr_addr),
+     .ddr3_ba(ddr_ba),
+     .ddr3_ras_n(ddr_ras_n),
+     .ddr3_cas_n(ddr_cas_n),
+     .ddr3_we_n(ddr_we_n),
+     .ddr3_reset_n(ddr_reset_n),
+     .ddr3_ck_p(ddr_ck_p),
+     .ddr3_ck_n(ddr_ck_n),
+     .ddr3_cke(ddr_cke),
+     .ddr3_cs_n(ddr_cs_n),
+     .ddr3_dm(ddr_dm),
+     .ddr3_odt(ddr_odt),
 
      .sys_clk_i(clk167),
      .clk_ref_i(clk200),
@@ -2308,7 +2314,82 @@ module cvwsoc_axi #(
 
      .init_calib_complete(c0_init_calib_complete),
      .device_temp(device_temp));
-  end else if (P.LITEDRAM_SUPPORTED) begin : gen_litedram
+  end else if (C.mem_type == CVWSOC_MEM_XILINX_DDR2) begin
+
+    assign init_error = 1'b0;
+
+    ddr2 ddr (
+      .ddr2_dq(ddr_dq),
+      .ddr2_dqs_n(ddr_dqs_n),
+      .ddr2_dqs_p(ddr_dqs_p),
+      .ddr2_addr(ddr_addr),
+      .ddr2_ba(ddr_ba),
+      .ddr2_ras_n(ddr_ras_n),
+      .ddr2_cas_n(ddr_cas_n),
+      .ddr2_we_n(ddr_we_n),
+      .ddr2_ck_p(ddr_ck_p),
+      .ddr2_ck_n(ddr_ck_n),
+      .ddr2_cke(ddr_cke),
+      .ddr2_cs_n(ddr_cs_n),
+      .ddr2_dm(ddr_dm),
+      .ddr2_odt(ddr_odt),
+
+      .sys_clk_i(clk200),
+      .ui_clk(BUSCLK),
+      .ui_clk_sync_rst(ui_clk_sync_rst),
+      // The Nexys DDR2 MIG is generated with active-low SysResetPolarity.
+      .aresetn(resetn_comb),
+      .sys_rst(resetn_comb),
+      .mmcm_locked(mmcm_locked),
+
+      .app_sr_req(1'b0),
+      .app_ref_req(1'b0),
+      .app_zq_req(1'b0),
+      .app_sr_active(app_sr_active),
+      .app_ref_ack(app_ref_ack),
+      .app_zq_ack(app_zq_ack),
+
+      .s_axi_awid(ddr_req.aw.id),
+      .s_axi_awaddr(ddr_req.aw.addr[26:0]),
+      .s_axi_awlen(ddr_req.aw.len),
+      .s_axi_awsize(ddr_req.aw.size),
+      .s_axi_awburst(ddr_req.aw.burst),
+      .s_axi_awlock(ddr_req.aw.lock),
+      .s_axi_awcache(ddr_req.aw.cache),
+      .s_axi_awprot(ddr_req.aw.prot),
+      .s_axi_awqos(ddr_req.aw.qos),
+      .s_axi_awvalid(ddr_req.aw_valid),
+      .s_axi_awready(ddr_rsp.aw_ready),
+      .s_axi_wdata(ddr_req.w.data),
+      .s_axi_wstrb(ddr_req.w.strb),
+      .s_axi_wlast(ddr_req.w.last),
+      .s_axi_wvalid(ddr_req.w_valid),
+      .s_axi_wready(ddr_rsp.w_ready),
+      .s_axi_bready(ddr_req.b_ready),
+      .s_axi_bid(ddr_rsp.b.id),
+      .s_axi_bresp(ddr_rsp.b.resp),
+      .s_axi_bvalid(ddr_rsp.b_valid),
+      .s_axi_arid(ddr_req.ar.id),
+      .s_axi_araddr(ddr_req.ar.addr[26:0]),
+      .s_axi_arlen(ddr_req.ar.len),
+      .s_axi_arsize(ddr_req.ar.size),
+      .s_axi_arburst(ddr_req.ar.burst),
+      .s_axi_arlock(ddr_req.ar.lock),
+      .s_axi_arcache(ddr_req.ar.cache),
+      .s_axi_arprot(ddr_req.ar.prot),
+      .s_axi_arqos(ddr_req.ar.qos),
+      .s_axi_arvalid(ddr_req.ar_valid),
+      .s_axi_arready(ddr_rsp.ar_ready),
+      .s_axi_rready(ddr_req.r_ready),
+      .s_axi_rlast(ddr_rsp.r.last),
+      .s_axi_rvalid(ddr_rsp.r_valid),
+      .s_axi_rresp(ddr_rsp.r.resp),
+      .s_axi_rid(ddr_rsp.r.id),
+      .s_axi_rdata(ddr_rsp.r.data),
+      .init_calib_complete(c0_init_calib_complete),
+      .device_temp_i(12'd0)
+    );
+  end else if (C.mem_type == CVWSOC_MEM_LITEDRAM_GENESYS2) begin : gen_litedram
     logic litedram_axi_awready, litedram_axi_wready, litedram_axi_arready;
     logic litedram_axi_bvalid, litedram_axi_rvalid, litedram_axi_rlast;
     logic [1:0] litedram_axi_bresp, litedram_axi_rresp;
@@ -2487,21 +2568,11 @@ module cvwsoc_axi #(
         .clk      (clk200),          // external 200 MHz board clock
         .rst(rst_req),
 
-        .ddram_a(ddr3_addr),
-        .ddram_ba(ddr3_ba),
-        .ddram_cas_n(ddr3_cas_n),
-        .ddram_cke(ddr3_cke),
-        .ddram_clk_n(ddr3_ck_n),
-        .ddram_clk_p(ddr3_ck_p),
-        .ddram_cs_n(ddr3_cs_n),
-        .ddram_dm(ddr3_dm),
-        .ddram_dq(ddr3_dq),
-        .ddram_dqs_n(ddr3_dqs_n),
-        .ddram_dqs_p(ddr3_dqs_p),
-        .ddram_odt(ddr3_odt),
-        .ddram_ras_n(ddr3_ras_n),
-        .ddram_reset_n(ddr3_reset_n),
-        .ddram_we_n(ddr3_we_n),
+        .ddram_a(ddr_addr), .ddram_ba(ddr_ba), .ddram_cas_n(ddr_cas_n),
+        .ddram_cke(ddr_cke), .ddram_clk_n(ddr_ck_n), .ddram_clk_p(ddr_ck_p),
+        .ddram_cs_n(ddr_cs_n), .ddram_dm(ddr_dm), .ddram_dq(ddr_dq),
+        .ddram_dqs_n(ddr_dqs_n), .ddram_dqs_p(ddr_dqs_p), .ddram_odt(ddr_odt),
+        .ddram_ras_n(ddr_ras_n), .ddram_reset_n(ddr_reset_n), .ddram_we_n(ddr_we_n),
 
         .init_done(c0_init_calib_complete),
         .init_error(init_error),
@@ -2557,21 +2628,11 @@ module cvwsoc_axi #(
         .clk      (clk200),
         .rst      (rst_req),
 
-        .ddram_a(ddr3_addr),
-        .ddram_ba(ddr3_ba),
-        .ddram_cas_n(ddr3_cas_n),
-        .ddram_cke(ddr3_cke),
-        .ddram_clk_n(ddr3_ck_n),
-        .ddram_clk_p(ddr3_ck_p),
-        .ddram_cs_n(ddr3_cs_n),
-        .ddram_dm(ddr3_dm),
-        .ddram_dq(ddr3_dq),
-        .ddram_dqs_n(ddr3_dqs_n),
-        .ddram_dqs_p(ddr3_dqs_p),
-        .ddram_odt(ddr3_odt),
-        .ddram_ras_n(ddr3_ras_n),
-        .ddram_reset_n(ddr3_reset_n),
-        .ddram_we_n(ddr3_we_n),
+        .ddram_a(ddr_addr), .ddram_ba(ddr_ba), .ddram_cas_n(ddr_cas_n),
+        .ddram_cke(ddr_cke), .ddram_clk_n(ddr_ck_n), .ddram_clk_p(ddr_ck_p),
+        .ddram_cs_n(ddr_cs_n), .ddram_dm(ddr_dm), .ddram_dq(ddr_dq),
+        .ddram_dqs_n(ddr_dqs_n), .ddram_dqs_p(ddr_dqs_p), .ddram_odt(ddr_odt),
+        .ddram_ras_n(ddr_ras_n), .ddram_reset_n(ddr_reset_n), .ddram_we_n(ddr_we_n),
 
         .init_done(c0_init_calib_complete),
         .init_error(init_error),
@@ -2622,7 +2683,7 @@ module cvwsoc_axi #(
         .wb_ctrl_we(wb_ctrl_we)
       );
     end
-  end else begin
+  end else begin : gen_uberddr3
 
     logic dummy_rstn;
     logic dummy_clk200;
@@ -2690,21 +2751,13 @@ module cvwsoc_axi #(
         .i_s_axi_rready(ddr_req.r_ready),
 
         // DDR3 pins
-        .io_ddr3_dq(ddr3_dq),
-        .io_ddr3_dqs_n(ddr3_dqs_n),
-        .io_ddr3_dqs_p(ddr3_dqs_p),
-        .o_ddr3_addr(ddr3_addr),
-        .o_ddr3_ba(ddr3_ba),
-        .o_ddr3_ras_n(ddr3_ras_n),
-        .o_ddr3_cas_n(ddr3_cas_n),
-        .o_ddr3_we_n(ddr3_we_n),
-        .o_ddr3_reset_n(ddr3_reset_n),
-        .o_ddr3_ck_p(ddr3_ck_p),
-        .o_ddr3_ck_n(ddr3_ck_n),
-        .o_ddr3_cke(ddr3_cke),
-        .o_ddr3_cs_n(ddr3_cs_n),
-        .o_ddr3_dm(ddr3_dm),
-        .o_ddr3_odt(ddr3_odt)
+        .io_ddr3_dq(ddr_dq), .io_ddr3_dqs_n(ddr_dqs_n),
+        .io_ddr3_dqs_p(ddr_dqs_p), .o_ddr3_addr(ddr_addr),
+        .o_ddr3_ba(ddr_ba), .o_ddr3_ras_n(ddr_ras_n),
+        .o_ddr3_cas_n(ddr_cas_n), .o_ddr3_we_n(ddr_we_n),
+        .o_ddr3_reset_n(ddr_reset_n), .o_ddr3_ck_p(ddr_ck_p),
+        .o_ddr3_ck_n(ddr_ck_n), .o_ddr3_cke(ddr_cke),
+        .o_ddr3_cs_n(ddr_cs_n), .o_ddr3_dm(ddr_dm), .o_ddr3_odt(ddr_odt)
     );
 
   end

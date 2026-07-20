@@ -134,6 +134,22 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   localparam int unsigned STRB_W = P.AHBW/8;
 
+  // Keep Wally's logical configuration intact while selecting the CVWSoC
+  // memory implementation locally.  This preserves the existing variants
+  // until the legacy memory flags are retired from cvw_t.
+  function automatic cvwsoc_mem_type_t cvwsoc_mem_type_from_wally(input cvw_t cfg);
+    if (cfg.LITEDRAM_SUPPORTED)
+      return CVWSOC_MEM_LITEDRAM_GENESYS2;
+    if (cfg.UBERDDR3_SUPPORTED)
+      return CVWSOC_MEM_UBERDDR3;
+    return CVWSOC_MEM_XILINX_DDR3;
+  endfunction
+
+  localparam cvwsoc_t C = '{
+    wally:    P,
+    mem_type: cvwsoc_mem_type_from_wally(P)
+  };
+
   // These types describe only the AXI port between this board top level and
   // ahbaxibridge; they are not a general SoC-wide AXI type.
   //
@@ -463,7 +479,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   end;
 
   cvwsoc_axi #(
-    .P(P),
+    .C(C),
     .cpu_axi_req_t(cpu_axi_req_t),
     .cpu_axi_resp_t(cpu_axi_resp_t)
   ) u_cvwsoc_axi (
@@ -478,21 +494,21 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .rst_req_i(rst_req),
     .resetn_comb_i(resetn_comb),
 
-    .ddr3_dq,
-    .ddr3_dqs_n,
-    .ddr3_dqs_p,
-    .ddr3_addr,
-    .ddr3_ba,
-    .ddr3_ras_n,
-    .ddr3_cas_n,
-    .ddr3_we_n,
-    .ddr3_reset_n,
-    .ddr3_ck_p,
-    .ddr3_ck_n,
-    .ddr3_cke,
-    .ddr3_cs_n,
-    .ddr3_dm,
-    .ddr3_odt,
+    .ddr_dq(ddr3_dq),
+    .ddr_dqs_n(ddr3_dqs_n),
+    .ddr_dqs_p(ddr3_dqs_p),
+    .ddr_addr(ddr3_addr),
+    .ddr_ba(ddr3_ba),
+    .ddr_ras_n(ddr3_ras_n),
+    .ddr_cas_n(ddr3_cas_n),
+    .ddr_we_n(ddr3_we_n),
+    .ddr_reset_n(ddr3_reset_n),
+    .ddr_ck_p(ddr3_ck_p),
+    .ddr_ck_n(ddr3_ck_n),
+    .ddr_cke(ddr3_cke),
+    .ddr_cs_n(ddr3_cs_n),
+    .ddr_dm(ddr3_dm),
+    .ddr_odt(ddr3_odt),
 
     .rgmii_clocks_rx,
     .rgmii_clocks_tx,
