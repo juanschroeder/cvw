@@ -44,8 +44,7 @@
 `define tIH 0 //Input hold time
 `define DLY_TO_OUTP 0
 
-//`define MEMSIZE 24643590 // 2mb block
-`define MEMSIZE 134217728 // 128 MiB backing store
+`define MEMBANK_SIZE 67108864 // 64 MiB per bank
 `define TIME_BUSY 63
 
 `define PRG 7   // 111
@@ -75,7 +74,11 @@ module sdModel (
   reg InbuffStatus;
   reg [31:0] BlockAddr;
   reg [7:0] Inbuff[0:511];
-  reg [7:0] FLASHmem[0:`MEMSIZE];
+  // Keep banks below Verilator's maximum unpacked-array width.
+  reg [7:0] FLASHmem0[0:(`MEMBANK_SIZE - 1)];
+  reg [7:0] FLASHmem1[0:(`MEMBANK_SIZE - 1)];
+  reg [7:0] FLASHmem2[0:(`MEMBANK_SIZE - 1)];
+  reg [7:0] FLASHmem3[0:(`MEMBANK_SIZE - 1)];
 
   reg [46:0] inCmd;
   reg [5:0] cmdRead;
@@ -122,10 +125,29 @@ module sdModel (
         // normally by the existing data transmit path.
         read_data_byte = 8'h00;
       end else begin
-        read_data_byte = FLASHmem[BlockAddr + idx];
+        case ((BlockAddr + idx) >> 26)
+          0: read_data_byte = FLASHmem0[(BlockAddr + idx) & (`MEMBANK_SIZE - 1)];
+          1: read_data_byte = FLASHmem1[(BlockAddr + idx) & (`MEMBANK_SIZE - 1)];
+          2: read_data_byte = FLASHmem2[(BlockAddr + idx) & (`MEMBANK_SIZE - 1)];
+          3: read_data_byte = FLASHmem3[(BlockAddr + idx) & (`MEMBANK_SIZE - 1)];
+          default: read_data_byte = 8'h00;
+        endcase
       end
     end
   endfunction
+
+  task write_flash_byte;
+    input [31:0] addr;
+    input [7:0] data;
+    begin
+      case (addr >> 26)
+        0: FLASHmem0[addr & (`MEMBANK_SIZE - 1)] <= data;
+        1: FLASHmem1[addr & (`MEMBANK_SIZE - 1)] <= data;
+        2: FLASHmem2[addr & (`MEMBANK_SIZE - 1)] <= data;
+        3: FLASHmem3[addr & (`MEMBANK_SIZE - 1)] <= data;
+      endcase
+    end
+  endtask
 
 
   function read_data_bit;
@@ -164,9 +186,9 @@ module sdModel (
   `define CIDSTART 120'h1b534d534d49202010025166450082  //Just some random data not really usefull anyway
   // CSD v2 metadata returned by CMD9.  The command advertises
   // block-read and block-write support so Linux does not force mmcblk read-only;
-  // READ_BL_LEN remains 9 for 512-byte blocks.  C_SIZE=0xff reports 128 MiB,
-  // matching the image size used.
-  `define CSDSTART 120'h400000321159000000ff0000000000
+  // READ_BL_LEN remains 9 for 512-byte blocks.  C_SIZE=0x1ff reports 256 MiB,
+  // matching the backing store.
+  `define CSDSTART 120'h400000321159000001ff0000000000
   // SCR metadata returned by ACMD51. Linux (and the standard?) requires SD cards to advertise both
   // 1-bit and 4-bit bus-width support in the SCR bus-width nibble.
   `define SCRSTART 64'h0000000000000500
@@ -279,7 +301,10 @@ module sdModel (
       $fatal(1, "sdModel: failed to open SD image '%0s'", sd_image_path);
     end
 
-    sd_image_bytes = $fread(FLASHmem, sd_image_fd);
+    sd_image_bytes = $fread(FLASHmem0, sd_image_fd);
+    sd_image_bytes = sd_image_bytes + $fread(FLASHmem1, sd_image_fd);
+    sd_image_bytes = sd_image_bytes + $fread(FLASHmem2, sd_image_fd);
+    sd_image_bytes = sd_image_bytes + $fread(FLASHmem3, sd_image_fd);
     $fclose(sd_image_fd);
     $display("sdModel: loaded %0d bytes from '%0s'", sd_image_bytes, sd_image_path);
   end
@@ -996,8 +1021,8 @@ module sdModel (
           datOut[0] <= 0;
 
           flash_blockwrite_cnt <= flash_blockwrite_cnt + 2;
-          FLASHmem[BlockAddr+(flash_blockwrite_cnt)] <= Inbuff[flash_blockwrite_cnt];
-          FLASHmem[BlockAddr+(flash_blockwrite_cnt+1)] <= Inbuff[flash_blockwrite_cnt+1];
+          write_flash_byte(BlockAddr + flash_blockwrite_cnt, Inbuff[flash_blockwrite_cnt]);
+          write_flash_byte(BlockAddr + flash_blockwrite_cnt + 1, Inbuff[flash_blockwrite_cnt+1]);
         end else begin
           if (flash_write_cnt == 264) BlockAddr += 512;
 
