@@ -6,8 +6,9 @@ package cvwsoc_pkg;
   // CVWSoC platform configuration.  Keep the Wally-visible logical SoC
   // configuration together with CVWSoC-only implementation choices so a
   // board top can select the latter without changing Wally's derivation flow.
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     CVWSOC_MEM_XILINX_DDR2,
+    CVWSOC_MEM_LITEDRAM_NEXYSA7,
     CVWSOC_MEM_XILINX_DDR3,
     CVWSOC_MEM_LITEDRAM_GENESYS2,
     CVWSOC_MEM_UBERDDR3

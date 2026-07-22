@@ -37,7 +37,8 @@
 
   <Controller number="0">
     <MemoryDevice>DDR2_SDRAM/Components/MT47H64M16HR-25E</MemoryDevice>
-    <TimePeriod>3077</TimePeriod>
+    <!--TimePeriod>3077</TimePeriod-->
+    <TimePeriod>4000</TimePeriod> <!-- 60 MHz -->
     <VccAuxIO>1.8V</VccAuxIO>
     <PHYRatio>4:1</PHYRatio>
     <InputClkFreq>199.995</InputClkFreq>
@@ -138,7 +139,8 @@
       <C0_C_RD_WR_ARB_ALGORITHM>ROUND_ROBIN</C0_C_RD_WR_ARB_ALGORITHM>
       <C0_S_AXI_ADDR_WIDTH>27</C0_S_AXI_ADDR_WIDTH>
       <C0_S_AXI_DATA_WIDTH>64</C0_S_AXI_DATA_WIDTH>
-      <C0_S_AXI_ID_WIDTH>4</C0_S_AXI_ID_WIDTH>
+      <!--C0_S_AXI_ID_WIDTH>4</C0_S_AXI_ID_WIDTH-->
+      <C0_S_AXI_ID_WIDTH>5</C0_S_AXI_ID_WIDTH>
       <C0_S_AXI_SUPPORTS_NARROW_BURST>0</C0_S_AXI_SUPPORTS_NARROW_BURST>
     </AXIParameters>
   </Controller>

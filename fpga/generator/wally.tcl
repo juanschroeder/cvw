@@ -135,6 +135,9 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
         if { $board=="genesys2rv32soc"  || $board=="genesys2rv32w64soc"} {
             add_files -fileset constrs_1 -norecurse ../constraints/constraints-genesys2soc-litedram.xdc
             set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-genesys2soc-litedram.xdc]
+        } elseif { $board=="nexysa7rv32w64soc" } {
+            add_files -fileset constrs_1 -norecurse ../constraints/constraints-nexysa7soc-litedram.xdc
+            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-nexysa7soc-litedram.xdc]
         } else {
             add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-litedram.xdc
             set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-litedram.xdc]

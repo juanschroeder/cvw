@@ -49,6 +49,7 @@ nexysa7soc: export SYSTEMCLOCK := 20000000
 nexysa7soc: export MAXSDCCLOCK  :=  10000000
 nexysa7soc: export MIG_ADDR_WIDTH  :=  27
 nexysa7soc: FPGA_NEXYSA7SOC
+nexysa7soc: export litedramconfig := nexysa7soc
 nexysa7soc: export MEM_WIDTH  :=  64
 
 nexysa7rv32w64soc: export XILINX_PART := xc7a100tcsg324-1
@@ -58,6 +59,7 @@ nexysa7rv32w64soc: export SYSTEMCLOCK := 20000000
 nexysa7rv32w64soc: export MAXSDCCLOCK  :=  10000000
 nexysa7rv32w64soc: export MIG_ADDR_WIDTH  :=  27
 nexysa7rv32w64soc: FPGA_NEXYSA7RV32W64SOC
+nexysa7rv32w64soc: export litedramconfig := nexysa7soc
 nexysa7rv32w64soc: export MEM_WIDTH  :=  64
 
 
@@ -166,10 +168,10 @@ define VIVADO_TCL
 script -q -c "vivado -mode tcl -source $(1)" /dev/null 2>&1 | tee $(2) | $(VIVADO_COLOR)
 endef
 
-FPGA_NEXYSA7SOC: PreProcessFilesSoC IP_NEXYSA7SOC zsblsoc
+FPGA_NEXYSA7SOC: PreProcessFilesSoC IP_NEXYSA7SOC liblitedram zsblsoc
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
-FPGA_NEXYSA7RV32W64SOC: PreProcessFilesSoC IP_NEXYSA7RV32W64SOC zsbl32soc
+FPGA_NEXYSA7RV32W64SOC: PreProcessFilesSoC IP_NEXYSA7RV32W64SOC liblitedram32 zsbl32soc
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
 FPGA_GENESYS2SOC: PreProcessFilesSoC IP_GENESYS2SOC liblitedram zsblsoc
@@ -218,6 +220,7 @@ IP_NEXYSA7SOC: $(dst)/sysrst.log \
 IP_NEXYSA7RV32W64SOC: $(dst)/sysrst.log \
 	MEM_NEXYSA7RV32W64SOC \
 	$(dst)/mmcm-nexysa7.log \
+	$(dst)/ahbaxibridge.log
 
 #	$(dst)/clkconverter.log
 #	$(dst)/ahbaxibridge.log
