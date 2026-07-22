@@ -15,7 +15,7 @@
 
   memory@80000000 {
     device_type = "memory";
-    reg = <0x00 0x80000000 0x00 0x10000000>;
+    reg = <0x00 0x80000000 0x00 0x20000000>;
   };
 
   reserved-memory {
@@ -119,5 +119,6 @@
         //disabled by default (to be enabled on Verilation setup if needed)
         status = "disabled";
     };
+
   };
 };

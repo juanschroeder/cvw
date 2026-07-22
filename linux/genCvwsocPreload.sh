@@ -28,7 +28,6 @@ INITRD_EXT2="${INITRD_EXT2:-0}"
 ROOTFS_MODE="${ROOTFS_MODE:-initrd}"
 ROOTFS_ADDR="${ROOTFS_ADDR:-0x8C000000}"
 ROOTFS_COMPATIBLE="${ROOTFS_COMPATIBLE:-mtd-ram}"
-ROOTFS_DTS_SIZE="${ROOTFS_DTS_SIZE:-0x400000}"
 ROOTFS_BANK_WIDTH="${ROOTFS_BANK_WIDTH:-1}"
 ROOTFS_ERASE_SIZE="${ROOTFS_ERASE_SIZE:-0x2000}"
 
@@ -209,7 +208,7 @@ PY
 )"
 fi
 
-python3 - <<'PY' "$DTS_SRC" "$GENERATED_DTS" "$INITRD_ADDR" "$INITRD_END_HEX" "$BOOTARGS" "$ROOTFS_MODE" "$ROOTFS_ADDR" "$QEMU_INITRD" "$ROOTFS_COMPATIBLE" "$ROOTFS_DTS_SIZE" "$ROOTFS_BANK_WIDTH" "$ROOTFS_ERASE_SIZE" "$SKIP_INITRD"
+python3 - <<'PY' "$DTS_SRC" "$GENERATED_DTS" "$INITRD_ADDR" "$INITRD_END_HEX" "$BOOTARGS" "$ROOTFS_MODE" "$ROOTFS_ADDR" "$QEMU_INITRD" "$ROOTFS_COMPATIBLE" "$ROOTFS_BANK_WIDTH" "$ROOTFS_ERASE_SIZE" "$SKIP_INITRD"
 import os
 import pathlib
 import re
@@ -222,18 +221,13 @@ initrd_end = sys.argv[4]
 bootargs = sys.argv[5]
 rootfs_mode = sys.argv[6]
 rootfs_addr = int(sys.argv[7], 16)
-skip_initrd = sys.argv[13] != "0"
+skip_initrd = sys.argv[12] != "0"
 rootfs_compatible = sys.argv[9]
-rootfs_dts_size = sys.argv[10]
-rootfs_bank_width = sys.argv[11]
-rootfs_erase_size = sys.argv[12]
+rootfs_bank_width = sys.argv[10]
+rootfs_erase_size = sys.argv[11]
 rootfs_size = 0
 if not skip_initrd:
     rootfs_size = os.path.getsize(sys.argv[8])
-    if rootfs_dts_size:
-        rootfs_size = int(rootfs_dts_size, 0)
-    else:
-        rootfs_size = max(rootfs_size, os.path.getsize(sys.argv[8]))
 
 if skip_initrd:
     src = re.sub(r'\n\s*linux,initrd-start\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
