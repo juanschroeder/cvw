@@ -151,7 +151,10 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     idma_config: '{
                     AxisDescReqCut: 1'b0
                 },
-    vga_config:  1'b0
+    vga_config:  1'b0,
+    sdhci_config: '{
+                    InsertRegClkBuf: 1'b0
+                }
   };
 
   // These types describe only the AXI port between this board top level and

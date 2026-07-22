@@ -60,13 +60,11 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
     import_ip IP/ddr2.srcs/sources_1/ip/ddr2/ddr2.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
 } elseif {$board=="nexysa7soc" } {
-    import_ip IP/ddr2.srcs/sources_1/ip/ddr2/ddr2.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
-    # import_ip IP/axicrossbar.srcs/sources_1/ip/axicrossbar/axicrossbar.xci
-    # import_ip IP/axicdma.srcs/sources_1/ip/axicdma/axicdma.xci
+    # import_ip IP/ddr2.srcs/sources_1/ip/ddr2/ddr2.xci
 } elseif {$board=="nexysa7rv32w64soc" } {
-    import_ip IP/ddr2.srcs/sources_1/ip/ddr2/ddr2.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci
+    # import_ip IP/ddr2.srcs/sources_1/ip/ddr2/ddr2.xci
 } elseif {$board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" } {
     # import_ip IP/ddr3.srcs/sources_1/ip/ddr3/ddr3.xci
     import_ip IP/mmcm.srcs/sources_1/ip/mmcm/mmcm.xci

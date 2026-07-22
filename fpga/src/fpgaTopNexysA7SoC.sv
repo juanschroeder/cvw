@@ -90,6 +90,21 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     , inout wire        usb0_dm
     , inout wire        usb1_dp
    , inout wire        usb1_dm
+
+    // SDHCI card pins
+    , output logic      SD_CLK
+    , input  logic      SD_CD_N
+    //, input  logic      SD_CD
+    , inout  wire       SD_CMD
+    , inout  wire [3:0] SD_DAT
+    , output logic      SD_RESET
+
+    // Pmod I2S2 TX pins
+    , output logic      i2s_tx_mclk
+    , output logic      i2s_tx_lrck
+    , output logic      i2s_tx_sclk
+    , output logic      i2s_tx_sdout
+
    );
 
   // The board bridge and cvwsoc_axi boundary follow Wally's configured AHB
@@ -106,6 +121,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic          interconnect_aresetn;
   logic          peripheral_aresetn;
   logic          mb_reset;
+
+  // The board card-detect signal is active low; SDHCI expects CD_N.
+  assign         SD_RESET = peripheral_reset;
 
   // AHB Signals from Wally
   logic            HCLKOpen;
@@ -278,7 +296,10 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
       idma_config: '{
                     AxisDescReqCut: 1'b1
                     },
-      vga_config:  1'b1 // CutSplitterPath
+      vga_config:  1'b1, // CutSplitterPath
+      sdhci_config: '{
+                    InsertRegClkBuf: 1'b1
+                    }
   };
   cpu_axi_req_t  bridge_axi_req;
   cpu_axi_resp_t bridge_axi_resp;
@@ -458,6 +479,15 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .vga_r_5(cvwsoc_vga_r_5), .vga_g_6(cvwsoc_vga_g_6),
     .vga_b_5(cvwsoc_vga_b_5),
     .usb0_dp(usb0_dp), .usb0_dm(usb0_dm), .usb1_dp(usb1_dp), .usb1_dm(usb1_dm),
+
+    .SD_CLK,
+    .SD_CD_N,
+    .SD_CMD,
+    .SD_DAT,
+    .i2s_tx_mclk,
+    .i2s_tx_lrck,
+    .i2s_tx_sclk,
+    .i2s_tx_sdout,
     .cpu_axi_req_i(bridge_axi_req), .cpu_axi_resp_o(bridge_axi_resp),
     .cpu_axi_irq_o(cpu_axi_irq)
   );

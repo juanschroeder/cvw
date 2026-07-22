@@ -1527,7 +1527,8 @@ module cvwsoc_axi #(
       .AXI_ADDR_W ( ADDR_W   ),
       .AXI_DATA_W ( DATA_W   ),
       .AXI_ID_W   ( MST_ID_W ),
-      .AXI_USER_W ( 1        )
+      .AXI_USER_W ( 1        ),
+      .InsertRegClkBuf ( C.sdhci_config.InsertRegClkBuf )
     ) sdhci_i (
       .aclk    (BUSCLK),
       .aresetn (BUSRSTn),

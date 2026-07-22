@@ -1,0 +1,70 @@
+diff --git a/src/clk_int_div.sv b/src/clk_int_div.sv
+index bc56b4f..382d608 100644
+--- a/src/clk_int_div.sv
++++ b/src/clk_int_div.sv
+@@ -73,7 +73,11 @@ module clk_int_div #(
+   /// The default divider value which is used right after reset
+   parameter int unsigned DEFAULT_DIV_VALUE = 0,
+   /// If 1'b1, the output clock is enabled during async reset assertion
+-  parameter bit          ENABLE_CLOCK_IN_RESET = 1'b0
++  parameter bit          ENABLE_CLOCK_IN_RESET = 1'b0,
++  /// Insert a regional clock-buffer hop between the two clock muxes.  This is
++  /// for Xilinx 7-series implementations that cannot legally place a direct
++  /// BUFGMUX-to-BUFGMUX cascade.
++  parameter bit          INSERT_REGIONAL_CLK_BUF = 1'b0
+ ) (
+   input logic                        clk_i,
+   input logic                        rst_ni,
+@@ -132,6 +136,7 @@ module clk_int_div #(
+   logic                         odd_clk;
+   logic                         even_clk;
+   logic                         generated_clock;
++  logic                         regional_generated_clock;
+   logic                         ungated_output_clock;
+ 
+   logic                         use_odd_division_d, use_odd_division_q;
+@@ -350,9 +355,16 @@ module clk_int_div #(
+     .clk_o     ( generated_clock    )
+   );
+ 
++  clk_int_div_regional_clk_buf #(
++    .INSERT_REGIONAL_CLK_BUF ( INSERT_REGIONAL_CLK_BUF )
++  ) i_regional_clk_buf (
++    .clk_i ( generated_clock          ),
++    .clk_o ( regional_generated_clock )
++  );
++
+   //-------------------- clock mux to bypass clock if divide-by-1  --------------------
+   tc_clk_mux2 i_clk_bypass_mux (
+-    .clk0_i    ( generated_clock                       ),
++    .clk0_i    ( regional_generated_clock              ),
+     .clk1_i    ( clk_i                                 ),
+     .clk_sel_i ( clk_div_bypass_en_q || test_mode_en_i ),
+     .clk_o     ( ungated_output_clock                  )
+@@ -390,3 +402,26 @@ module clk_int_div #(
+ 
+ 
+ endmodule
++
++/// Local implementation wrapper for the optional Xilinx 7-series regional
++/// clock-buffer hop used by clk_int_div.  The default keeps the original
++/// direct connection, so non-Xilinx users retain the original implementation.
++module clk_int_div_regional_clk_buf #(
++  parameter bit INSERT_REGIONAL_CLK_BUF = 1'b0
++) (
++  input  logic clk_i,
++  output logic clk_o
++);
++
++  generate
++    if (INSERT_REGIONAL_CLK_BUF) begin : gen_xilinx_7series_bufh
++      BUFH i_bufh (
++        .I ( clk_i ),
++        .O ( clk_o )
++      );
++    end else begin : gen_direct_connection
++      assign clk_o = clk_i;
++    end
++  endgenerate
++
++endmodule

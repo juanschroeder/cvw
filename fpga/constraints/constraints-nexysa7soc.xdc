@@ -344,10 +344,9 @@ set_property INTERNAL_VREF  0.900 [get_iobanks 34]
 # WISHBONE peripherals
 #####################################
 
-### # CHANGED!! SEE BELOW, UART: PMOD C, RX=JC1=K1 TX=JC2=F6
-# UART: PMOD B, RX=JB1=D14 TX=JB2=F16
-set_property PACKAGE_PIN D14 [get_ports WB_UART_RX]
-set_property PACKAGE_PIN F16 [get_ports WB_UART_TX]
+# UART: PMOD A, RX=JA1=C17 TX=JA2=D18
+set_property PACKAGE_PIN C17 [get_ports WB_UART_RX]
+set_property PACKAGE_PIN D18 [get_ports WB_UART_TX]
 set_property IOSTANDARD LVCMOS33 [get_ports WB_UART_RX]
 set_property IOSTANDARD LVCMOS33 [get_ports WB_UART_TX]
 # fixme: check this
@@ -400,3 +399,38 @@ set_property -dict { PACKAGE_PIN K1    IOSTANDARD LVCMOS33 } [get_ports { usb1_d
 set_property -dict { PACKAGE_PIN E7    IOSTANDARD LVCMOS33 } [get_ports { usb1_dm }];
 # Not enough but helps
 set_property PULLDOWN true [get_ports {usb0_dp usb0_dm usb1_dp usb1_dm}]
+
+# I2S2: PMOD JB
+# Tested: Dollatek PCM5102A, not exactly but similar to: https://github.com/pschatzmann/arduino-audio-tools/discussions/1641
+# 1:    JB1 => D14 => LCLK (44.12 KHz)
+# 2:    JB2 => F16 => BCK (bit clock, 2.824 Mhz)
+# 3:    JB3 => G16 => DIN (data)
+# 4:    JB4 => H14 => MCLK (22.59 MHz) => SHOULD NOT be connected in Dollatek board
+set_property -dict { PACKAGE_PIN D14 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_lrck}]
+set_property -dict { PACKAGE_PIN F16 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_sclk}]
+set_property -dict { PACKAGE_PIN G16 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_sdout}]
+# For the DAC tested this signal is not connected (derived), but it needed XMT=3.3V
+set_property -dict { PACKAGE_PIN H14 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_mclk}]
+
+
+# SDHCI
+##Micro SD Connector
+set_property -dict { PACKAGE_PIN E2    IOSTANDARD LVCMOS33 } [get_ports { SD_RESET }]; #IO_L14P_T2_SRCC_35 Sch=sd_reset
+set_property -dict { PACKAGE_PIN A1    IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_CD_N }]; #IO_L9N_T1_DQS_AD7N_35 Sch=sd_cd
+#set_property -dict { PACKAGE_PIN B1    IOSTANDARD LVCMOS33 } [get_ports { SD_SCK }]; #IO_L9P_T1_DQS_AD7P_35 Sch=sd_sck
+set_property -dict { PACKAGE_PIN B1    IOSTANDARD LVCMOS33 } [get_ports { SD_CLK }]; #IO_L9P_T1_DQS_AD7P_35 Sch=sd_sck
+set_property -dict { PACKAGE_PIN C1    IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_CMD }]; #IO_L16N_T2_35 Sch=sd_cmd
+set_property -dict { PACKAGE_PIN C2    IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_DAT[0] }]; #IO_L16P_T2_35 Sch=sd_dat[0]
+set_property -dict { PACKAGE_PIN E1    IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_DAT[1] }]; #IO_L18N_T2_35 Sch=sd_dat[1]
+set_property -dict { PACKAGE_PIN F1    IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_DAT[2] }]; #IO_L18P_T2_35 Sch=sd_dat[2]
+set_property -dict { PACKAGE_PIN D2    IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_DAT[3] }]; #IO_L14N_T2_SRCC_35 Sch=sd_dat[3]
+
+
+# # SDHCI onboard microSD connector I/Os
+# set_property -dict { PACKAGE_PIN P28   IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_CD_N }];   #IO_L8N_T1_D12_14 Sch=sd_cd
+# set_property -dict { PACKAGE_PIN R29   IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_CMD }];    #IO_L7N_T1_D10_14 Sch=sd_cmd
+# set_property -dict { PACKAGE_PIN R26   IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_DAT[0] }]; #IO_L10N_T1_D15_14 Sch=sd_dat[0]
+# set_property -dict { PACKAGE_PIN R30   IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_DAT[1] }]; #IO_L9P_T1_DQS_14 Sch=sd_dat[1]
+# set_property -dict { PACKAGE_PIN P29   IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_DAT[2] }]; #IO_L7P_T1_D09_14 Sch=sd_dat[2]
+# set_property -dict { PACKAGE_PIN T30   IOSTANDARD LVCMOS33 PULLTYPE PULLUP } [get_ports { SD_DAT[3] }]; #IO_L9N_T1_DQS_D13_14 Sch=sd_dat[3]
+# set_property -dict { PACKAGE_PIN R28   IOSTANDARD LVCMOS33 } [get_ports { SD_CLK }];                    #IO_L11P_T1_SRCC_14 Sch=sd_sclk

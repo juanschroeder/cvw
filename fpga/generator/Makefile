@@ -211,20 +211,12 @@ IP_NEXYSA7SOC: $(dst)/sysrst.log \
 	MEM_NEXYSA7 \
 	$(dst)/mmcm-nexysa7.log
 
-#	$(dst)/clkconverter.log
-#	$(dst)/ahbaxibridge.log
-#	$(dst)/axicrossbar.log
-#	$(dst)/axicdma.log
-
 
 IP_NEXYSA7RV32W64SOC: $(dst)/sysrst.log \
 	MEM_NEXYSA7RV32W64SOC \
-	$(dst)/mmcm-nexysa7.log \
-	$(dst)/ahbaxibridge.log
+	$(dst)/mmcm-nexysa7.log
 
-#	$(dst)/clkconverter.log
 #	$(dst)/ahbaxibridge.log
-#	$(dst)/axicrossbar.log
 
 IP_GENESYS2SOC: $(dst)/sysrst.log \
 	MEM_GENESYS2 \
@@ -310,21 +302,23 @@ PreProcessFilesSoC: PreProcessFiles
 	   ../src/CopiedFiles_do_not_add_to_repo/digilent-i2s2/
 	# Apply patches
 	# modify PULP files to prevent name collision for 'lzc'
-	# 1) rename the module itself (only in the defining file)
+	# rename the module itself (only in the defining file)
 	sed -i -E 's/^([[:space:]]*module[[:space:]]+)lzc([[:space:]]*#)/\1lzc_pulp\2/' $(PULP_LZC)
 	sed -i -E 's/^([[:space:]]*module[[:space:]]+)lzc([[:space:]]*\()/\1lzc_pulp\2/' $(PULP_LZC)
 	sed -i -E 's/(endmodule[[:space:]]*:[[:space:]]*)lzc\b/\1lzc_pulp/' $(PULP_LZC)
-	# 2) rename instantiations that look like: lzc #( ... )
+	# rename instantiations that look like: lzc #( ... )
 	find $(PULP_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
 	  xargs -0 sed -i -E 's/\<lzc\>([[:space:]]*#[[:space:]]*\()/lzc_pulp\1/g'
-	# 3) patch AXI
+	# patch common-cells
+	patch -d "$(PULP_DIR)/common_cells" -p1 -N --forward < "$(PULP_DIR)/0001-common-cells-clk-div-insert-regional-buf.patch"
+	# patch AXI
 	patch -d "$(PULP_DIR)/axi" -p1 -N --forward < "$(PULP_DIR)/0001-axi-burst-splitter-max-burst-beats.patch"
 	patch -d "$(PULP_DIR)/axi" -p1 -N --forward < "$(PULP_DIR)/0002-axi-burst-splitter-cut-path-param.patch"
-	# 4) patch AXI VGA
+	# patch AXI VGA
 	patchdir="$(PULP_DIR)/axi-vga"; \
 	find "$(PULP_DIR)" -type f -name "*vga*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
-	# 5) patch USB OHCI
+	# patch USB OHCI
 	patchdir="../src/CopiedFiles_do_not_add_to_repo"; \
 	find ../../addins/cvwsoc/usb -type f -name "*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'

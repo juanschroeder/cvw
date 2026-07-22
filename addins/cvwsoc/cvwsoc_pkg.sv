@@ -23,10 +23,15 @@ package cvwsoc_pkg;
   } cvwsoc_vga_config_t;
 
   typedef struct packed {
+    bit             InsertRegClkBuf; // Xilinx 7-series SDHCI clock-mux hop
+  } cvwsoc_sdhci_config_t;
+
+  typedef struct packed {
     cvw_t                   wally;
     cvwsoc_mem_type_t       mem_type;
     cvwsoc_idma_config_t    idma_config;
     cvwsoc_vga_config_t     vga_config;
+    cvwsoc_sdhci_config_t   sdhci_config;
   } cvwsoc_t;
 
   localparam int unsigned XBAR_MAX_SLV = 7;

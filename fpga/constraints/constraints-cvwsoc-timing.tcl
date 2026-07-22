@@ -116,16 +116,20 @@ if {[llength $cvwsoc_axi_cdc_async] && [llength $cvwsoc_axi_cdc_start] && [lleng
 # SDHCI
 
 set cvwsoc_sdhci_ports [get_ports -quiet {SD_CMD SD_DAT[*]}]
-set cvwsoc_sdclk_obuf [cvwsoc_pins {.*SD_CLK.*OBUF.*\/O$}]
-set cvwsoc_sdclk_port [get_ports -quiet SD_CLK]
-if {[llength $cvwsoc_sdhci_ports] && [llength $cvwsoc_sdclk_port] && [llength $cvwsoc_sdclk_obuf] == 1} {
-  create_generated_clock -name SDHCIDClk -source $cvwsoc_sdclk_obuf -divide_by 1 $cvwsoc_sdclk_port
-  set_input_delay  -clock [get_clocks SDHCIDClk] -max -5.000 $cvwsoc_sdhci_ports
-  set_input_delay  -clock [get_clocks SDHCIDClk] -min  5.000 $cvwsoc_sdhci_ports
-  set_output_delay -clock [get_clocks SDHCIDClk] -max -3.000 $cvwsoc_sdhci_ports
-  set_output_delay -clock [get_clocks SDHCIDClk] -min  3.000 $cvwsoc_sdhci_ports
+set cvwsoc_sdhci_aclk [cvwsoc_pins {.*u_cvwsoc_axi/gen_axi_sdhci\.sdhci_i/i_axi_sdhci/aclk$}]
+set cvwsoc_sdhci_clocks [get_clocks -quiet -of_objects $cvwsoc_sdhci_aclk]
+if {[llength $cvwsoc_sdhci_ports] && [llength $cvwsoc_sdhci_clocks] == 1} {
+  # SD_CLK is clock-as-data: SDHCI generates it with a programmable divider,
+  # while all CMD/DAT logic is synchronous to aclk.  Constrain the pads to
+  # that actual bus clock instead of propagating a generated clock through
+  # SD_CLK.  The external SD clock rate is selected by the controller's
+  # implementation and software-programmable divider.
+  set_input_delay  -clock $cvwsoc_sdhci_clocks -max -5.000 $cvwsoc_sdhci_ports
+  set_input_delay  -clock $cvwsoc_sdhci_clocks -min  5.000 $cvwsoc_sdhci_ports
+  set_output_delay -clock $cvwsoc_sdhci_clocks -max -3.000 $cvwsoc_sdhci_ports
+  set_output_delay -clock $cvwsoc_sdhci_clocks -min  3.000 $cvwsoc_sdhci_ports
 } else {
-  puts "INFO: CVWSoC timing: SDHCI ports/clock not present; skipping"
+  puts "INFO: CVWSoC timing: SDHCI ports/aclk not present; skipping"
 }
 cvwsoc_false_path_to "SDHCI IRQ synchronizer" \
   {(^|.*/)sdhci_irq_ff1_reg(\[[01]\])?/D$}
