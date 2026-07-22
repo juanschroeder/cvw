@@ -28,7 +28,7 @@ import cvw::*;
 import cvwsoc_pkg::*;
 
 module cvwsoc_axi #(
-    parameter cvw_t P = '{default: 0, AHBW: 64},
+    parameter cvwsoc_t C,
     parameter type cpu_axi_req_t  = logic,
     parameter type cpu_axi_resp_t = logic
   )
@@ -44,22 +44,25 @@ module cvwsoc_axi #(
     input logic         rst_req_i,
     input logic         resetn_comb_i,
 
-    inout logic [31:0]  ddr3_dq,
-    inout logic [3:0]   ddr3_dqs_n,
-    inout logic [3:0]   ddr3_dqs_p,
-    output logic [14:0] ddr3_addr,
-    output logic [2:0]  ddr3_ba,
-    output logic         ddr3_ras_n,
-    output logic         ddr3_cas_n,
-    output logic         ddr3_we_n,
-    output logic         ddr3_reset_n,
-    output logic [0:0]  ddr3_ck_p,
-    output logic [0:0]  ddr3_ck_n,
-    output logic [0:0]  ddr3_cke,
-    output logic [0:0]  ddr3_cs_n,
-    output logic [3:0]  ddr3_dm,
-    output logic [0:0]  ddr3_odt
-    , 
+    // Common DDR2/DDR3 physical interface.  Its widths follow C.mem_type;
+    // board tops map these generic pins to their board-specific port names.
+    inout logic [((C.mem_type == CVWSOC_MEM_XILINX_DDR2  || C.mem_type == CVWSOC_MEM_LITEDRAM_NEXYSA7)? 16 : 32)-1:0] ddr_dq,
+    inout logic [((C.mem_type == CVWSOC_MEM_XILINX_DDR2  || C.mem_type == CVWSOC_MEM_LITEDRAM_NEXYSA7)? 2 : 4)-1:0] ddr_dqs_n,
+    inout logic [((C.mem_type == CVWSOC_MEM_XILINX_DDR2  || C.mem_type == CVWSOC_MEM_LITEDRAM_NEXYSA7)? 2 : 4)-1:0] ddr_dqs_p,
+    output logic [((C.mem_type == CVWSOC_MEM_XILINX_DDR2  || C.mem_type == CVWSOC_MEM_LITEDRAM_NEXYSA7)? 13 : 15)-1:0] ddr_addr,
+    output logic [2:0]  ddr_ba,
+    output logic        ddr_ras_n,
+    output logic        ddr_cas_n,
+    output logic        ddr_we_n,
+    // DDR2 does not use reset_n; its board top leaves this generic output open.
+    output logic        ddr_reset_n,
+    output logic [0:0] ddr_ck_p,
+    output logic [0:0] ddr_ck_n,
+    output logic [0:0] ddr_cke,
+    output logic [0:0] ddr_cs_n,
+    output logic [((C.mem_type == CVWSOC_MEM_XILINX_DDR2  || C.mem_type == CVWSOC_MEM_LITEDRAM_NEXYSA7)? 2 : 4)-1:0] ddr_dm,
+    output logic [0:0] ddr_odt,
+
     input  logic          rgmii_clocks_rx,
     output logic          rgmii_clocks_tx,
     input  logic          rgmii_int_n,
@@ -100,6 +103,8 @@ module cvwsoc_axi #(
     output logic [3:0] cpu_axi_irq_o
   );
 
+  // P remains a local alias to preserve the existing logical-SoC uses below.
+  localparam cvw_t P = C.wally;
   localparam int unsigned ADDR_W    = 32; // FIXME
   localparam int unsigned DATA_W    = P.AHBW;
   localparam int unsigned STRB_W    = DATA_W/8;
@@ -160,7 +165,8 @@ module cvwsoc_axi #(
   localparam bit [N_SLV-1:0][N_MST-1:0] XBAR_CONNECTIVITY =
       resize_xbar_connectivity();
 
-  localparam int unsigned MIG_ADDR_WIDTH = 30;
+  localparam int unsigned MIG_ADDR_WIDTH =
+      ((C.mem_type == CVWSOC_MEM_XILINX_DDR2 || C.mem_type == CVWSOC_MEM_LITEDRAM_NEXYSA7)) ? 27 : 30;
   localparam int unsigned DDR_ADDR_BITS = MIG_ADDR_WIDTH;
 
   // MMCM Signals
@@ -900,6 +906,7 @@ module cvwsoc_axi #(
         .AXI_ID_W   ( MST_ID_W ),
         .AXI_M_ID_W ( SLV_ID_W ),
         .AXI_USER_W ( 1        ),
+        .CutSplitterPath(C.vga_config.CutSplitterPath),
         .s_axi_req_t  ( mst_req_t  ),
         .s_axi_resp_t ( mst_resp_t ),
         .m_axi_req_t  ( slv_req_t  ),
@@ -1520,7 +1527,8 @@ module cvwsoc_axi #(
       .AXI_ADDR_W ( ADDR_W   ),
       .AXI_DATA_W ( DATA_W   ),
       .AXI_ID_W   ( MST_ID_W ),
-      .AXI_USER_W ( 1        )
+      .AXI_USER_W ( 1        ),
+      .InsertRegClkBuf ( C.sdhci_config.InsertRegClkBuf )
     ) sdhci_i (
       .aclk    (BUSCLK),
       .aresetn (BUSRSTn),
@@ -2050,6 +2058,7 @@ module cvwsoc_axi #(
       .EnableReg64       ( P.AXI_IDMA_REG64_SUPPORTED ),
       .EnableReg64TwoD   ( 1'b0                 ),
       .EnableAxisFifoAdmission ( P.AXIS_IDMA_SUPPORTED ),
+      .AxisDescReqBypass (~C.idma_config.AxisDescReqCut),
       .AxisFifoCapacityBytes ( AudioFifoDepth   ),
       .axi_mst_req_t     ( slv_req_t            ),
       .axi_mst_rsp_t     ( slv_resp_t           ),
@@ -2221,94 +2230,472 @@ module cvwsoc_axi #(
   assign BUSRSTn      = ~BUSRST;
 
 
-  if (!P.LITEDRAM_SUPPORTED & !P.UBERDDR3_SUPPORTED) begin
+  if (C.mem_type == CVWSOC_MEM_XILINX_DDR3) begin
 
     // no need to access DDR while not fully functional
     assign init_error = 1'b0;
 
     // No LiteDRAM CSR interface when using Xilinx MIG — tie M05 responses to 0
 
-  // DDR3 Controller
-  ddr3 ddr3
+    // Xilinx DDR3 Controller
+    ddr3 ddr
     (
-     // ddr3 I/O
-     .ddr3_dq(ddr3_dq),
-     .ddr3_dqs_n(ddr3_dqs_n),
-     .ddr3_dqs_p(ddr3_dqs_p),
-     .ddr3_addr(ddr3_addr),
-     .ddr3_ba(ddr3_ba),
-     .ddr3_ras_n(ddr3_ras_n),
-     .ddr3_cas_n(ddr3_cas_n),
-     .ddr3_we_n(ddr3_we_n),
-     .ddr3_reset_n(ddr3_reset_n),
-     .ddr3_ck_p(ddr3_ck_p),
-     .ddr3_ck_n(ddr3_ck_n),
-     .ddr3_cke(ddr3_cke),
-     .ddr3_cs_n(ddr3_cs_n),
-     .ddr3_dm(ddr3_dm),
-     .ddr3_odt(ddr3_odt),
+      // ddr3 I/O
+      .ddr3_dq(ddr_dq),
+      .ddr3_dqs_n(ddr_dqs_n),
+      .ddr3_dqs_p(ddr_dqs_p),
+      .ddr3_addr(ddr_addr),
+      .ddr3_ba(ddr_ba),
+      .ddr3_ras_n(ddr_ras_n),
+      .ddr3_cas_n(ddr_cas_n),
+      .ddr3_we_n(ddr_we_n),
+      .ddr3_reset_n(ddr_reset_n),
+      .ddr3_ck_p(ddr_ck_p),
+      .ddr3_ck_n(ddr_ck_n),
+      .ddr3_cke(ddr_cke),
+      .ddr3_cs_n(ddr_cs_n),
+      .ddr3_dm(ddr_dm),
+      .ddr3_odt(ddr_odt),
 
-     .sys_clk_i(clk167),
-     .clk_ref_i(clk200),
+      .sys_clk_i(clk167),
+      .clk_ref_i(clk200),
 
-     .ui_clk(BUSCLK),
-     .ui_clk_sync_rst(ui_clk_sync_rst),
-     // FIXME: Is this OK?
-     //.aresetn(resetn),
-     .aresetn(resetn_comb),
-     //.sys_rst(resetn),    // omg. this is active low?!?!??
-     .sys_rst(resetn_comb),    // omg. this is active low?!?!??
-     .mmcm_locked(mmcm_locked),
+      .ui_clk(BUSCLK),
+      .ui_clk_sync_rst(ui_clk_sync_rst),
+      // FIXME: Is this OK?
+      //.aresetn(resetn),
+      .aresetn(resetn_comb),
+      //.sys_rst(resetn),    // omg. this is active low?!?!??
+      .sys_rst(resetn_comb),    // omg. this is active low?!?!??
+      .mmcm_locked(mmcm_locked),
 
-     .app_sr_req(1'b0),  // reserved command
-     .app_ref_req(1'b0), // refresh command
-     .app_zq_req(1'b0),  // recalibrate command
-     .app_sr_active(app_sr_active), // reserved response
-     .app_ref_ack(app_ref_ack),     // refresh ack
-     .app_zq_ack(app_zq_ack),       // recalibrate ack
+      .app_sr_req(1'b0),  // reserved command
+      .app_ref_req(1'b0), // refresh command
+      .app_zq_req(1'b0),  // recalibrate command
+      .app_sr_active(app_sr_active), // reserved response
+      .app_ref_ack(app_ref_ack),     // refresh ack
+      .app_zq_ack(app_zq_ack),       // recalibrate ack
 
-     // AXI (FROM CROSSBAR M00 -> MIG)
-     .s_axi_awid(ddr_req.aw.id),
-     .s_axi_awaddr(ddr_req.aw.addr[29:0]), // This width must match DDR size
-     .s_axi_awlen(ddr_req.aw.len),
-     .s_axi_awsize(ddr_req.aw.size),
-     .s_axi_awburst(ddr_req.aw.burst),
-     .s_axi_awlock(ddr_req.aw.lock),
-     .s_axi_awcache(ddr_req.aw.cache),
-     .s_axi_awprot(ddr_req.aw.prot),
-     .s_axi_awqos(ddr_req.aw.qos),
-     .s_axi_awvalid(ddr_req.aw_valid),
-     .s_axi_awready(ddr_rsp.aw_ready),
-     .s_axi_wdata(ddr_req.w.data),
-     .s_axi_wstrb(ddr_req.w.strb),
-     .s_axi_wlast(ddr_req.w.last),
-     .s_axi_wvalid(ddr_req.w_valid),
-     .s_axi_wready(ddr_rsp.w_ready),
-     .s_axi_bready(ddr_req.b_ready),
-     .s_axi_bid(ddr_rsp.b.id),
-     .s_axi_bresp(ddr_rsp.b.resp),
-     .s_axi_bvalid(ddr_rsp.b_valid),
-     .s_axi_arid(ddr_req.ar.id),
-     .s_axi_araddr(ddr_req.ar.addr[29:0]), // This width must match DDR size
-     .s_axi_arlen(ddr_req.ar.len),
-     .s_axi_arsize(ddr_req.ar.size),
-     .s_axi_arburst(ddr_req.ar.burst),
-     .s_axi_arlock(ddr_req.ar.lock),
-     .s_axi_arcache(ddr_req.ar.cache),
-     .s_axi_arprot(ddr_req.ar.prot),
-     .s_axi_arqos(ddr_req.ar.qos),
-     .s_axi_arvalid(ddr_req.ar_valid),
-     .s_axi_arready(ddr_rsp.ar_ready),
-     .s_axi_rready(ddr_req.r_ready),
-     .s_axi_rlast(ddr_rsp.r.last),
-     .s_axi_rvalid(ddr_rsp.r_valid),
-     .s_axi_rresp(ddr_rsp.r.resp),
-     .s_axi_rid(ddr_rsp.r.id),
-     .s_axi_rdata(ddr_rsp.r.data),
+      // AXI (FROM CROSSBAR M00 -> MIG)
+      .s_axi_awid(ddr_req.aw.id),
+      .s_axi_awaddr(ddr_req.aw.addr[29:0]), // This width must match DDR size
+      .s_axi_awlen(ddr_req.aw.len),
+      .s_axi_awsize(ddr_req.aw.size),
+      .s_axi_awburst(ddr_req.aw.burst),
+      .s_axi_awlock(ddr_req.aw.lock),
+      .s_axi_awcache(ddr_req.aw.cache),
+      .s_axi_awprot(ddr_req.aw.prot),
+      .s_axi_awqos(ddr_req.aw.qos),
+      .s_axi_awvalid(ddr_req.aw_valid),
+      .s_axi_awready(ddr_rsp.aw_ready),
+      .s_axi_wdata(ddr_req.w.data),
+      .s_axi_wstrb(ddr_req.w.strb),
+      .s_axi_wlast(ddr_req.w.last),
+      .s_axi_wvalid(ddr_req.w_valid),
+      .s_axi_wready(ddr_rsp.w_ready),
+      .s_axi_bready(ddr_req.b_ready),
+      .s_axi_bid(ddr_rsp.b.id),
+      .s_axi_bresp(ddr_rsp.b.resp),
+      .s_axi_bvalid(ddr_rsp.b_valid),
+      .s_axi_arid(ddr_req.ar.id),
+      .s_axi_araddr(ddr_req.ar.addr[29:0]), // This width must match DDR size
+      .s_axi_arlen(ddr_req.ar.len),
+      .s_axi_arsize(ddr_req.ar.size),
+      .s_axi_arburst(ddr_req.ar.burst),
+      .s_axi_arlock(ddr_req.ar.lock),
+      .s_axi_arcache(ddr_req.ar.cache),
+      .s_axi_arprot(ddr_req.ar.prot),
+      .s_axi_arqos(ddr_req.ar.qos),
+      .s_axi_arvalid(ddr_req.ar_valid),
+      .s_axi_arready(ddr_rsp.ar_ready),
+      .s_axi_rready(ddr_req.r_ready),
+      .s_axi_rlast(ddr_rsp.r.last),
+      .s_axi_rvalid(ddr_rsp.r_valid),
+      .s_axi_rresp(ddr_rsp.r.resp),
+      .s_axi_rid(ddr_rsp.r.id),
+      .s_axi_rdata(ddr_rsp.r.data),
 
-     .init_calib_complete(c0_init_calib_complete),
-     .device_temp(device_temp));
-  end else if (P.LITEDRAM_SUPPORTED) begin : gen_litedram
+      .init_calib_complete(c0_init_calib_complete),
+      .device_temp(device_temp));
+  end else if (C.mem_type == CVWSOC_MEM_XILINX_DDR2) begin
+
+    assign init_error = 1'b0;
+
+    ddr2 ddr (
+      .ddr2_dq(ddr_dq),
+      .ddr2_dqs_n(ddr_dqs_n),
+      .ddr2_dqs_p(ddr_dqs_p),
+      .ddr2_addr(ddr_addr),
+      .ddr2_ba(ddr_ba),
+      .ddr2_ras_n(ddr_ras_n),
+      .ddr2_cas_n(ddr_cas_n),
+      .ddr2_we_n(ddr_we_n),
+      .ddr2_ck_p(ddr_ck_p),
+      .ddr2_ck_n(ddr_ck_n),
+      .ddr2_cke(ddr_cke),
+      .ddr2_cs_n(ddr_cs_n),
+      .ddr2_dm(ddr_dm),
+      .ddr2_odt(ddr_odt),
+
+      .sys_clk_i(clk200),
+      .ui_clk(BUSCLK),
+      .ui_clk_sync_rst(ui_clk_sync_rst),
+      // The Nexys DDR2 MIG is generated with active-low SysResetPolarity.
+      .aresetn(resetn_comb),
+      .sys_rst(resetn_comb),
+      .mmcm_locked(mmcm_locked),
+
+      .app_sr_req(1'b0),
+      .app_ref_req(1'b0),
+      .app_zq_req(1'b0),
+      .app_sr_active(app_sr_active),
+      .app_ref_ack(app_ref_ack),
+      .app_zq_ack(app_zq_ack),
+
+      .s_axi_awid(ddr_req.aw.id),
+      .s_axi_awaddr(ddr_req.aw.addr[26:0]),
+      .s_axi_awlen(ddr_req.aw.len),
+      .s_axi_awsize(ddr_req.aw.size),
+      .s_axi_awburst(ddr_req.aw.burst),
+      .s_axi_awlock(ddr_req.aw.lock),
+      .s_axi_awcache(ddr_req.aw.cache),
+      .s_axi_awprot(ddr_req.aw.prot),
+      .s_axi_awqos(ddr_req.aw.qos),
+      .s_axi_awvalid(ddr_req.aw_valid),
+      .s_axi_awready(ddr_rsp.aw_ready),
+      .s_axi_wdata(ddr_req.w.data),
+      .s_axi_wstrb(ddr_req.w.strb),
+      .s_axi_wlast(ddr_req.w.last),
+      .s_axi_wvalid(ddr_req.w_valid),
+      .s_axi_wready(ddr_rsp.w_ready),
+      .s_axi_bready(ddr_req.b_ready),
+      .s_axi_bid(ddr_rsp.b.id),
+      .s_axi_bresp(ddr_rsp.b.resp),
+      .s_axi_bvalid(ddr_rsp.b_valid),
+      .s_axi_arid(ddr_req.ar.id),
+      .s_axi_araddr(ddr_req.ar.addr[26:0]),
+      .s_axi_arlen(ddr_req.ar.len),
+      .s_axi_arsize(ddr_req.ar.size),
+      .s_axi_arburst(ddr_req.ar.burst),
+      .s_axi_arlock(ddr_req.ar.lock),
+      .s_axi_arcache(ddr_req.ar.cache),
+      .s_axi_arprot(ddr_req.ar.prot),
+      .s_axi_arqos(ddr_req.ar.qos),
+      .s_axi_arvalid(ddr_req.ar_valid),
+      .s_axi_arready(ddr_rsp.ar_ready),
+      .s_axi_rready(ddr_req.r_ready),
+      .s_axi_rlast(ddr_rsp.r.last),
+      .s_axi_rvalid(ddr_rsp.r_valid),
+      .s_axi_rresp(ddr_rsp.r.resp),
+      .s_axi_rid(ddr_rsp.r.id),
+      .s_axi_rdata(ddr_rsp.r.data),
+      .init_calib_complete(c0_init_calib_complete),
+      .device_temp_i(12'd0)
+    );
+  //-------------------------------------------------------------------------------------
+
+  end else if (C.mem_type == CVWSOC_MEM_LITEDRAM_NEXYSA7) begin : gen_litedram_a7
+    logic litedram_axi_awready, litedram_axi_wready, litedram_axi_arready;
+    logic litedram_axi_bvalid, litedram_axi_rvalid, litedram_axi_rlast;
+    logic [1:0] litedram_axi_bresp, litedram_axi_rresp;
+    logic [MST_ID_W-1:0] litedram_axi_bid, litedram_axi_rid;
+    logic [DATA_W-1:0] litedram_axi_rdata;
+
+    assign mst_resp[CB_M_DRAM_CSR].aw_ready = litedram_axi_awready;
+    assign mst_resp[CB_M_DRAM_CSR].w_ready  = litedram_axi_wready;
+    assign mst_resp[CB_M_DRAM_CSR].ar_ready = litedram_axi_arready;
+    assign mst_resp[CB_M_DRAM_CSR].b_valid  = litedram_axi_bvalid;
+    assign mst_resp[CB_M_DRAM_CSR].b.resp = litedram_axi_bresp;
+    assign mst_resp[CB_M_DRAM_CSR].b.id = litedram_axi_bid;
+    assign mst_resp[CB_M_DRAM_CSR].b.user = '0;
+    assign mst_resp[CB_M_DRAM_CSR].r_valid  = litedram_axi_rvalid;
+    assign mst_resp[CB_M_DRAM_CSR].r.last   = litedram_axi_rlast;
+    assign mst_resp[CB_M_DRAM_CSR].r.resp = litedram_axi_rresp;
+    assign mst_resp[CB_M_DRAM_CSR].r.id = litedram_axi_rid;
+    assign mst_resp[CB_M_DRAM_CSR].r.data = litedram_axi_rdata;
+    assign mst_resp[CB_M_DRAM_CSR].r.user = '0;
+
+    // ===========================================================================
+    // AXI4->AXI-Lite signals (adapter master side)
+    // ===========================================================================
+    logic [31:0] axil_awaddr;
+    logic [2:0]  axil_awprot;
+    logic        axil_awvalid;
+    logic        axil_awready;
+
+    logic [31:0] axil_wdata;
+    logic [3:0]  axil_wstrb;
+    logic        axil_wvalid;
+    logic        axil_wready;
+
+    logic [1:0]  axil_bresp;
+    logic        axil_bvalid;
+    logic        axil_bready;
+
+    logic [31:0] axil_araddr;
+    logic [2:0]  axil_arprot;
+    logic        axil_arvalid;
+    logic        axil_arready;
+
+    logic [31:0] axil_rdata;
+    logic [1:0]  axil_rresp;
+    logic        axil_rvalid;
+    logic        axil_rready;
+
+
+    logic          wb_ctrl_ack;
+    logic   [29:0] wb_ctrl_adr;
+    logic    [1:0] wb_ctrl_bte;
+    logic    [2:0] wb_ctrl_cti;
+    logic          wb_ctrl_cyc;
+    logic   [31:0] wb_ctrl_dat_r;
+    logic   [31:0] wb_ctrl_dat_w;
+    logic          wb_ctrl_err;
+    logic    [3:0] wb_ctrl_sel;
+    logic          wb_ctrl_stb;
+    logic          wb_ctrl_we;
+
+
+    logic   litedram_reset_unused;
+
+
+    axi_mmio_to_axilite32_v3 #(
+        .AXI_ADDR_WIDTH(ADDR_W),
+        .AXI_DATA_WIDTH(DATA_W),
+        .AXI_ID_WIDTH  (MST_ID_W)
+    ) u_axi_to_axil_dram (
+        .aclk          (BUSCLK),
+        .aresetn(BUSCORERSTn),
+
+        .s_axi_awid    (mst_req[CB_M_DRAM_CSR].aw.id),
+        .s_axi_awaddr  (mst_req[CB_M_DRAM_CSR].aw.addr),
+        .s_axi_awlen   (mst_req[CB_M_DRAM_CSR].aw.len),
+        .s_axi_awsize  (mst_req[CB_M_DRAM_CSR].aw.size),
+        .s_axi_awburst (mst_req[CB_M_DRAM_CSR].aw.burst),
+        .s_axi_awvalid (mst_req[CB_M_DRAM_CSR].aw_valid),
+        .s_axi_awready (litedram_axi_awready),
+
+        .s_axi_wdata   (mst_req[CB_M_DRAM_CSR].w.data),
+        .s_axi_wstrb   (mst_req[CB_M_DRAM_CSR].w.strb),
+        .s_axi_wlast   (mst_req[CB_M_DRAM_CSR].w.last),
+        .s_axi_wvalid  (mst_req[CB_M_DRAM_CSR].w_valid),
+        .s_axi_wready  (litedram_axi_wready),
+
+        .s_axi_bresp   (litedram_axi_bresp),
+        .s_axi_bvalid  (litedram_axi_bvalid),
+        .s_axi_bid     (litedram_axi_bid),
+        .s_axi_bready  (mst_req[CB_M_DRAM_CSR].b_ready),
+
+        .s_axi_arid    (mst_req[CB_M_DRAM_CSR].ar.id),
+        .s_axi_araddr  (mst_req[CB_M_DRAM_CSR].ar.addr),
+        .s_axi_arlen   (mst_req[CB_M_DRAM_CSR].ar.len),
+        .s_axi_arsize  (mst_req[CB_M_DRAM_CSR].ar.size),
+        .s_axi_arburst (mst_req[CB_M_DRAM_CSR].ar.burst),
+        .s_axi_arvalid (mst_req[CB_M_DRAM_CSR].ar_valid),
+        .s_axi_arready (litedram_axi_arready),
+
+        .s_axi_rdata   (litedram_axi_rdata),
+        .s_axi_rresp   (litedram_axi_rresp),
+        .s_axi_rlast   (litedram_axi_rlast),
+        .s_axi_rvalid  (litedram_axi_rvalid),
+        .s_axi_rid     (litedram_axi_rid),
+        .s_axi_rready  (mst_req[CB_M_DRAM_CSR].r_ready),
+
+        // AXI lite side
+        .m_axil_awaddr (axil_awaddr),
+        .m_axil_awprot (axil_awprot),
+        .m_axil_awvalid(axil_awvalid),
+        .m_axil_awready(axil_awready),
+
+        .m_axil_wdata  (axil_wdata),
+        .m_axil_wstrb  (axil_wstrb),
+        .m_axil_wvalid (axil_wvalid),
+        .m_axil_wready (axil_wready),
+
+        .m_axil_bresp  (axil_bresp),
+        .m_axil_bvalid (axil_bvalid),
+        .m_axil_bready (axil_bready),
+
+        .m_axil_araddr (axil_araddr),
+        .m_axil_arprot (axil_arprot),
+        .m_axil_arvalid(axil_arvalid),
+        .m_axil_arready(axil_arready),
+
+        .m_axil_rdata  (axil_rdata),
+        .m_axil_rresp  (axil_rresp),
+        .m_axil_rvalid (axil_rvalid),
+        .m_axil_rready (axil_rready)
+    );
+
+    axlite2wbsp
+        axil2wb (
+            .i_clk(BUSCLK),
+            .i_axi_reset_n(BUSCORERSTn),
+
+            // AXI signals
+            .i_axi_awvalid(axil_awvalid),
+            .o_axi_awready(axil_awready),
+            .i_axi_awaddr(axil_awaddr),
+            .i_axi_awprot(axil_awprot),
+            .i_axi_wvalid(axil_wvalid),
+            .o_axi_wready(axil_wready),
+            .i_axi_wdata(axil_wdata),
+            .i_axi_wstrb(axil_wstrb),
+            .o_axi_bvalid(axil_bvalid),
+            .i_axi_bready(axil_bready),
+            .o_axi_bresp(axil_bresp),
+            .i_axi_arvalid(axil_arvalid),
+            .o_axi_arready(axil_arready),
+            .i_axi_araddr(axil_araddr),
+            .i_axi_arprot(axil_arprot),
+            .o_axi_rvalid(axil_rvalid),
+            .i_axi_rready(axil_rready),
+            .o_axi_rdata(axil_rdata),
+            .o_axi_rresp(axil_rresp),
+
+            .o_reset(litedram_reset_unused),
+
+            // Wishbone signals
+            .o_wb_cyc(wb_ctrl_cyc),
+            .o_wb_stb(wb_ctrl_stb),
+            .o_wb_we(wb_ctrl_we),
+            .o_wb_addr(wb_ctrl_adr),
+            .o_wb_data(wb_ctrl_dat_w),
+            .o_wb_sel(wb_ctrl_sel),
+            .i_wb_stall(1'b0),
+            .i_wb_ack(wb_ctrl_ack),
+            .i_wb_data(wb_ctrl_dat_r),
+            .i_wb_err(wb_ctrl_err)
+        );
+
+    if (DATA_W == 64) begin
+
+      litedram_nexysa7_w64 ddr2(
+        .clk      (clk200),          // external 200 MHz board clock
+        .rst(rst_req),
+
+        .ddram_a(ddr_addr), .ddram_ba(ddr_ba), .ddram_cas_n(ddr_cas_n),
+        .ddram_cke(ddr_cke), .ddram_clk_n(ddr_ck_n), .ddram_clk_p(ddr_ck_p),
+        .ddram_cs_n(ddr_cs_n), .ddram_dm(ddr_dm), .ddram_dq(ddr_dq),
+        .ddram_dqs_n(ddr_dqs_n), .ddram_dqs_p(ddr_dqs_p), .ddram_odt(ddr_odt),
+        .ddram_ras_n(ddr_ras_n), .ddram_reset_n(ddr_reset_n), .ddram_we_n(ddr_we_n),
+
+        .init_done(c0_init_calib_complete),
+        .init_error(init_error),
+        .pll_locked(mmcm_locked),
+        .user_clk (BUSCLK),
+        .user_rst (ui_clk_sync_rst),
+
+        //.user_port_axi_0_araddr(ddr_req.ar.addr[29:0]),
+        .user_port_axi_0_araddr(ddr_req.ar.addr[26:0]),
+        .user_port_axi_0_arburst(ddr_req.ar.burst),
+        .user_port_axi_0_arid(ddr_req.ar.id),
+        .user_port_axi_0_arlen(ddr_req.ar.len),
+        .user_port_axi_0_arready(ddr_rsp.ar_ready),
+        .user_port_axi_0_arsize(ddr_req.ar.size),
+        .user_port_axi_0_arvalid(ddr_req.ar_valid),
+        //.user_port_axi_0_awaddr(ddr_req.aw.addr[29:0]),
+        .user_port_axi_0_awaddr(ddr_req.aw.addr[26:0]),
+        .user_port_axi_0_awburst(ddr_req.aw.burst),
+        .user_port_axi_0_awid(ddr_req.aw.id),
+        .user_port_axi_0_awlen(ddr_req.aw.len),
+        .user_port_axi_0_awready(ddr_rsp.aw_ready),
+        .user_port_axi_0_awsize(ddr_req.aw.size),
+        .user_port_axi_0_awvalid(ddr_req.aw_valid),
+        .user_port_axi_0_bid(ddr_rsp.b.id),
+        .user_port_axi_0_bready(ddr_req.b_ready),
+        .user_port_axi_0_bresp(ddr_rsp.b.resp),
+        .user_port_axi_0_bvalid(ddr_rsp.b_valid),
+        .user_port_axi_0_rdata(ddr_rsp.r.data),
+        .user_port_axi_0_rid(ddr_rsp.r.id),
+        .user_port_axi_0_rlast(ddr_rsp.r.last),
+        .user_port_axi_0_rready(ddr_req.r_ready),
+        .user_port_axi_0_rresp(ddr_rsp.r.resp),
+        .user_port_axi_0_rvalid(ddr_rsp.r_valid),
+        .user_port_axi_0_wdata(ddr_req.w.data),
+        .user_port_axi_0_wlast(ddr_req.w.last),
+        .user_port_axi_0_wready(ddr_rsp.w_ready),
+        .user_port_axi_0_wstrb(ddr_req.w.strb),
+        .user_port_axi_0_wvalid(ddr_req.w_valid),
+
+        .wb_ctrl_ack(wb_ctrl_ack),
+        .wb_ctrl_adr(wb_ctrl_adr),
+        .wb_ctrl_bte(2'b00),
+        .wb_ctrl_cti(3'b000),
+        .wb_ctrl_cyc(wb_ctrl_cyc),
+        .wb_ctrl_dat_r(wb_ctrl_dat_r),
+        .wb_ctrl_dat_w(wb_ctrl_dat_w),
+        .wb_ctrl_err(wb_ctrl_err),
+        .wb_ctrl_sel(wb_ctrl_sel),
+        .wb_ctrl_stb(wb_ctrl_stb),
+        .wb_ctrl_we(wb_ctrl_we)
+      );
+
+    end else begin
+      litedram_nexysa7_w32 ddr2(
+        .clk      (clk200),          // external 200 MHz board clock
+        .rst(rst_req),
+
+        .ddram_a(ddr_addr), .ddram_ba(ddr_ba), .ddram_cas_n(ddr_cas_n),
+        .ddram_cke(ddr_cke), .ddram_clk_n(ddr_ck_n), .ddram_clk_p(ddr_ck_p),
+        .ddram_cs_n(ddr_cs_n), .ddram_dm(ddr_dm), .ddram_dq(ddr_dq),
+        .ddram_dqs_n(ddr_dqs_n), .ddram_dqs_p(ddr_dqs_p), .ddram_odt(ddr_odt),
+        .ddram_ras_n(ddr_ras_n), .ddram_reset_n(ddr_reset_n), .ddram_we_n(ddr_we_n),
+
+        .init_done(c0_init_calib_complete),
+        .init_error(init_error),
+        .pll_locked(mmcm_locked),
+        .user_clk (BUSCLK),
+        .user_rst (ui_clk_sync_rst),
+
+        //.user_port_axi_0_araddr(ddr_req.ar.addr[29:0]),
+        .user_port_axi_0_araddr(ddr_req.ar.addr[26:0]),
+        .user_port_axi_0_arburst(ddr_req.ar.burst),
+        .user_port_axi_0_arid(ddr_req.ar.id),
+        .user_port_axi_0_arlen(ddr_req.ar.len),
+        .user_port_axi_0_arready(ddr_rsp.ar_ready),
+        .user_port_axi_0_arsize(ddr_req.ar.size),
+        .user_port_axi_0_arvalid(ddr_req.ar_valid),
+        //.user_port_axi_0_awaddr(ddr_req.aw.addr[29:0]),
+        .user_port_axi_0_awaddr(ddr_req.aw.addr[26:0]),
+        .user_port_axi_0_awburst(ddr_req.aw.burst),
+        .user_port_axi_0_awid(ddr_req.aw.id),
+        .user_port_axi_0_awlen(ddr_req.aw.len),
+        .user_port_axi_0_awready(ddr_rsp.aw_ready),
+        .user_port_axi_0_awsize(ddr_req.aw.size),
+        .user_port_axi_0_awvalid(ddr_req.aw_valid),
+        .user_port_axi_0_bid(ddr_rsp.b.id),
+        .user_port_axi_0_bready(ddr_req.b_ready),
+        .user_port_axi_0_bresp(ddr_rsp.b.resp),
+        .user_port_axi_0_bvalid(ddr_rsp.b_valid),
+        .user_port_axi_0_rdata(ddr_rsp.r.data),
+        .user_port_axi_0_rid(ddr_rsp.r.id),
+        .user_port_axi_0_rlast(ddr_rsp.r.last),
+        .user_port_axi_0_rready(ddr_req.r_ready),
+        .user_port_axi_0_rresp(ddr_rsp.r.resp),
+        .user_port_axi_0_rvalid(ddr_rsp.r_valid),
+        .user_port_axi_0_wdata(ddr_req.w.data),
+        .user_port_axi_0_wlast(ddr_req.w.last),
+        .user_port_axi_0_wready(ddr_rsp.w_ready),
+        .user_port_axi_0_wstrb(ddr_req.w.strb),
+        .user_port_axi_0_wvalid(ddr_req.w_valid),
+
+        .wb_ctrl_ack(wb_ctrl_ack),
+        .wb_ctrl_adr(wb_ctrl_adr),
+        .wb_ctrl_bte(2'b00),
+        .wb_ctrl_cti(3'b000),
+        .wb_ctrl_cyc(wb_ctrl_cyc),
+        .wb_ctrl_dat_r(wb_ctrl_dat_r),
+        .wb_ctrl_dat_w(wb_ctrl_dat_w),
+        .wb_ctrl_err(wb_ctrl_err),
+        .wb_ctrl_sel(wb_ctrl_sel),
+        .wb_ctrl_stb(wb_ctrl_stb),
+        .wb_ctrl_we(wb_ctrl_we)
+      );
+    end
+
+  //-------------------------------------------------------------------------------------
+  end else if (C.mem_type == CVWSOC_MEM_LITEDRAM_GENESYS2) begin : gen_litedram
     logic litedram_axi_awready, litedram_axi_wready, litedram_axi_arready;
     logic litedram_axi_bvalid, litedram_axi_rvalid, litedram_axi_rlast;
     logic [1:0] litedram_axi_bresp, litedram_axi_rresp;
@@ -2487,21 +2874,11 @@ module cvwsoc_axi #(
         .clk      (clk200),          // external 200 MHz board clock
         .rst(rst_req),
 
-        .ddram_a(ddr3_addr),
-        .ddram_ba(ddr3_ba),
-        .ddram_cas_n(ddr3_cas_n),
-        .ddram_cke(ddr3_cke),
-        .ddram_clk_n(ddr3_ck_n),
-        .ddram_clk_p(ddr3_ck_p),
-        .ddram_cs_n(ddr3_cs_n),
-        .ddram_dm(ddr3_dm),
-        .ddram_dq(ddr3_dq),
-        .ddram_dqs_n(ddr3_dqs_n),
-        .ddram_dqs_p(ddr3_dqs_p),
-        .ddram_odt(ddr3_odt),
-        .ddram_ras_n(ddr3_ras_n),
-        .ddram_reset_n(ddr3_reset_n),
-        .ddram_we_n(ddr3_we_n),
+        .ddram_a(ddr_addr), .ddram_ba(ddr_ba), .ddram_cas_n(ddr_cas_n),
+        .ddram_cke(ddr_cke), .ddram_clk_n(ddr_ck_n), .ddram_clk_p(ddr_ck_p),
+        .ddram_cs_n(ddr_cs_n), .ddram_dm(ddr_dm), .ddram_dq(ddr_dq),
+        .ddram_dqs_n(ddr_dqs_n), .ddram_dqs_p(ddr_dqs_p), .ddram_odt(ddr_odt),
+        .ddram_ras_n(ddr_ras_n), .ddram_reset_n(ddr_reset_n), .ddram_we_n(ddr_we_n),
 
         .init_done(c0_init_calib_complete),
         .init_error(init_error),
@@ -2557,21 +2934,11 @@ module cvwsoc_axi #(
         .clk      (clk200),
         .rst      (rst_req),
 
-        .ddram_a(ddr3_addr),
-        .ddram_ba(ddr3_ba),
-        .ddram_cas_n(ddr3_cas_n),
-        .ddram_cke(ddr3_cke),
-        .ddram_clk_n(ddr3_ck_n),
-        .ddram_clk_p(ddr3_ck_p),
-        .ddram_cs_n(ddr3_cs_n),
-        .ddram_dm(ddr3_dm),
-        .ddram_dq(ddr3_dq),
-        .ddram_dqs_n(ddr3_dqs_n),
-        .ddram_dqs_p(ddr3_dqs_p),
-        .ddram_odt(ddr3_odt),
-        .ddram_ras_n(ddr3_ras_n),
-        .ddram_reset_n(ddr3_reset_n),
-        .ddram_we_n(ddr3_we_n),
+        .ddram_a(ddr_addr), .ddram_ba(ddr_ba), .ddram_cas_n(ddr_cas_n),
+        .ddram_cke(ddr_cke), .ddram_clk_n(ddr_ck_n), .ddram_clk_p(ddr_ck_p),
+        .ddram_cs_n(ddr_cs_n), .ddram_dm(ddr_dm), .ddram_dq(ddr_dq),
+        .ddram_dqs_n(ddr_dqs_n), .ddram_dqs_p(ddr_dqs_p), .ddram_odt(ddr_odt),
+        .ddram_ras_n(ddr_ras_n), .ddram_reset_n(ddr_reset_n), .ddram_we_n(ddr_we_n),
 
         .init_done(c0_init_calib_complete),
         .init_error(init_error),
@@ -2622,7 +2989,7 @@ module cvwsoc_axi #(
         .wb_ctrl_we(wb_ctrl_we)
       );
     end
-  end else begin
+  end else begin : gen_uberddr3
 
     logic dummy_rstn;
     logic dummy_clk200;
@@ -2690,21 +3057,13 @@ module cvwsoc_axi #(
         .i_s_axi_rready(ddr_req.r_ready),
 
         // DDR3 pins
-        .io_ddr3_dq(ddr3_dq),
-        .io_ddr3_dqs_n(ddr3_dqs_n),
-        .io_ddr3_dqs_p(ddr3_dqs_p),
-        .o_ddr3_addr(ddr3_addr),
-        .o_ddr3_ba(ddr3_ba),
-        .o_ddr3_ras_n(ddr3_ras_n),
-        .o_ddr3_cas_n(ddr3_cas_n),
-        .o_ddr3_we_n(ddr3_we_n),
-        .o_ddr3_reset_n(ddr3_reset_n),
-        .o_ddr3_ck_p(ddr3_ck_p),
-        .o_ddr3_ck_n(ddr3_ck_n),
-        .o_ddr3_cke(ddr3_cke),
-        .o_ddr3_cs_n(ddr3_cs_n),
-        .o_ddr3_dm(ddr3_dm),
-        .o_ddr3_odt(ddr3_odt)
+        .io_ddr3_dq(ddr_dq), .io_ddr3_dqs_n(ddr_dqs_n),
+        .io_ddr3_dqs_p(ddr_dqs_p), .o_ddr3_addr(ddr_addr),
+        .o_ddr3_ba(ddr_ba), .o_ddr3_ras_n(ddr_ras_n),
+        .o_ddr3_cas_n(ddr_cas_n), .o_ddr3_we_n(ddr_we_n),
+        .o_ddr3_reset_n(ddr_reset_n), .o_ddr3_ck_p(ddr_ck_p),
+        .o_ddr3_ck_n(ddr_ck_n), .o_ddr3_cke(ddr_cke),
+        .o_ddr3_cs_n(ddr_cs_n), .o_ddr3_dm(ddr_dm), .o_ddr3_odt(ddr_odt)
     );
 
   end

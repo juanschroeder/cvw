@@ -1,6 +1,6 @@
 
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/i_s_axi_arvalid
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/o_s_axi_arready
+ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_arvalid
+ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr_axi_arready
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/i_s_axi_araddr -msb 29 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/i_s_axi_arid -msb 3 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/i_s_axi_arlen -msb 7 -lsb 0 -order lsb2msb

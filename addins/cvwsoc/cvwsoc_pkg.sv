@@ -3,6 +3,37 @@ package cvwsoc_pkg;
 
   import cvw::*;
 
+  // CVWSoC platform configuration.  Keep the Wally-visible logical SoC
+  // configuration together with CVWSoC-only implementation choices so a
+  // board top can select the latter without changing Wally's derivation flow.
+  typedef enum logic [2:0] {
+    CVWSOC_MEM_XILINX_DDR2,
+    CVWSOC_MEM_LITEDRAM_NEXYSA7,
+    CVWSOC_MEM_XILINX_DDR3,
+    CVWSOC_MEM_LITEDRAM_GENESYS2,
+    CVWSOC_MEM_UBERDDR3
+  } cvwsoc_mem_type_t;
+
+  typedef struct packed {
+    bit             AxisDescReqCut; // cut req critical path
+  } cvwsoc_idma_config_t;
+
+  typedef struct packed {
+    bit             CutSplitterPath; // Cut VGA Splitter critical path
+  } cvwsoc_vga_config_t;
+
+  typedef struct packed {
+    bit             InsertRegClkBuf; // Xilinx 7-series SDHCI clock-mux hop
+  } cvwsoc_sdhci_config_t;
+
+  typedef struct packed {
+    cvw_t                   wally;
+    cvwsoc_mem_type_t       mem_type;
+    cvwsoc_idma_config_t    idma_config;
+    cvwsoc_vga_config_t     vga_config;
+    cvwsoc_sdhci_config_t   sdhci_config;
+  } cvwsoc_t;
+
   localparam int unsigned XBAR_MAX_SLV = 7;
   localparam int unsigned XBAR_MAX_MST = 11;
   localparam int unsigned XBAR_MAX_RULES = 11;

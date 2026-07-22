@@ -390,14 +390,14 @@ set_property PULLUP true [get_ports { rgmii_int_n }]
 
 
 # Both RGMII and DDR3 are in bank 33 so they cannot be in different IODELAY groups: override anything already set
-set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {^u_cvwsoc_axi/gen_axi_eth/liteEthAXI/u_liteeth/IDELAYE2(_[0-9]+)?$}]
+set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {^u_cvwsoc_axi.gen_axi_eth.liteEthAXI.u_liteeth.IDELAYE2(_[0-9]+)?$}]
 
 # I2S2: PMOD JA
 # Tested: Dollatek PCM5102A, not exactly but similar to: https://github.com/pschatzmann/arduino-audio-tools/discussions/1641
 # 1:    JA1_P => U27 => LCLK (44.12 KHz)
 # 2:    JA1_N => U28 => BCK (bit clock, 2.824 Mhz)
 # 3:    JA2_P => T26 => DIN (data)
-# 4:    JA2_N => T27 => MCLK (22.59 MHz)
+# 4:    JA2_N => T27 => MCLK (22.59 MHz) => SHOULD NOT be connected in Dollatek board
 set_property -dict { PACKAGE_PIN U27 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_lrck}]
 set_property -dict { PACKAGE_PIN U28 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_sclk}]
 set_property -dict { PACKAGE_PIN T26 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_sdout}]

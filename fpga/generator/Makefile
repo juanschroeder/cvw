@@ -49,6 +49,19 @@ nexysa7soc: export SYSTEMCLOCK := 20000000
 nexysa7soc: export MAXSDCCLOCK  :=  10000000
 nexysa7soc: export MIG_ADDR_WIDTH  :=  27
 nexysa7soc: FPGA_NEXYSA7SOC
+nexysa7soc: export litedramconfig := nexysa7soc
+nexysa7soc: export MEM_WIDTH  :=  64
+
+nexysa7rv32w64soc: export XILINX_PART := xc7a100tcsg324-1
+nexysa7rv32w64soc: export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
+nexysa7rv32w64soc: export board := nexysa7rv32w64soc
+nexysa7rv32w64soc: export SYSTEMCLOCK := 25000000
+nexysa7rv32w64soc: export MAXSDCCLOCK  :=  10000000
+nexysa7rv32w64soc: export MIG_ADDR_WIDTH  :=  27
+nexysa7rv32w64soc: FPGA_NEXYSA7RV32W64SOC
+nexysa7rv32w64soc: export litedramconfig := nexysa7soc
+nexysa7rv32w64soc: export MEM_WIDTH  :=  64
+
 
 genesys2soc: export XILINX_PART := xc7k325tffg900-2
 genesys2soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
@@ -125,6 +138,12 @@ genesys2rv32w64soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
 genesys2rv32minsoc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
 genesys2rv32minsoc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
 genesys2rv32minsoc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
+nexysa7soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+nexysa7soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
+nexysa7soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
+nexysa7rv32w64soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+nexysa7rv32w64soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
+nexysa7rv32w64soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
 
 .PHONY: FPGA_Arty FPGA_VCU
 FPGA_Arty: PreProcessFiles IP_Arty zsbl
@@ -149,7 +168,10 @@ define VIVADO_TCL
 script -q -c "vivado -mode tcl -source $(1)" /dev/null 2>&1 | tee $(2) | $(VIVADO_COLOR)
 endef
 
-FPGA_NEXYSA7SOC: PreProcessFilesSoC IP_NEXYSA7SOC zsbl
+FPGA_NEXYSA7SOC: PreProcessFilesSoC IP_NEXYSA7SOC liblitedram zsblsoc
+	@$(call VIVADO_TCL,wally.tcl,wally.log)
+
+FPGA_NEXYSA7RV32W64SOC: PreProcessFilesSoC IP_NEXYSA7RV32W64SOC liblitedram32 zsbl32soc
 	@$(call VIVADO_TCL,wally.tcl,wally.log)
 
 FPGA_GENESYS2SOC: PreProcessFilesSoC IP_GENESYS2SOC liblitedram zsblsoc
@@ -187,11 +209,14 @@ IP_NEXYSA7: $(dst)/sysrst.log \
 
 IP_NEXYSA7SOC: $(dst)/sysrst.log \
 	MEM_NEXYSA7 \
-	$(dst)/mmcm-nexysa7.log \
-	$(dst)/clkconverter.log \
-	$(dst)/ahbaxibridge.log \
-	$(dst)/axicrossbar.log \
-	$(dst)/axicdma.log
+	$(dst)/mmcm-nexysa7.log
+
+
+IP_NEXYSA7RV32W64SOC: $(dst)/sysrst.log \
+	MEM_NEXYSA7RV32W64SOC \
+	$(dst)/mmcm-nexysa7.log
+
+#	$(dst)/ahbaxibridge.log
 
 IP_GENESYS2SOC: $(dst)/sysrst.log \
 	MEM_GENESYS2 \
@@ -228,8 +253,8 @@ MEM_GENESYS2SOCXLNX:
 MEM_NEXYSA7:
 	$(MAKE) $(dst)/ddr2-$(board).log
 
-# MEM_NEXYSA7SOC:
-# 	$(MAKE) $(dst)/ddr2-$(board).log
+MEM_NEXYSA7RV32W64SOC:
+	$(MAKE) $(dst)/ddr2-nexysa7soc.log
 
 # Copy files and make necessary modifications
 .PHONY: PreProcessFiles
@@ -277,20 +302,23 @@ PreProcessFilesSoC: PreProcessFiles
 	   ../src/CopiedFiles_do_not_add_to_repo/digilent-i2s2/
 	# Apply patches
 	# modify PULP files to prevent name collision for 'lzc'
-	# 1) rename the module itself (only in the defining file)
+	# rename the module itself (only in the defining file)
 	sed -i -E 's/^([[:space:]]*module[[:space:]]+)lzc([[:space:]]*#)/\1lzc_pulp\2/' $(PULP_LZC)
 	sed -i -E 's/^([[:space:]]*module[[:space:]]+)lzc([[:space:]]*\()/\1lzc_pulp\2/' $(PULP_LZC)
 	sed -i -E 's/(endmodule[[:space:]]*:[[:space:]]*)lzc\b/\1lzc_pulp/' $(PULP_LZC)
-	# 2) rename instantiations that look like: lzc #( ... )
+	# rename instantiations that look like: lzc #( ... )
 	find $(PULP_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
 	  xargs -0 sed -i -E 's/\<lzc\>([[:space:]]*#[[:space:]]*\()/lzc_pulp\1/g'
-	# 3) patch AXI
+	# patch common-cells
+	patch -d "$(PULP_DIR)/common_cells" -p1 -N --forward < "$(PULP_DIR)/0001-common-cells-clk-div-insert-regional-buf.patch"
+	# patch AXI
 	patch -d "$(PULP_DIR)/axi" -p1 -N --forward < "$(PULP_DIR)/0001-axi-burst-splitter-max-burst-beats.patch"
-	# 4) patch AXI VGA
+	patch -d "$(PULP_DIR)/axi" -p1 -N --forward < "$(PULP_DIR)/0002-axi-burst-splitter-cut-path-param.patch"
+	# patch AXI VGA
 	patchdir="$(PULP_DIR)/axi-vga"; \
 	find "$(PULP_DIR)" -type f -name "*vga*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
-	# 5) patch USB OHCI
+	# patch USB OHCI
 	patchdir="../src/CopiedFiles_do_not_add_to_repo"; \
 	find ../../addins/cvwsoc/usb -type f -name "*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'

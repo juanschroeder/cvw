@@ -20,6 +20,7 @@ UNLZ4_BIN="${UNLZ4_BIN:-unlz4}"
 SNAPSHOT_AT_HANDOFF="${SNAPSHOT_AT_HANDOFF:-0}"
 HANDOFF_PC="${HANDOFF_PC:-0x80200000}"
 SKIP_GDB_DUMPS="${SKIP_GDB_DUMPS:-0}"
+SKIP_INITRD="${SKIP_INITRD:-0}"
 
 UBOOT_INCLUDE="${UBOOT_INCLUDE:-0}"
 IMAGE_KIND="${IMAGE_KIND:-tiny}"
@@ -76,7 +77,7 @@ if [[ -z "$KERNEL_SRC" ]]; then
   fi
 fi
 
-if [[ -z "$INITRD_SRC" ]]; then
+if [[ "$SKIP_INITRD" == "0" && -z "$INITRD_SRC" ]]; then
   if [[ "$ROOTFS_MODE" == "jffs2" ]]; then
     INITRD_SRC="$(ls -1t "$CVWSOC_DEPLOY_DIR"/cvwsoc-image-"$IMAGE_NAME"-*.rootfs.jffs2 "$CVWSOC_DEPLOY_DIR"/cvwsoc-image-"$IMAGE_NAME"-*.rootfs-*.jffs2 2>/dev/null | head -n1 || true)"
   elif [[ "$INITRD_EXT2" != "0" ]]; then
@@ -150,11 +151,13 @@ case "$PRELOAD_WORD_BYTES" in
     ;;
 esac
 
-if [[ -z "$INITRD_SRC" ]]; then
-  echo "Missing initrd image for IMAGE_KIND=$IMAGE_NAME in $CVWSOC_DEPLOY_DIR" >&2
-  exit 1
+if [[ "$SKIP_INITRD" == "0" ]]; then
+  if [[ -z "$INITRD_SRC" ]]; then
+    echo "Missing initrd image for IMAGE_KIND=$IMAGE_NAME in $CVWSOC_DEPLOY_DIR" >&2
+    exit 1
+  fi
+  require_file "$INITRD_SRC" "initrd image"
 fi
-require_file "$INITRD_SRC" "initrd image"
 
 if [[ "$MODE_TAG" == "linux" ]]; then
   require_file "$UBOOT_STUB_BIN" "u-boot replacement stub"
@@ -165,8 +168,6 @@ fi
 
 KERNEL_SRC_REAL="$(readlink -f "$KERNEL_SRC")"
 KERNEL_FILE_DESC="$(file -Lb "$KERNEL_SRC_REAL")"
-INITRD_SRC_REAL="$(readlink -f "$INITRD_SRC")"
-INITRD_FILE_DESC="$(file -Lb "$INITRD_SRC_REAL")"
 
 if [[ "$KERNEL_FILE_DESC" == *"LZ4 compressed data"* ]]; then
   require_cmd "$UNLZ4_BIN" "unlz4 tool"
@@ -177,20 +178,26 @@ else
   cp "$KERNEL_SRC_REAL" "$QEMU_KERNEL"
 fi
 
-if [[ "$INITRD_FILE_DESC" == *"gzip compressed data"* ]]; then
-  gzip -dc "$INITRD_SRC_REAL" > "$QEMU_INITRD"
-else
-  cp "$INITRD_SRC_REAL" "$QEMU_INITRD"
-fi
+if [[ "$SKIP_INITRD" == "0" ]]; then
+  INITRD_SRC_REAL="$(readlink -f "$INITRD_SRC")"
+  INITRD_FILE_DESC="$(file -Lb "$INITRD_SRC_REAL")"
+  if [[ "$INITRD_FILE_DESC" == *"gzip compressed data"* ]]; then
+    gzip -dc "$INITRD_SRC_REAL" > "$QEMU_INITRD"
+  else
+    cp "$INITRD_SRC_REAL" "$QEMU_INITRD"
+  fi
 
-if [[ "$INITRD_FILE_DESC" == *"ext2 filesystem data"* ]]; then
-  if [[ "$BOOTARGS" != *"rootfstype=ext2"* ]]; then
-    BOOTARGS="$(echo "$BOOTARGS" | sed 's,rdinit=/bin/busybox.nosuid -- sh,,')"
-    BOOTARGS=" ${BOOTARGS} root=/dev/ram0 rootfstype=ext2 init=/bin/busybox.nosuid -- sh"
+  if [[ "$INITRD_FILE_DESC" == *"ext2 filesystem data"* ]]; then
+    if [[ "$BOOTARGS" != *"rootfstype=ext2"* ]]; then
+      BOOTARGS="$(echo "$BOOTARGS" | sed 's,rdinit=/bin/busybox.nosuid -- sh,,')"
+      BOOTARGS=" ${BOOTARGS} root=/dev/ram0 rootfstype=ext2 init=/bin/busybox.nosuid -- sh"
+    fi
   fi
 fi
 
-INITRD_END_HEX="$(
+INITRD_END_HEX="$INITRD_ADDR"
+if [[ "$SKIP_INITRD" == "0" ]]; then
+  INITRD_END_HEX="$(
 python3 - <<'PY' "$INITRD_ADDR" "$QEMU_INITRD"
 import os
 import sys
@@ -200,8 +207,9 @@ size = os.path.getsize(sys.argv[2])
 print(f"0x{start + size:08x}")
 PY
 )"
+fi
 
-python3 - <<'PY' "$DTS_SRC" "$GENERATED_DTS" "$INITRD_ADDR" "$INITRD_END_HEX" "$BOOTARGS" "$ROOTFS_MODE" "$ROOTFS_ADDR" "$QEMU_INITRD" "$ROOTFS_COMPATIBLE" "$ROOTFS_DTS_SIZE" "$ROOTFS_BANK_WIDTH" "$ROOTFS_ERASE_SIZE"
+python3 - <<'PY' "$DTS_SRC" "$GENERATED_DTS" "$INITRD_ADDR" "$INITRD_END_HEX" "$BOOTARGS" "$ROOTFS_MODE" "$ROOTFS_ADDR" "$QEMU_INITRD" "$ROOTFS_COMPATIBLE" "$ROOTFS_DTS_SIZE" "$ROOTFS_BANK_WIDTH" "$ROOTFS_ERASE_SIZE" "$SKIP_INITRD"
 import os
 import pathlib
 import re
@@ -214,17 +222,23 @@ initrd_end = sys.argv[4]
 bootargs = sys.argv[5]
 rootfs_mode = sys.argv[6]
 rootfs_addr = int(sys.argv[7], 16)
-rootfs_size = os.path.getsize(sys.argv[8])
+skip_initrd = sys.argv[13] != "0"
 rootfs_compatible = sys.argv[9]
 rootfs_dts_size = sys.argv[10]
 rootfs_bank_width = sys.argv[11]
 rootfs_erase_size = sys.argv[12]
-if rootfs_dts_size:
-    rootfs_size = int(rootfs_dts_size, 0)
-else:
-    rootfs_size = max(rootfs_size, os.path.getsize(sys.argv[8]))
+rootfs_size = 0
+if not skip_initrd:
+    rootfs_size = os.path.getsize(sys.argv[8])
+    if rootfs_dts_size:
+        rootfs_size = int(rootfs_dts_size, 0)
+    else:
+        rootfs_size = max(rootfs_size, os.path.getsize(sys.argv[8]))
 
-if rootfs_mode == "jffs2":
+if skip_initrd:
+    src = re.sub(r'\n\s*linux,initrd-start\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
+    src = re.sub(r'\n\s*linux,initrd-end\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
+elif rootfs_mode == "jffs2":
     src = re.sub(r'\n\s*linux,initrd-start\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
     src = re.sub(r'\n\s*linux,initrd-end\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
     rootfs_node = f'''
@@ -280,7 +294,7 @@ fi
 if [[ "$SKIP_GDB_DUMPS" != "0" ]]; then
   echo "Prepared cvwsoc QEMU assets (${MODE_TAG}):"
   echo "  kernel   : $QEMU_KERNEL"
-  echo "  initrd   : $QEMU_INITRD"
+  if [[ "$SKIP_INITRD" == "0" ]]; then echo "  initrd   : $QEMU_INITRD"; fi
   echo "  dts      : $GENERATED_DTS"
   echo "  dtb      : $GENERATED_DTB"
   if [[ "$MODE_TAG" == "linux" ]]; then
@@ -305,11 +319,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if [[ "$MODE_TAG" == "linux" ]]; then
+INITRD_LOADER_ARGS=()
+if [[ "$SKIP_INITRD" == "0" ]]; then
   ROOTFS_LOADER_ADDR="$INITRD_ADDR"
   if [[ "$ROOTFS_MODE" == "jffs2" ]]; then
     ROOTFS_LOADER_ADDR="$ROOTFS_ADDR"
   fi
+  INITRD_LOADER_ARGS=(-device loader,file="${QEMU_INITRD}",addr="${ROOTFS_LOADER_ADDR}",force-raw=on)
+fi
+
+if [[ "$MODE_TAG" == "linux" ]]; then
   "$QEMU_BIN" \
     -M virt -m "${QEMU_RAM_MB}M" -nographic \
     -bios "$FW_JUMP_BIN" \
@@ -318,14 +337,10 @@ if [[ "$MODE_TAG" == "linux" ]]; then
     -device loader,file="${UBOOT_STUB_BIN}",addr="${UBOOT_ADDR}",force-raw=on \
     -device loader,file="${QEMU_KERNEL}",addr="${KERNEL_ADDR}" \
     -device loader,file="${GENERATED_DTB}",addr="${KERNEL_DTB_ADDR}" \
-    -device loader,file="${QEMU_INITRD}",addr="${ROOTFS_LOADER_ADDR}",force-raw=on \
+    "${INITRD_LOADER_ARGS[@]}" \
     -gdb "tcp::${QEMU_GDB_PORT}" -S &
 
 else
-  ROOTFS_LOADER_ADDR="$INITRD_ADDR"
-  if [[ "$ROOTFS_MODE" == "jffs2" ]]; then
-    ROOTFS_LOADER_ADDR="$ROOTFS_ADDR"
-  fi
   "$QEMU_BIN" \
     -M virt -m "${QEMU_RAM_MB}M" -nographic \
     -bios "$FW_JUMP_BIN" \
@@ -335,7 +350,7 @@ else
     -device loader,file="${UBOOT_DTB}",addr="${UBOOT_DTB_ADDR}" \
     -device loader,file="${QEMU_KERNEL}",addr="${KERNEL_ADDR}" \
     -device loader,file="${GENERATED_DTB}",addr="${KERNEL_DTB_ADDR}" \
-    -device loader,file="${QEMU_INITRD}",addr="${ROOTFS_LOADER_ADDR}",force-raw=on \
+    "${INITRD_LOADER_ARGS[@]}" \
     -gdb "tcp::${QEMU_GDB_PORT}" -S &
 fi
 QEMU_PID=$!
@@ -365,7 +380,7 @@ truncate -s "%${PRELOAD_WORD_BYTES}" "$RAW_BOOTMEM_FILE"
 truncate -s "%${PRELOAD_WORD_BYTES}" "$RAW_RAM_FILE"
 "$OBJCOPY_BIN" --reverse-bytes="${PRELOAD_WORD_BYTES}" -F binary "$RAW_RAM_FILE" "$RAM_FILE"
 
-if [[ "$ROOTFS_MODE" == "jffs2" ]]; then
+if [[ "$ROOTFS_MODE" == "jffs2" && "$SKIP_INITRD" == "0" ]]; then
   python3 - <<'PY' "$RAM_FILE" "$QEMU_INITRD" "$RAM_BASE" "$ROOTFS_ADDR" "$PRELOAD_WORD_BYTES"
 import pathlib
 import sys
@@ -404,7 +419,7 @@ echo "Generated cvwsoc preload images (${MODE_TAG}):"
 echo "  boot ROM : $BOOTMEM_FILE"
 echo "  RAM      : $RAM_FILE"
 echo "  kernel   : $QEMU_KERNEL"
-echo "  initrd   : $QEMU_INITRD"
+if [[ "$SKIP_INITRD" == "0" ]]; then echo "  initrd   : $QEMU_INITRD"; fi
 echo "  dts      : $GENERATED_DTS"
 echo "  dtb      : $GENERATED_DTB"
 if [[ "$MODE_TAG" == "linux" ]]; then
