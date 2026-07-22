@@ -1,0 +1,22 @@
+diff --git a/src/axi_burst_splitter.sv b/src/axi_burst_splitter.sv
+index 224a800..30f3edf 100644
+--- a/src/axi_burst_splitter.sv
++++ b/src/axi_burst_splitter.sv
+@@ -31,6 +31,8 @@ module axi_burst_splitter #(
+   parameter int unsigned MaxWriteTxns = 32'd0,
+   // Internal ID queue can work in two bandwidth modes: see id_queue.sv for details
+   parameter bit          FullBW       = 0,
++  // Cut paths through the IP
++  parameter bit          CutPath      = 0,
+   // Maximum number of beats in each downstream burst
+   parameter int unsigned MaxBurstBeats = 1,
+   // AXI Bus Types
+@@ -68,7 +70,7 @@ module axi_burst_splitter #(
+   axi_burst_splitter_gran #(
+     .MaxReadTxns   ( MaxReadTxns   ),
+     .MaxWriteTxns  ( MaxWriteTxns  ),
+-    .CutPath       ( 1'b0          ),
++    .CutPath       ( CutPath       ),
+     .DisableChecks ( 1'b0          ),
+     .FullBW        ( FullBW        ),
+     .AddrWidth     ( AddrWidth     ),

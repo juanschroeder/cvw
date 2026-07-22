@@ -21,6 +21,7 @@ module idma_axi_axis_wrap #(
   parameter bit          EnableReg64       = 1'b0,
   parameter bit          EnableReg64TwoD   = 1'b0,
   parameter bit          EnableAxisFifoAdmission = 1'b0,
+  parameter bit          AxisDescReqBypass = 1'b1,
   parameter int unsigned AxisFifoCapacityBytes = 4096,
   parameter int unsigned AxisFifoSafetyMarginBytes = AxiDataWidth / 8,
   parameter type         axi_mst_req_t     = logic,
@@ -382,6 +383,7 @@ module idma_axi_axis_wrap #(
     idma_rsp_t axis_desc_rsp;
     logic axis_desc_req_valid;
     logic axis_desc_req_ready;
+    logic axis_desc_req_spill_ready;
     logic axis_desc_rsp_valid;
     logic axis_desc_rsp_ready;
     localparam int unsigned AxisOutstandingWidth = $clog2(DmaBackendDepth + 1);
@@ -612,12 +614,26 @@ module idma_axi_axis_wrap #(
          (axis_desc_required_bytes <= AxisFifoCapacityBytes) &&
          (axis_desc_required_bytes <= axis_fifo_free_bytes));
 
-    assign idma_req_fe[Desc64AxisIdx] = axis_desc_req;
-    assign idma_req_fe_valid[Desc64AxisIdx] = axis_desc_req_valid && axis_desc_admissible &&
-        !axis_stream_in_flight_q;
+    // Optional cut between AXIS descriptor frontend and
+    // the shared frontend arbiter.
+    spill_register #(
+      .T      ( idma_req_t         ),
+      .Bypass ( AxisDescReqBypass  )
+    ) i_axis_desc_req_spill (
+      .clk_i,
+      .rst_ni,
+      .data_i  ( axis_desc_req                                  ),
+      .valid_i ( axis_desc_req_valid && axis_desc_admissible &&
+                 !axis_stream_in_flight_q                       ),
+      .ready_o ( axis_desc_req_spill_ready                      ),
+      .data_o  ( idma_req_fe[Desc64AxisIdx]                     ),
+      .valid_o ( idma_req_fe_valid[Desc64AxisIdx]               ),
+      .ready_i ( idma_req_fe_ready[Desc64AxisIdx]               )
+    );
+
     assign axis_desc_req_ready = axis_desc_reject ?
         ((axis_outstanding_q == '0) && !axis_stream_in_flight_q && !axis_reject_pending_q) :
-        (idma_req_fe_ready[Desc64AxisIdx] && axis_desc_admissible &&
+        (axis_desc_req_spill_ready && axis_desc_admissible &&
          !axis_stream_in_flight_q && !axis_reject_pending_q);
 
     always_comb begin

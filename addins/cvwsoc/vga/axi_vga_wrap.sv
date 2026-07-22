@@ -18,6 +18,7 @@ module axi_vga_wrap #(
   parameter int unsigned AXI_ID_W   = 4,
   parameter int unsigned AXI_M_ID_W = AXI_ID_W,
   parameter int unsigned AXI_USER_W = 1,
+  parameter bit CutSplitterPath     = 1'b0,
   parameter type s_axi_req_t  = logic,
   parameter type s_axi_resp_t = logic,
   parameter type m_axi_req_t  = logic,
@@ -185,6 +186,7 @@ module axi_vga_wrap #(
     .AXIIdWidth   ( AXI_M_ID_W ),
     .AXIUserWidth ( AXI_USER_W ),
     .AXIStrbWidth ( AXI_DATA_W/8 ),
+    .CutSplitterPath(CutSplitterPath),
     .axi_req_t    ( axi_req_t  ),
     .axi_resp_t   ( axi_resp_t ),   // correct name (NOT axi_rsp_t)
     .axi_r_chan_t ( r_chan_t   ),

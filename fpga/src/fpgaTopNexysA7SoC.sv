@@ -270,7 +270,16 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   `AXI_TYPEDEF_ALL_CT(cpu_axi, cpu_axi_req_t, cpu_axi_resp_t,
                       cpu_axi_addr_t, cpu_axi_id_t, cpu_axi_data_t,
                       cpu_axi_strb_t, cpu_axi_user_t)
-  localparam cvwsoc_t C = '{wally: P, mem_type: CVWSOC_MEM_XILINX_DDR2};
+  localparam cvwsoc_t C = '{
+      wally    : P,
+      mem_type : P.LITEDRAM_SUPPORTED
+                  ? CVWSOC_MEM_LITEDRAM_NEXYSA7
+                  : CVWSOC_MEM_XILINX_DDR2,
+      idma_config: '{
+                    AxisDescReqCut: 1'b1
+                    },
+      vga_config:  1'b1 // CutSplitterPath
+  };
   cpu_axi_req_t  bridge_axi_req;
   cpu_axi_resp_t bridge_axi_resp;
 
@@ -459,6 +468,5 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   assign IlaTrigger = '0;
   assign RVVIStall = '0;
 
-  assign phy_reset_n = ~1'b0;
 
 endmodule

@@ -1,0 +1,20 @@
+diff --git a/src/axi_vga.sv b/src/axi_vga.sv
+index af8089e..9afc9b4 100644
+--- a/src/axi_vga.sv
++++ b/src/axi_vga.sv
+@@ -23,6 +23,7 @@ module axi_vga #(
+   parameter int unsigned AXIStrbWidth = 8,
+   parameter int unsigned BufferDepth  = 16,
+   parameter int unsigned MaxReadTxns  = 24,
++  parameter bit      CutSplitterPath  = 0,
+   parameter type axi_req_t            = logic,
+   parameter type axi_resp_t           = logic,
+   parameter type axi_r_chan_t         = logic,
+@@ -214,6 +215,7 @@ module axi_vga #(
+       .MaxReadTxns  ( MaxReadTxns   ),
+       .MaxWriteTxns ( 32'd1         ), // technically 0, but not supported
+       .FullBW       ( 1'b1          ),
++      .CutPath      (CutSplitterPath),
+       .MaxBurstBeats( BufferDepth / 2 ),
+       .AddrWidth    ( AXIAddrWidth  ),
+       .DataWidth    ( AXIDataWidth  ),

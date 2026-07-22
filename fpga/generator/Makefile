@@ -55,7 +55,7 @@ nexysa7soc: export MEM_WIDTH  :=  64
 nexysa7rv32w64soc: export XILINX_PART := xc7a100tcsg324-1
 nexysa7rv32w64soc: export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
 nexysa7rv32w64soc: export board := nexysa7rv32w64soc
-nexysa7rv32w64soc: export SYSTEMCLOCK := 20000000
+nexysa7rv32w64soc: export SYSTEMCLOCK := 25000000
 nexysa7rv32w64soc: export MAXSDCCLOCK  :=  10000000
 nexysa7rv32w64soc: export MIG_ADDR_WIDTH  :=  27
 nexysa7rv32w64soc: FPGA_NEXYSA7RV32W64SOC
@@ -319,6 +319,7 @@ PreProcessFilesSoC: PreProcessFiles
 	  xargs -0 sed -i -E 's/\<lzc\>([[:space:]]*#[[:space:]]*\()/lzc_pulp\1/g'
 	# 3) patch AXI
 	patch -d "$(PULP_DIR)/axi" -p1 -N --forward < "$(PULP_DIR)/0001-axi-burst-splitter-max-burst-beats.patch"
+	patch -d "$(PULP_DIR)/axi" -p1 -N --forward < "$(PULP_DIR)/0002-axi-burst-splitter-cut-path-param.patch"
 	# 4) patch AXI VGA
 	patchdir="$(PULP_DIR)/axi-vga"; \
 	find "$(PULP_DIR)" -type f -name "*vga*.patch" -print0 | sort -z | \

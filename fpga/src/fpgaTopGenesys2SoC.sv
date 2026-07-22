@@ -147,7 +147,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   localparam cvwsoc_t C = '{
     wally:    P,
-    mem_type: cvwsoc_mem_type_from_wally(P)
+    mem_type: cvwsoc_mem_type_from_wally(P),
+    idma_config: '{
+                    AxisDescReqCut: 1'b0
+                },
+    vga_config:  1'b0
   };
 
   // These types describe only the AXI port between this board top level and
