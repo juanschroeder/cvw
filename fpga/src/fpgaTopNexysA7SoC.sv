@@ -288,7 +288,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   `AXI_TYPEDEF_ALL_CT(cpu_axi, cpu_axi_req_t, cpu_axi_resp_t,
                       cpu_axi_addr_t, cpu_axi_id_t, cpu_axi_data_t,
                       cpu_axi_strb_t, cpu_axi_user_t)
-  localparam cvwsoc_t C = '{
+  localparam cvwsoc_cfg_t C = '{
       wally    : P,
       mem_type : P.LITEDRAM_SUPPORTED
                   ? CVWSOC_MEM_LITEDRAM_NEXYSA7
@@ -303,6 +303,19 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   };
   cpu_axi_req_t  bridge_axi_req;
   cpu_axi_resp_t bridge_axi_resp;
+  localparam xbar_out_t XBAR_OUT = gen_xbar_out(P);
+  typedef logic [1+$clog2(XBAR_OUT.n_slv):0] ddr_axi_id_t;
+  `AXI_TYPEDEF_ALL_CT(ddr_axi, ddr_axi_req_t, ddr_axi_resp_t,
+                      cpu_axi_addr_t, ddr_axi_id_t, cpu_axi_data_t,
+                      cpu_axi_strb_t, cpu_axi_user_t)
+  `AXI_TYPEDEF_ALL_CT(ddr_csr_axi, ddr_csr_axi_req_t, ddr_csr_axi_resp_t,
+                      cpu_axi_addr_t, ddr_axi_id_t, cpu_axi_data_t,
+                      cpu_axi_strb_t, cpu_axi_user_t)
+  ddr_axi_req_t ddr_axi_req;
+  ddr_axi_resp_t ddr_axi_resp;
+  ddr_csr_axi_req_t ddr_csr_axi_req;
+  ddr_csr_axi_resp_t ddr_csr_axi_resp;
+  logic ddr_busclk, ddr_buscorerstn, ddr_busrstn;
 
   // Wally
   wallypipelinedsoc  #(P)
@@ -463,18 +476,33 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   assign m_axi_rlast = bridge_axi_resp.r.last;
   assign m_axi_rvalid = bridge_axi_resp.r_valid;
 
+  cvwsoc_ram #(
+    .C(C), .ddr_axi_req_t(ddr_axi_req_t), .ddr_axi_resp_t(ddr_axi_resp_t),
+    .ddr_csr_axi_req_t(ddr_csr_axi_req_t), .ddr_csr_axi_resp_t(ddr_csr_axi_resp_t)
+  ) u_cvwsoc_ram (
+    .clk167_i(clk200), .clk200_i(clk200), .rst_req_i(rst_req), .resetn_comb_i(resetn_comb),
+    .BUSCLK_o(ddr_busclk), .BUSCORERSTn_o(ddr_buscorerstn), .BUSRSTn_o(ddr_busrstn),
+    .ddr_axi_req_i(ddr_axi_req), .ddr_axi_resp_o(ddr_axi_resp),
+    .ddr_csr_axi_req_i(ddr_csr_axi_req), .ddr_csr_axi_resp_o(ddr_csr_axi_resp),
+    .ddr_dq(ddr2_dq), .ddr_dqs_n(ddr2_dqs_n), .ddr_dqs_p(ddr2_dqs_p),
+    .ddr_addr(ddr2_addr), .ddr_ba(ddr2_ba), .ddr_ras_n(ddr2_ras_n),
+    .ddr_cas_n(ddr2_cas_n), .ddr_we_n(ddr2_we_n), .ddr_reset_n(),
+    .ddr_ck_p(ddr2_ck_p), .ddr_ck_n(ddr2_ck_n), .ddr_cke(ddr2_cke),
+    .ddr_cs_n(ddr2_cs_n), .ddr_dm(ddr2_dm), .ddr_odt(ddr2_odt)
+  );
+
   cvwsoc_axi #(.C(C), .cpu_axi_req_t(cpu_axi_req_t),
-               .cpu_axi_resp_t(cpu_axi_resp_t)) u_cvwsoc_axi (
+               .cpu_axi_resp_t(cpu_axi_resp_t),
+               .ddr_axi_req_t(ddr_axi_req_t), .ddr_axi_resp_t(ddr_axi_resp_t),
+               .ddr_csr_axi_req_t(ddr_csr_axi_req_t), .ddr_csr_axi_resp_t(ddr_csr_axi_resp_t)) u_cvwsoc_axi (
     .CPUCLK_i(CPUCLK), .clk167_i(clk200), .clk200_i(clk200),
     .clk48MHz_raw_i(clk48MHz_raw), .audio_clk_i(CPUCLK),
     .mmcm1_locked_i(mmcm1_locked), .peripheral_reset_i(peripheral_reset),
     .peripheral_aresetn_i(peripheral_aresetn), .rst_req_i(rst_req),
     .resetn_comb_i(resetn_comb),
-    .ddr_dq(ddr2_dq), .ddr_dqs_n(ddr2_dqs_n), .ddr_dqs_p(ddr2_dqs_p),
-    .ddr_addr(ddr2_addr), .ddr_ba(ddr2_ba), .ddr_ras_n(ddr2_ras_n),
-    .ddr_cas_n(ddr2_cas_n), .ddr_we_n(ddr2_we_n), .ddr_reset_n(),
-    .ddr_ck_p(ddr2_ck_p), .ddr_ck_n(ddr2_ck_n), .ddr_cke(ddr2_cke),
-    .ddr_cs_n(ddr2_cs_n), .ddr_dm(ddr2_dm), .ddr_odt(ddr2_odt),
+    .ddr_axi_req_o(ddr_axi_req), .ddr_axi_resp_i(ddr_axi_resp),
+    .ddr_csr_axi_req_o(ddr_csr_axi_req), .ddr_csr_axi_resp_i(ddr_csr_axi_resp),
+    .BUSCLK_i(ddr_busclk), .BUSCORERSTn_i(ddr_buscorerstn), .BUSRSTn_i(ddr_busrstn),
     .vga_hsync(vga_hsync), .vga_vsync(vga_vsync),
     .vga_r_5(cvwsoc_vga_r_5), .vga_g_6(cvwsoc_vga_g_6),
     .vga_b_5(cvwsoc_vga_b_5),

@@ -42,13 +42,14 @@ if {$board=="ArtyA7"} {
     add_files  {../src/fpgaTop.sv}
 }
 
-if {$board=="nexysa7soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
+if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
     add_files  ../../addins/cvwsoc/cvwsoc_axi.sv
+    add_files  ../../addins/cvwsoc/cvwsoc_ram.sv
 }
 
 # read in ip
 import_ip IP/sysrst.srcs/sources_1/ip/sysrst/sysrst.xci
-if {! ($board == "genesys2soc" || $board == "genesys2rv32soc" || $board=="genesys2rv32w64soc")} {
+if {! ($board == "nexysa7rv32w64soc"  || $board == "genesys2soc" || $board == "genesys2rv32soc" || $board=="genesys2rv32w64soc")} {
 import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
 import_ip IP/clkconverter.srcs/sources_1/ip/clkconverter/clkconverter.xci
 }
