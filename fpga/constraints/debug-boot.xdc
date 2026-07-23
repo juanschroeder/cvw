@@ -148,7 +148,7 @@ set_property ALL_PROBE_SAME_MU_CNT 1 [get_debug_cores u_ila_axi]
 # endgroup
 # Test change (ChatGPT)
 set_property port_width 1 [get_debug_ports u_ila_axi/clk]
-connect_debug_port u_ila_axi/clk [get_nets u_cvwsoc_axi/BUSCLK]
+connect_debug_port u_ila_axi/clk [get_nets u_cvwsoc_axi/BUSCLK_i]
 
 
 # USB
@@ -648,8 +648,8 @@ ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_axi_vga.axi_vga_wrap_i/i_axi_vga/p
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/gen_idma.idma_i/fe_arb_i/ongoing_req_cnt_q -msb 5 -lsb 0 -order lsb2msb
 
 # DDR calibration
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/mmcm_locked
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/c0_init_calib_complete
+ila_add_probe u_ila_axi -net u_cvwsoc_ram/ddr_clk_locked
+ila_add_probe u_ila_axi -net u_cvwsoc_ram/c0_init_calib_complete
 
 ## REMOVE THIS: CPU clock domain
 # ila_add_probe u_ila_axi -bus wallypipelinedsoc/core/InstrM -msb 31 -lsb 0 -order lsb2msb

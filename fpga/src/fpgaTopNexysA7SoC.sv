@@ -216,7 +216,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   logic            app_zq_ack;
   logic            mmcm_locked;
   logic [11:0]     device_temp;
-  logic            mmcm1_locked;
+  logic            cpu_clk_locked;
   logic            rst_req, resetn_comb;
   logic [3:0]      cpu_axi_irq;
 
@@ -251,7 +251,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
             .clk_out3(cpuclk_raw),
             .clk_out4(phy_ref_clk_raw),
             .reset(1'b0),
-            .locked(mmcm1_locked),
+            .locked(cpu_clk_locked),
             .clk_in1(default_100mhz_clk));
 
   BUFG u_bufg_cpuclk (
@@ -273,7 +273,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
      .ext_reset_in(rst_req),
      .aux_reset_in(1'b0),
      .mb_debug_sys_rst(1'b0),
-     .dcm_locked(mmcm1_locked),
+     .dcm_locked(cpu_clk_locked),
      .mb_reset(mb_reset),  //open
      .bus_struct_reset(bus_struct_reset),
      .peripheral_reset(peripheral_reset), //open
@@ -304,7 +304,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   cpu_axi_req_t  bridge_axi_req;
   cpu_axi_resp_t bridge_axi_resp;
   localparam xbar_out_t XBAR_OUT = gen_xbar_out(P);
-  typedef logic [1+$clog2(XBAR_OUT.n_slv):0] ddr_axi_id_t;
+  localparam int unsigned CPU_AXI_ID_WIDTH = $bits(cpu_axi_id_t);
+  typedef logic [CPU_AXI_ID_WIDTH+$clog2(XBAR_OUT.n_slv)-1:0] ddr_axi_id_t;
   `AXI_TYPEDEF_ALL_CT(ddr_axi, ddr_axi_req_t, ddr_axi_resp_t,
                       cpu_axi_addr_t, ddr_axi_id_t, cpu_axi_data_t,
                       cpu_axi_strb_t, cpu_axi_user_t)
@@ -477,7 +478,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   assign m_axi_rvalid = bridge_axi_resp.r_valid;
 
   cvwsoc_ram #(
-    .C(C), .ddr_axi_req_t(ddr_axi_req_t), .ddr_axi_resp_t(ddr_axi_resp_t),
+    .C(C), .CPU_AXI_ID_WIDTH(CPU_AXI_ID_WIDTH),
+    .ddr_axi_req_t(ddr_axi_req_t), .ddr_axi_resp_t(ddr_axi_resp_t),
     .ddr_csr_axi_req_t(ddr_csr_axi_req_t), .ddr_csr_axi_resp_t(ddr_csr_axi_resp_t)
   ) u_cvwsoc_ram (
     .clk167_i(clk200), .clk200_i(clk200), .rst_req_i(rst_req), .resetn_comb_i(resetn_comb),
@@ -491,13 +493,13 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .ddr_cs_n(ddr2_cs_n), .ddr_dm(ddr2_dm), .ddr_odt(ddr2_odt)
   );
 
-  cvwsoc_axi #(.C(C), .cpu_axi_req_t(cpu_axi_req_t),
+  cvwsoc_axi #(.C(C), .CPU_AXI_ID_WIDTH(CPU_AXI_ID_WIDTH), .cpu_axi_req_t(cpu_axi_req_t),
                .cpu_axi_resp_t(cpu_axi_resp_t),
                .ddr_axi_req_t(ddr_axi_req_t), .ddr_axi_resp_t(ddr_axi_resp_t),
                .ddr_csr_axi_req_t(ddr_csr_axi_req_t), .ddr_csr_axi_resp_t(ddr_csr_axi_resp_t)) u_cvwsoc_axi (
     .CPUCLK_i(CPUCLK), .clk167_i(clk200), .clk200_i(clk200),
     .clk48MHz_raw_i(clk48MHz_raw), .audio_clk_i(CPUCLK),
-    .mmcm1_locked_i(mmcm1_locked), .peripheral_reset_i(peripheral_reset),
+    .cpu_clk_locked_i(cpu_clk_locked), .peripheral_reset_i(peripheral_reset),
     .peripheral_aresetn_i(peripheral_aresetn), .rst_req_i(rst_req),
     .resetn_comb_i(resetn_comb),
     .ddr_axi_req_o(ddr_axi_req), .ddr_axi_resp_i(ddr_axi_resp),

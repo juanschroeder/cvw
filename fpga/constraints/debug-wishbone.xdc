@@ -236,7 +236,7 @@ set_property ALL_PROBE_SAME_MU_CNT 1 [get_debug_cores u_ila_axi]
 set_property port_width 1 [get_debug_ports u_ila_axi/clk]
 # changed for sampling AXI STUFF!!
 #connect_debug_port u_ila_axi/clk [get_nets CPUCLK]
-connect_debug_port u_ila_axi/clk [get_nets u_cvwsoc_axi/BUSCLK]
+connect_debug_port u_ila_axi/clk [get_nets u_cvwsoc_axi/BUSCLK_i]
 
 
 # Crossbar slave side
