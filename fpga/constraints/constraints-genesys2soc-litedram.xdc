@@ -8,8 +8,8 @@
 
 
 # LiteDRAM settings.  The controller is owned by cvwsoc_ram.
-set_property IODELAY_GROUP DDR3_IO [get_cells {u_cvwsoc_ram/gen_litedram/ddr3/IDELAYCTRL}]
-set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {^u_cvwsoc_ram/gen_litedram/ddr3/(I|O)DELAYE2(_[0-9]+)?$}]
+set_property IODELAY_GROUP DDR3_IO [get_cells {u_cvwsoc_ram/gen_litedram.ddr3/IDELAYCTRL}]
+set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {^u_cvwsoc_ram/gen_litedram\.ddr3/(I|O)DELAYE2(_[0-9]+)?$}]
 ## LiteDRAM settings. Match either native 32-bit or native 64-bit core hierarchy.
 #set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {.*gen_litedram_native_axi(32)?\.ddr3/IDELAYCTRL$}]
 #set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {.*gen_litedram_native_axi(32)?\.ddr3/(I|O)DELAYE2(_[0-9]+)?$}]

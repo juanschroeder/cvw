@@ -25,7 +25,7 @@ set_property ALL_PROBE_SAME_MU_CNT 1 [get_debug_cores u_ila_usb]
 set_property port_width 1 [get_debug_ports u_ila_usb/clk]
 # changed for sampling AXI STUFF!!
 
-connect_debug_port u_ila_usb/clk [get_nets u_cvwsoc_axi/BUSCLK]
+connect_debug_port u_ila_usb/clk [get_nets u_cvwsoc_axi/BUSCLK_i]
 
 
 # ila_add_probe u_ila_usb -net u_cvwsoc_axi/usb0_dp_IBUF

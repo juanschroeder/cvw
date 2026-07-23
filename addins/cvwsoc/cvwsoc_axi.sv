@@ -29,6 +29,7 @@ import cvwsoc_pkg::*;
 
 module cvwsoc_axi #(
     parameter cvwsoc_cfg_t C,
+    parameter int unsigned CPU_AXI_ID_WIDTH = 2,
     parameter type cpu_axi_req_t  = logic,
     parameter type cpu_axi_resp_t = logic,
     parameter type ddr_axi_req_t  = logic,
@@ -42,7 +43,7 @@ module cvwsoc_axi #(
     input logic         clk200_i,
     input logic         clk48MHz_raw_i,
     input logic         audio_clk_i,
-    input logic         mmcm1_locked_i,
+    input logic         cpu_clk_locked_i,
     input logic         peripheral_reset_i,
     input logic         peripheral_aresetn_i,
     input logic         rst_req_i,
@@ -117,8 +118,10 @@ module cvwsoc_axi #(
 
   localparam int unsigned N_SLV     = XBAR_OUT.n_slv;
   localparam int unsigned N_MST     = XBAR_OUT.n_mst;
-  localparam int unsigned SLV_ID_W  = 2;
-  localparam int unsigned MST_ID_W  = SLV_ID_W + $clog2(N_SLV);
+  // The crossbar prepends the ingress-slave index to every ID on its master
+  // ports, so those ports require the CPU ID plus the slave-index bits.
+  localparam int unsigned SLV_ID_W  = CPU_AXI_ID_WIDTH;
+  localparam int unsigned MST_ID_W  = CPU_AXI_ID_WIDTH + $clog2(N_SLV);
   localparam int unsigned DDR_ID_W  = MST_ID_W;
   localparam int unsigned N_RULES   = XBAR_OUT.n_rules;
 
@@ -224,7 +227,7 @@ module cvwsoc_axi #(
   logic             clk167;
   logic             clk200;
 
-  logic             mmcm1_locked;
+  logic             cpu_clk_locked;
 
 (* mark_debug = "true" *)  logic              RVVIStall;
 
@@ -250,7 +253,7 @@ module cvwsoc_axi #(
   assign clk200 = clk200_i;
   assign audio_clk = audio_clk_i;
   assign clk48MHz_raw = clk48MHz_raw_i;
-  assign mmcm1_locked = mmcm1_locked_i;
+  assign cpu_clk_locked = cpu_clk_locked_i;
   assign rst_req = rst_req_i;
   assign resetn_comb = resetn_comb_i;
 
@@ -341,7 +344,7 @@ module cvwsoc_axi #(
   logic audio_reset;
   logic audio_resetn;
 
-  assign audio_reset = rst_req | ~mmcm1_locked;
+  assign audio_reset = rst_req | ~cpu_clk_locked;
   always_ff @(posedge audio_clk or posedge audio_reset) begin
     if (audio_reset)
       audio_resetn_ff <= 2'b00;
@@ -1331,7 +1334,7 @@ module cvwsoc_axi #(
         .bus_clk(BUSCLK),
         .bus_resetn(BUSRSTn),   // active-low reset (for adapter/shim)
         .clk200(clk200),    // 200 MHz ref clock
-        .clk200_locked(mmcm1_locked),
+        .clk200_locked(cpu_clk_locked),
 
         // ------------------------------------------------------------
         // AXI4 SLAVE interface (connect directly to crossbar)

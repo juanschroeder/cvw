@@ -29,6 +29,7 @@ import cvwsoc_pkg::*;
 
 module cvwsoc_ram #(
     parameter cvwsoc_cfg_t C,
+    parameter int unsigned CPU_AXI_ID_WIDTH = 2,
     parameter type ddr_axi_req_t = logic,
     parameter type ddr_axi_resp_t = logic,
     parameter type ddr_csr_axi_req_t = logic,
@@ -55,11 +56,12 @@ module cvwsoc_ram #(
   localparam int unsigned DATA_W = P.AHBW;
   localparam int unsigned STRB_W = DATA_W / 8;
   localparam xbar_out_t XBAR_OUT = gen_xbar_out(P);
-  localparam int unsigned MST_ID_W = 2 + $clog2(XBAR_OUT.n_slv);
+  localparam int unsigned MST_ID_W = CPU_AXI_ID_WIDTH + $clog2(XBAR_OUT.n_slv);
   localparam int unsigned DDR_ID_W = MST_ID_W;
   localparam int unsigned CB_M_DRAM_CSR = XBAR_OUT.m_dram_csr;
   logic BUSCLK, BUSRST, BUSRSTn, BUSCORERST, BUSCORERSTn;
-  logic init_error, ddr_ready, c0_init_calib_complete, ui_clk_sync_rst, mmcm_locked;
+  (* mark_debug = "true" *) logic c0_init_calib_complete, ddr_clk_locked, init_error;
+  logic ddr_ready, ui_clk_sync_rst;
   logic app_sr_active, app_ref_ack, app_zq_ack;
   logic [11:0] device_temp;
   logic clk167, clk200, rst_req, resetn_comb;
@@ -127,7 +129,7 @@ module cvwsoc_ram #(
   end
   assign ddr_ready = ddr_ready_bus_sync[1];
 
-  assign BUSCORERST  = ~mmcm_locked;    // deassert once BUSCLK is stable; ui_clk_sync_rst stays high through calibration
+  assign BUSCORERST  = ~ddr_clk_locked; // deassert once BUSCLK is stable; ui_clk_sync_rst stays high through calibration
   assign BUSCORERSTn = ~BUSCORERST;
 
   assign BUSRST       = ui_clk_sync_rst | ~ddr_ready;
@@ -171,7 +173,7 @@ module cvwsoc_ram #(
       .aresetn(resetn_comb),
       //.sys_rst(resetn),    // omg. this is active low?!?!??
       .sys_rst(resetn_comb),    // omg. this is active low?!?!??
-      .mmcm_locked(mmcm_locked),
+      .mmcm_locked(ddr_clk_locked),
 
       .app_sr_req(1'b0),  // reserved command
       .app_ref_req(1'b0), // refresh command
@@ -247,7 +249,7 @@ module cvwsoc_ram #(
       // The Nexys DDR2 MIG is generated with active-low SysResetPolarity.
       .aresetn(resetn_comb),
       .sys_rst(resetn_comb),
-      .mmcm_locked(mmcm_locked),
+      .mmcm_locked(ddr_clk_locked),
 
       .app_sr_req(1'b0),
       .app_ref_req(1'b0),
@@ -486,7 +488,7 @@ module cvwsoc_ram #(
 
         .init_done(c0_init_calib_complete),
         .init_error(init_error),
-        .pll_locked(mmcm_locked),
+        .pll_locked(ddr_clk_locked),
         .user_clk (BUSCLK),
         .user_rst (ui_clk_sync_rst),
 
@@ -548,7 +550,7 @@ module cvwsoc_ram #(
 
         .init_done(c0_init_calib_complete),
         .init_error(init_error),
-        .pll_locked(mmcm_locked),
+        .pll_locked(ddr_clk_locked),
         .user_clk (BUSCLK),
         .user_rst (ui_clk_sync_rst),
 
@@ -786,7 +788,7 @@ module cvwsoc_ram #(
 
         .init_done(c0_init_calib_complete),
         .init_error(init_error),
-        .pll_locked(mmcm_locked),
+        .pll_locked(ddr_clk_locked),
         .user_clk (BUSCLK),
         .user_rst (ui_clk_sync_rst),
 
@@ -846,7 +848,7 @@ module cvwsoc_ram #(
 
         .init_done(c0_init_calib_complete),
         .init_error(init_error),
-        .pll_locked(mmcm_locked),
+        .pll_locked(ddr_clk_locked),
         .user_clk(BUSCLK),
         .user_rst(ui_clk_sync_rst),
 
@@ -914,7 +916,7 @@ module cvwsoc_ram #(
         .o_ref_clk_200(dummy_clk200),    // buffered 200 MHz reference clock
         .o_ui_clk_sync_rst(ui_clk_sync_rst),// active-high reset synchronous to o_ui_clk
         .o_ui_aresetn(dummy_rstn),     // active-low version of the same reset
-        .o_pll_locked(mmcm_locked),
+        .o_pll_locked(ddr_clk_locked),
         .o_init_calib_complete(c0_init_calib_complete),
 
         // AXI slave interface (SoC side, kept MIG/LiteDRAM-like)
