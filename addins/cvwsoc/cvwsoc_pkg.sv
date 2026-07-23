@@ -32,7 +32,7 @@ package cvwsoc_pkg;
     cvwsoc_idma_config_t    idma_config;
     cvwsoc_vga_config_t     vga_config;
     cvwsoc_sdhci_config_t   sdhci_config;
-  } cvwsoc_t;
+  } cvwsoc_cfg_t;
 
   localparam int unsigned XBAR_MAX_SLV = 7;
   localparam int unsigned XBAR_MAX_MST = 11;

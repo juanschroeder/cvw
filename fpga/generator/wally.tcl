@@ -44,6 +44,7 @@ if {$board=="ArtyA7"} {
 
 if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
     add_files  ../../addins/cvwsoc/cvwsoc_axi.sv
+    add_files  ../../addins/cvwsoc/cvwsoc_ram.sv
 }
 
 # read in ip

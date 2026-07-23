@@ -145,7 +145,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     return CVWSOC_MEM_XILINX_DDR3;
   endfunction
 
-  localparam cvwsoc_t C = '{
+  localparam cvwsoc_cfg_t C = '{
     wally:    P,
     mem_type: cvwsoc_mem_type_from_wally(P),
     idma_config: '{
@@ -184,6 +184,20 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   `AXI_TYPEDEF_ALL_CT(cpu_axi, cpu_axi_req_t, cpu_axi_resp_t,
                       cpu_axi_addr_t, cpu_axi_id_t, cpu_axi_data_t,
                       cpu_axi_strb_t, cpu_axi_user_t)
+
+  localparam xbar_out_t XBAR_OUT = gen_xbar_out(P);
+  typedef logic [1+$clog2(XBAR_OUT.n_slv):0] ddr_axi_id_t;
+  `AXI_TYPEDEF_ALL_CT(ddr_axi, ddr_axi_req_t, ddr_axi_resp_t,
+                      cpu_axi_addr_t, ddr_axi_id_t, cpu_axi_data_t,
+                      cpu_axi_strb_t, cpu_axi_user_t)
+  `AXI_TYPEDEF_ALL_CT(ddr_csr_axi, ddr_csr_axi_req_t, ddr_csr_axi_resp_t,
+                      cpu_axi_addr_t, ddr_axi_id_t, cpu_axi_data_t,
+                      cpu_axi_strb_t, cpu_axi_user_t)
+  ddr_axi_req_t ddr_axi_req;
+  ddr_axi_resp_t ddr_axi_resp;
+  ddr_csr_axi_req_t ddr_csr_axi_req;
+  ddr_csr_axi_resp_t ddr_csr_axi_resp;
+  logic ddr_busclk, ddr_buscorerstn, ddr_busrstn;
 
   logic CPUCLK;
   logic bus_struct_reset;
@@ -485,10 +499,27 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     );
   end;
 
+  cvwsoc_ram #(
+    .C(C), .ddr_axi_req_t(ddr_axi_req_t), .ddr_axi_resp_t(ddr_axi_resp_t),
+    .ddr_csr_axi_req_t(ddr_csr_axi_req_t), .ddr_csr_axi_resp_t(ddr_csr_axi_resp_t)
+  ) u_cvwsoc_ram (
+    .clk167_i(clk167), .clk200_i(clk200), .rst_req_i(rst_req), .resetn_comb_i(resetn_comb),
+    .BUSCLK_o(ddr_busclk), .BUSCORERSTn_o(ddr_buscorerstn), .BUSRSTn_o(ddr_busrstn),
+    .ddr_axi_req_i(ddr_axi_req), .ddr_axi_resp_o(ddr_axi_resp),
+    .ddr_csr_axi_req_i(ddr_csr_axi_req), .ddr_csr_axi_resp_o(ddr_csr_axi_resp),
+    .ddr_dq(ddr3_dq), .ddr_dqs_n(ddr3_dqs_n), .ddr_dqs_p(ddr3_dqs_p),
+    .ddr_addr(ddr3_addr), .ddr_ba(ddr3_ba), .ddr_ras_n(ddr3_ras_n),
+    .ddr_cas_n(ddr3_cas_n), .ddr_we_n(ddr3_we_n), .ddr_reset_n(ddr3_reset_n),
+    .ddr_ck_p(ddr3_ck_p), .ddr_ck_n(ddr3_ck_n), .ddr_cke(ddr3_cke),
+    .ddr_cs_n(ddr3_cs_n), .ddr_dm(ddr3_dm), .ddr_odt(ddr3_odt)
+  );
+
   cvwsoc_axi #(
     .C(C),
     .cpu_axi_req_t(cpu_axi_req_t),
-    .cpu_axi_resp_t(cpu_axi_resp_t)
+    .cpu_axi_resp_t(cpu_axi_resp_t),
+    .ddr_axi_req_t(ddr_axi_req_t), .ddr_axi_resp_t(ddr_axi_resp_t),
+    .ddr_csr_axi_req_t(ddr_csr_axi_req_t), .ddr_csr_axi_resp_t(ddr_csr_axi_resp_t)
   ) u_cvwsoc_axi (
     .CPUCLK_i(CPUCLK),
     .clk167_i(clk167),
@@ -501,21 +532,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .rst_req_i(rst_req),
     .resetn_comb_i(resetn_comb),
 
-    .ddr_dq(ddr3_dq),
-    .ddr_dqs_n(ddr3_dqs_n),
-    .ddr_dqs_p(ddr3_dqs_p),
-    .ddr_addr(ddr3_addr),
-    .ddr_ba(ddr3_ba),
-    .ddr_ras_n(ddr3_ras_n),
-    .ddr_cas_n(ddr3_cas_n),
-    .ddr_we_n(ddr3_we_n),
-    .ddr_reset_n(ddr3_reset_n),
-    .ddr_ck_p(ddr3_ck_p),
-    .ddr_ck_n(ddr3_ck_n),
-    .ddr_cke(ddr3_cke),
-    .ddr_cs_n(ddr3_cs_n),
-    .ddr_dm(ddr3_dm),
-    .ddr_odt(ddr3_odt),
+    .ddr_axi_req_o(ddr_axi_req), .ddr_axi_resp_i(ddr_axi_resp),
+    .ddr_csr_axi_req_o(ddr_csr_axi_req), .ddr_csr_axi_resp_i(ddr_csr_axi_resp),
+    .BUSCLK_i(ddr_busclk), .BUSCORERSTn_i(ddr_buscorerstn), .BUSRSTn_i(ddr_busrstn),
 
     .rgmii_clocks_rx,
     .rgmii_clocks_tx,

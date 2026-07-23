@@ -100,8 +100,8 @@
 #                                           pll_locked
 #                                           main_user_enable
 ila_add_probe u_ila_axi -net u_cvwsoc_axi/init_error
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/user_rst
-ila_add_probe u_ila_axi -net u_cvwsoc_axi/ddr3/main_user_enable
+ila_add_probe u_ila_axi -net u_cvwsoc_ram/gen_litedram/ddr3/user_rst
+ila_add_probe u_ila_axi -net u_cvwsoc_ram/gen_litedram/ddr3/main_user_enable
 # ################################
 # # UpConverter FSM & internals
 # ila_add_probe u_ila_axi -bus u_cvwsoc_axi/ddr3/builder_litedramcore_state -msb 1 -lsb 0 -order lsb2msb
