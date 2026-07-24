@@ -297,6 +297,12 @@ set_property PACKAGE_PIN AG5 [get_ports ddr3_reset_n]
 set_property PACKAGE_PIN AG13 [get_ports ddr3_we_n]
 
 
+# Genesys 2 DDR3 bank reference voltage.  This is a board-level electrical
+# requirement, independent of whether the DDR controller is LiteDRAM, MIG, or
+# UberDDR3.
+set_property INTERNAL_VREF 0.750 [get_iobanks 34]
+
+
 #####################################33
 # WISHBONE peripherals
 #####################################
