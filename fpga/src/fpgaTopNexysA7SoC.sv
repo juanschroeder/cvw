@@ -296,7 +296,12 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
       idma_config: '{
                     AxisDescReqCut: 1'b1
                     },
-      vga_config:  1'b1, // CutSplitterPath
+      vga_config:  '{
+                    CutSplitterPath: 1'b1,
+                    BufferDepth: 16,
+                    MaxReadTxns: 4
+                    },
+
       sdhci_config: '{
                     InsertRegClkBuf: 1'b1
                     }

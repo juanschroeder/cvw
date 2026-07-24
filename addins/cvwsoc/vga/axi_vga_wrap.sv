@@ -19,6 +19,8 @@ module axi_vga_wrap #(
   parameter int unsigned AXI_M_ID_W = AXI_ID_W,
   parameter int unsigned AXI_USER_W = 1,
   parameter bit CutSplitterPath     = 1'b0,
+  parameter int unsigned BufferDepth = 32,
+  parameter int unsigned MaxReadTxns = 4,
   parameter type s_axi_req_t  = logic,
   parameter type s_axi_resp_t = logic,
   parameter type m_axi_req_t  = logic,
@@ -192,10 +194,9 @@ module axi_vga_wrap #(
     .axi_r_chan_t ( r_chan_t   ),
     .reg_req_t    ( reg_req_t  ),
     .reg_resp_t   ( reg_resp_t ),
-    // Default: 16 and 24
-    // Using BufferDepth=4 and MaxReadTxns=4 was tested at least once be good for timing requirements and not have black stripes
-    .BufferDepth  ( 32 ), // with 16 framebuffer scan was often affected by AXI stream bursts
-    .MaxReadTxns  ( 4 )
+    // These parameters affect timing and resources usage
+    .BufferDepth  ( BufferDepth ),
+    .MaxReadTxns  ( MaxReadTxns )
   ) i_axi_vga (
     .clk_i         ( aclk     ),
     .rst_ni        ( aresetn  ),
