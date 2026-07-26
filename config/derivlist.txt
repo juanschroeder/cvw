@@ -327,8 +327,8 @@ AXIS_IDMA_SUPPORTED         1
 AXIS_IDMA_BASE              64'h10082000
 AXIS_IDMA_RANGE             64'h00000FFF
 AXIS_I2S_SUPPORTED          1
-UBERDDR3_SUPPORTED          0
-LITEDRAM_SUPPORTED          1
+UBERDDR3_SUPPORTED          1
+LITEDRAM_SUPPORTED          0
 
 
 # temporary spitest configuration

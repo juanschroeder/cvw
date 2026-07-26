@@ -279,9 +279,9 @@ if {$board=="ArtyA7"} {
 }
 
 # WIP: bridge debugging
-#if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socdebug"} {
+# if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socdebug"} {
 #        source ../constraints/debug-ahb-axi-bridge.xdc
-#}
+# }
 
 # by default no space for probes in Nexys A7
 if {$board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc"} {

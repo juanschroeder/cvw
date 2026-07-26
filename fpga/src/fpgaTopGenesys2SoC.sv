@@ -433,7 +433,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
         .m_axi_rready(m_axi_rready));
   end else begin
 
-    ahb_to_axi4_burst #(.AW(32), .DW(P.AHBW), .IW(4))
+    ahb_to_axi4_burst #(.AW(32), .DW(P.AHBW), .IW(4),
+                        .MAX_INCR_BEATS(8),
+                        // matching cache line size in beats
+                        .STREAM_WR_BUF_BEATS(8)
+                        )
     ahbaxibridge
     (
         .clk(CPUCLK),
