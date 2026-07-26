@@ -823,6 +823,8 @@ module cvwsoc_axi #(
         .AXI_M_ID_W ( SLV_ID_W ),
         .AXI_USER_W ( 1        ),
         .CutSplitterPath(C.vga_config.CutSplitterPath),
+        .BufferDepth(C.vga_config.BufferDepth),
+        .MaxReadTxns(C.vga_config.MaxReadTxns),
         .s_axi_req_t  ( mst_req_t  ),
         .s_axi_resp_t ( mst_resp_t ),
         .m_axi_req_t  ( slv_req_t  ),

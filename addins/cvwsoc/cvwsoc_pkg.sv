@@ -20,6 +20,8 @@ package cvwsoc_pkg;
 
   typedef struct packed {
     bit             CutSplitterPath; // Cut VGA Splitter critical path
+    int unsigned    BufferDepth;
+    int unsigned    MaxReadTxns;
   } cvwsoc_vga_config_t;
 
   typedef struct packed {

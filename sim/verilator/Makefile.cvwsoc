@@ -250,9 +250,8 @@ UART_SHELL_TAGS ?= 0
 CONFIG_VH ?= $(WALLY)/config/deriv/$(CONFIG)/config.vh
 TESTBENCH ?= testbench_cvwsoc
 TESTBENCH_MODULENAME ?= testbench_cvwsoc
-BRIDGE_RTL_NEW := $(WALLY)/addins/ahb-axi-bridge/rtl/ahb_to_axi4_burst.sv
-BRIDGE_RTL_OLD := $(WALLY)/addins/ahb-to-axi/rtl/ahb_to_axi4_burst.sv
-BRIDGE_RTL ?= $(if $(wildcard $(BRIDGE_RTL_NEW)),$(BRIDGE_RTL_NEW),$(BRIDGE_RTL_OLD))
+BRIDGE_RTL := $(WALLY)/addins/ahb-to-axi/rtl/ahb_to_axi4_burst.sv
+BRIDGE_PERF_RTL := $(WALLY)/addins/ahb-to-axi/rtl/axi_perf_monitor.sv
 WRAPPER ?= $(WALLY)/sim/verilator/wrapper_cvwsoc.cpp
 WORKDIR := $(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc$(if $(TRACE_ENABLED),_trace,)$(if $(CVWSOC_SIM_I2S),_i2s,)
 RUNCMD_FILE ?= $(VERILATOR_DIR)/logs/testbench_cvwsoc_runcmd.txt
@@ -429,6 +428,7 @@ SOURCES := \
 	$(WALLY)/testbench/$(TESTBENCH).sv \
 	$(CORE_SOURCES) \
 	$(BRIDGE_RTL) \
+	$(BRIDGE_PERF_RTL) \
 	$(VERILOG_AXI_SOURCES) \
 	$(PULP_REGISTER_INTERFACE_SOURCES) \
 	$(IDMA_SOURCES) \

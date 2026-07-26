@@ -207,19 +207,16 @@ IP_NEXYSA7: $(dst)/sysrst.log \
 	$(dst)/clkconverter.log \
 	$(dst)/ahbaxibridge.log
 
+# Removed: 	MEM_NEXYSA7
 IP_NEXYSA7SOC: $(dst)/sysrst.log \
-	MEM_NEXYSA7 \
 	$(dst)/mmcm-nexysa7.log
-
 
 IP_NEXYSA7RV32W64SOC: $(dst)/sysrst.log \
 	MEM_NEXYSA7RV32W64SOC \
 	$(dst)/mmcm-nexysa7.log
 
-#	$(dst)/ahbaxibridge.log
-
+# Removed: MEM_GENESYS2
 IP_GENESYS2SOC: $(dst)/sysrst.log \
-	MEM_GENESYS2 \
 	$(dst)/mmcm-genesys2soc.log
 
 IP_GENESYS2SOCXLNX: $(dst)/sysrst.log \

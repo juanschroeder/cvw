@@ -300,7 +300,7 @@ module cvwsoc_ram #(
     );
   //-------------------------------------------------------------------------------------
 
-  end else if (C.mem_type == CVWSOC_MEM_LITEDRAM_NEXYSA7) begin : gen_litedram_a7
+  end else if (C.mem_type == CVWSOC_MEM_LITEDRAM_NEXYSA7) begin : gen_litedram
     logic litedram_axi_awready, litedram_axi_wready, litedram_axi_arready;
     logic litedram_axi_bvalid, litedram_axi_rvalid, litedram_axi_rlast;
     logic [1:0] litedram_axi_bresp, litedram_axi_rresp;
@@ -476,7 +476,7 @@ module cvwsoc_ram #(
 
     if (DATA_W == 64) begin
 
-      litedram_nexysa7_w64 ddr2(
+      litedram_nexysa7_w64 ddr(
         .clk      (clk200),          // external 200 MHz board clock
         .rst(rst_req),
 
@@ -538,7 +538,7 @@ module cvwsoc_ram #(
       );
 
     end else begin
-      litedram_nexysa7_w32 ddr2(
+      litedram_nexysa7_w32 ddr(
         .clk      (clk200),          // external 200 MHz board clock
         .rst(rst_req),
 
@@ -776,7 +776,7 @@ module cvwsoc_ram #(
         );
 
     if (DATA_W == 64) begin
-        litedram_genesys2 ddr3(
+        litedram_genesys2 ddr(
         .clk      (clk200),          // external 200 MHz board clock
         .rst(rst_req),
 
@@ -836,7 +836,7 @@ module cvwsoc_ram #(
 
       );
     end else begin
-      litedram_genesys2w32 ddr3(
+      litedram_genesys2w32 ddr(
         .clk      (clk200),
         .rst      (rst_req),
 

@@ -148,13 +148,17 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   localparam cvwsoc_cfg_t C = '{
     wally:    P,
     mem_type: cvwsoc_mem_type_from_wally(P),
-    idma_config: '{
-                    AxisDescReqCut: 1'b0
-                },
-    vga_config:  1'b0,
-    sdhci_config: '{
-                    InsertRegClkBuf: 1'b0
-                }
+    idma_config:    '{
+                        AxisDescReqCut: 1'b0
+                    },
+    vga_config:     '{
+                        CutSplitterPath: 1'b0,
+                        BufferDepth: 32,
+                        MaxReadTxns: 4
+                    },
+    sdhci_config:   '{
+                        InsertRegClkBuf: 1'b0
+                    }
   };
 
   // These types describe only the AXI port between this board top level and
@@ -429,7 +433,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
         .m_axi_rready(m_axi_rready));
   end else begin
 
-    ahb_to_axi4_burst #(.AW(32), .DW(P.AHBW), .IW(4))
+    ahb_to_axi4_burst #(.AW(32), .DW(P.AHBW), .IW(4),
+                        .MAX_INCR_BEATS(8),
+                        // matching cache line size in beats
+                        .STREAM_WR_BUF_BEATS(8)
+                        )
     ahbaxibridge
     (
         .clk(CPUCLK),

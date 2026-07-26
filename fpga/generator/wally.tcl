@@ -131,24 +131,11 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
     puts "DEBUG litedram_supported=($litedram_supported)"
 
     if {$litedram_supported=="1"} {
-        if { $board=="genesys2rv32soc"  || $board=="genesys2rv32w64soc"} {
-            add_files -fileset constrs_1 -norecurse ../constraints/constraints-genesys2soc-litedram.xdc
-            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-genesys2soc-litedram.xdc]
-        } elseif { $board=="nexysa7rv32w64soc" } {
-            add_files -fileset constrs_1 -norecurse ../constraints/constraints-nexysa7soc-litedram.xdc
-            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-nexysa7soc-litedram.xdc]
-        } else {
-            add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-litedram.xdc
-            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-litedram.xdc]
-        }
+        add_files -fileset constrs_1 -norecurse ../constraints/constraints-cvwsoc-litedram.xdc
+        set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-cvwsoc-litedram.xdc]
     } elseif {$uberddr3_supported=="1"} {
-        if { $board=="genesys2rv32soc"  || $board=="genesys2rv32w64soc"} {
-            add_files -fileset constrs_1 -norecurse ../constraints/constraints-genesys2soc-uberddr3.xdc
-            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-genesys2soc-uberddr3.xdc]
-        } else {
-            add_files -fileset constrs_1 -norecurse ../constraints/constraints-$board-uberddr3.xdc
-            set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$board-uberddr3.xdc]
-        }
+        add_files -fileset constrs_1 -norecurse ../constraints/constraints-cvwsoc-uberddr3.xdc
+        set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-cvwsoc-uberddr3.xdc]
     } else {
         if { $board=="genesys2rv32soc"  || $board=="genesys2rv32w64soc"} {
             add_files -fileset constrs_1 -norecurse ../constraints/constraints-genesys2soc-mig.xdc
@@ -292,9 +279,9 @@ if {$board=="ArtyA7"} {
 }
 
 # WIP: bridge debugging
-#if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socdebug"} {
+# if {$board=="nexysa7soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socdebug"} {
 #        source ../constraints/debug-ahb-axi-bridge.xdc
-#}
+# }
 
 # by default no space for probes in Nexys A7
 if {$board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc"} {

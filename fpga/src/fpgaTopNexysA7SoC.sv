@@ -296,7 +296,12 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
       idma_config: '{
                     AxisDescReqCut: 1'b1
                     },
-      vga_config:  1'b1, // CutSplitterPath
+      vga_config:  '{
+                    CutSplitterPath: 1'b1,
+                    BufferDepth: 16,
+                    MaxReadTxns: 4
+                    },
+
       sdhci_config: '{
                     InsertRegClkBuf: 1'b1
                     }
@@ -400,7 +405,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
      .m_axi_rlast(m_axi_rlast),
      .m_axi_rready(m_axi_rready));
   end else begin
-    ahb_to_axi4_burst #(.AW(32), .DW(P.AHBW), .IW(4)) ahbaxibridge (
+    ahb_to_axi4_burst #(.AW(32), .DW(P.AHBW), .IW(4),
+                        // matching cache line size in beats
+                        .STREAM_WR_BUF_BEATS(8))
+
+    ahbaxibridge (
       .clk(CPUCLK), .resetn(peripheral_aresetn),
 
       .HSEL(HSELEXT), .HADDR(HADDR[31:0]), .HPROT(HPROT),
