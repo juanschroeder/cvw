@@ -34,7 +34,11 @@ module hifive_cvw_cosim;
     wally: P_COSIM,
     mem_type: CVWSOC_MEM_XILINX_DDR2, // semantic only; cvwsoc_ram is absent
     idma_config: '{AxisDescReqCut: 1'b1},
-    vga_config:  '{CutSplitterPath: 1'b1},
+    vga_config:     '{
+                        CutSplitterPath: 1'b0,
+                        BufferDepth: 4,
+                        MaxReadTxns: 4
+                    },
     sdhci_config:'{InsertRegClkBuf: 1'b0}
   };
 
