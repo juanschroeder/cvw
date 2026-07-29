@@ -25,6 +25,7 @@ __pycache__/
 /**/obj_dir*
 /**/gmon*
 sim/verilator/preload/
+cosim/build
 
 # Tests
 tests/riscof/config32.ini

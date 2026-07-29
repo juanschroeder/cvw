@@ -1,0 +1,246 @@
+# Run from the CVW project root:
+#   make -f cosim/Makefile.hifive-cvw build \
+#       RENODE_ROOT=/path/to/renode CONFIG=fpgagenesys2rv32w64soc THREADS=2
+#   make -f cosim/Makefile.hifive-cvw cosim-clean CONFIG=fpgagenesys2rv32w64soc
+
+THIS_MAKEFILE := $(abspath $(lastword $(MAKEFILE_LIST)))
+COSIM_DIR := $(patsubst %/,%,$(dir $(THIS_MAKEFILE)))
+WALLY ?= $(abspath $(COSIM_DIR)/..)
+BASE_CVWSOC_MAKEFILE ?= $(WALLY)/sim/verilator/Makefile.cvwsoc
+.DEFAULT_GOAL := build
+CONFIG ?= fpgagenesys2rv32w64soc
+
+# Temporary reuse of the project's curated dependency/source variables.
+# Long-term, these definitions should move to a common *.mk included by both
+# Makefile.cvwsoc and this cosim Makefile.
+include $(BASE_CVWSOC_MAKEFILE)
+
+
+RENODE_LIB_DIR_CANDIDATES := \
+  $(RENODE_ROOT)/src/Plugins/CoSimulationPlugin/IntegrationLibrary \
+  $(RENODE_ROOT)/plugins/IntegrationLibrary
+RENODE_LIB_DIR ?= $(firstword $(wildcard $(RENODE_LIB_DIR_CANDIDATES)))
+ifeq ($(RENODE_LIB_DIR),)
+$(error Cannot find Renode IntegrationLibrary; set RENODE_ROOT or RENODE_LIB_DIR)
+endif
+
+
+COSIM_BUILD_DIR ?= $(COSIM_DIR)/build/$(CONFIG)_hifive_cvw_cosim
+COSIM_TOP := hifive_cvw_cosim
+COSIM_CPP := $(COSIM_DIR)/sim_main.cpp
+COSIM_WRAPPER := $(COSIM_DIR)/hifive_cvw_cosim.sv
+COSIM_RESC ?= $(COSIM_DIR)/renode/hifive-cvw-freedom-u540.resc
+
+
+# SD card image for SD card model
+COSIM_SD_IMAGE_FOLDER ?= $(WALLY)/addins/cvwsoc/sdhci/image
+COSIM_SD_IMAGENAME ?= imagesd
+COSIM_SD_IMAGE_GZ ?= $(COSIM_SD_IMAGE_FOLDER)/$(COSIM_SD_IMAGENAME).bin.gz
+COSIM_SD_IMAGE ?= $(COSIM_BUILD_DIR)/imagesd.bin
+COSIM_EXECUTABLE := $(COSIM_BUILD_DIR)/V$(COSIM_TOP)
+COSIM_VERILATOR_MK := $(COSIM_BUILD_DIR)/V$(COSIM_TOP).mk
+COSIM_CONTEXT := +RENODE_RECEIVER_PORT={0} +RENODE_SENDER_PORT={1} +RENODE_ADDRESS={2} +SD_IMAGE=$(COSIM_SD_IMAGE)
+
+# Boot binaries
+COSIM_IMAGE_DEPLOY_ROOT ?= /yocto/fpga/kas-cvwsoc/build/tmp/deploy/images
+COSIM_MACHINE ?= cvwsoc-renode-u540
+COSIM_IMAGE_NAME ?= minimal-initramfs
+COSIM_IMAGE_DEPLOY_DIR ?= $(COSIM_IMAGE_DEPLOY_ROOT)/$(COSIM_MACHINE)
+COSIM_OPENSBI_FW_PAYLOAD ?= $(COSIM_IMAGE_DEPLOY_DIR)/fw_payload.elf
+COSIM_VMLINUX ?= $(COSIM_IMAGE_DEPLOY_DIR)/vmlinux
+COSIM_FDT ?= $(COSIM_DIR)/build/hifive-cvw-freedom-u540.dtb
+
+# Use the patched/copied FPGA source for now
+#CVWSOC_AXI_SRC ?= $(WALLY)/fpga/src/CopiedFiles_do_not_add_to_repo/cvwsoc/cvwsoc_axi.sv
+CVWSOC_AXI_SRC ?= $(WALLY)/addins/cvwsoc/cvwsoc_axi.sv
+ifeq ($(wildcard $(CVWSOC_AXI_SRC)),)
+$(error Cannot find $(CVWSOC_AXI_SRC); set CVWSOC_AXI_SRC explicitly)
+endif
+
+RENODE_SV_SRCS := \
+  $(RENODE_LIB_DIR)/hdl/imports/renode_axi_pkg.sv \
+  $(RENODE_LIB_DIR)/hdl/renode_pkg.sv \
+  $(RENODE_LIB_DIR)/hdl/modules/renode_inputs.sv \
+  $(RENODE_LIB_DIR)/hdl/modules/renode.sv \
+  $(RENODE_LIB_DIR)/hdl/modules/axi/renode_axi_if.sv \
+  $(RENODE_LIB_DIR)/hdl/modules/axi/renode_axi_manager.sv \
+  $(RENODE_LIB_DIR)/hdl/modules/axi/renode_axi_subordinate.sv
+
+RENODE_CPP_SRCS := \
+  $(RENODE_LIB_DIR)/src/renode_dpi.cpp \
+  $(RENODE_LIB_DIR)/src/communication/socket_channel.cpp \
+  $(RENODE_LIB_DIR)/libs/socket-cpp/Socket/TCPClient.cpp \
+  $(RENODE_LIB_DIR)/libs/socket-cpp/Socket/Socket.cpp
+
+
+# I2S sources that are not covered by the base Verilator source list.
+# Use firstword so that duplicate copied/submodule versions are not compiled.
+find_copied_source = $(firstword $(shell \
+  find $(COPIED_ROOT) -type f -name '$(1)' -print 2>/dev/null))
+
+AXIS_ADAPTER_SRC := \
+  $(call find_copied_source,axis_adapter.v)
+
+AXIS_ASYNC_FIFO_SRC := \
+  $(call find_copied_source,axis_async_fifo.v)
+
+AXIS_ASYNC_FIFO_ADAPTER_SRC := \
+  $(call find_copied_source,axis_async_fifo_adapter.v)
+
+AXIS_I2S2_SRC := \
+  $(call find_copied_source,axis_i2s2.v)
+
+ETH_SOURCES := \
+    $(WALLY)/addins/cvwsoc/liteeth/*.v \
+    $(WALLY)/addins/cvwsoc/liteeth/*.sv
+
+USB_SOURCES := \
+    $(WALLY)/addins/cvwsoc/usb/*.v \
+    $(WALLY)/addins/cvwsoc/usb/*.sv
+
+OTHER_CVWSOC_SOURCES := \
+    $(WALLY)/addins/cvwsoc/axi_to_axil_adapter_split.sv
+
+
+VERILOG_AXI_SOURCES += \
+    $(WALLY)/addins/verilog-axi/rtl/axi_axil_adapter.v \
+    $(WALLY)/addins/verilog-axi/rtl/axi_axil_adapter_rd.v \
+    $(WALLY)/addins/verilog-axi/rtl/axi_axil_adapter_wr.v
+
+XILINX_SIM_PRIMITIVES := $(COSIM_DIR)/xilinx_primitives_sim.sv
+
+
+I2S_COSIM_SOURCES := \
+  $(AXIS_ADAPTER_SRC) \
+  $(AXIS_ASYNC_FIFO_SRC) \
+  $(AXIS_ASYNC_FIFO_ADAPTER_SRC) \
+  $(AXIS_I2S2_SRC)
+
+
+# The wrapper instantiates the SD card only for configurations that expose
+# SDHCI, so include its simulation model only for those configurations too.
+COSIM_SDHCI_ENABLED := $(shell sed -n 's/^[[:space:]]*localparam[[:space:]].*AXI_SDHCI_SUPPORTED[[:space:]]*=[[:space:]]*1.*/1/p' $(CONFIG_VH))
+COSIM_SDHCI_SOURCES := $(if $(COSIM_SDHCI_ENABLED),$(SDHCI_PERIPH_SOURCES))
+COSIM_SD_IMAGE_DEPS := $(if $(COSIM_SDHCI_ENABLED),$(COSIM_SD_IMAGE))
+
+COSIM_RTL_SRCS := \
+  $(COMMON_CELLS_SOURCES) \
+  $(AXI_SOURCES) \
+  $(COPIED_ROOT)/cvw.sv \
+  $(COPIED_ROOT)/cvwsoc/cvwsoc_pkg.sv \
+  $(CORE_SOURCES) \
+  $(PULP_REGISTER_INTERFACE_SOURCES) \
+  $(VERILOG_AXI_SOURCES) \
+  $(IDMA_SOURCES) \
+  $(COSIM_SDHCI_SOURCES) \
+  $(I2S_COSIM_SOURCES) \
+  $(XILINX_SIM_PRIMITIVES) \
+  $(ETH_SOURCES) \
+  $(USB_SOURCES) \
+  $(CVWSOC_AXI_SRC) \
+  $(OTHER_CVWSOC_SOURCES) \
+  $(COSIM_WRAPPER)
+
+COSIM_INCLUDES := \
+  $(INCLUDE_PATH) \
+  -I$(RENODE_LIB_DIR) \
+  -I$(RENODE_LIB_DIR)/hdl \
+  -I$(RENODE_LIB_DIR)/hdl/includes \
+  -I$(RENODE_LIB_DIR)/src
+
+# Extra not in base Verilation
+VGA_DIR := $(COPIED_ROOT)/cvwsoc/vga
+PULP_VGA_DIR := $(COPIED_ROOT)/pulp/axi-vga
+
+VGA_PACKAGE_SOURCES := \
+	$(VGA_DIR)/vga_regbus_pkg.sv \
+	$(PULP_VGA_DIR)/src/axi_vga_reg_pkg.sv
+
+VGA_OTHER_SOURCES := \
+	$(filter-out $(VGA_PACKAGE_SOURCES),$(wildcard $(VGA_DIR)/*.sv)) \
+	$(wildcard $(COPIED_ROOT)/pulp/axi-vga/src/*.sv)
+
+
+COSIM_RTL_SRCS += $(VGA_PACKAGE_SOURCES) $(VGA_OTHER_SOURCES)
+
+
+TRACE ?= 0
+TRACE_DEPTH ?= 6
+COSIM_TRACE_ARGS := $(if $(filter-out 0,$(TRACE)),--trace-fst --trace-depth $(TRACE_DEPTH),)
+COSIM_WARN_ARGS := -Wno-fatal -Wno-TIMESCALEMOD -Wno-WIDTH -Wno-UNOPTFLAT \
+                   -Wno-DECLFILENAME -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM
+
+# Needed for verilog-axi axi_axil_adapter_wr.v (Error-ZEROREPL)
+COSIM_WARN_ARGS += -Wno-ZEROREPL
+
+COSIM_DEPS := $(CONFIG_VH) $(IDMA_GENERATED_SOURCES) $(RENODE_SV_SRCS) \
+              $(RENODE_CPP_SRCS) $(COSIM_RTL_SRCS) $(COSIM_CPP)  $(COSIM_FDT)
+
+.PHONY: build cosim cosim-fast sd-image cosim-clean print-config
+build: $(COSIM_EXECUTABLE)
+
+# Match Makefile.cvwsoc's sim-fast behavior: recurse through GNU Make so its
+# jobserver is available to Verilator's generated C++ makefile.
+cosim-fast:
+	$(MAKE) -f $(THIS_MAKEFILE) cosim -j$$(nproc)
+
+# LOTS OF ISSUES when passing variables in renode, just pass the FULL PATH as a parameter
+# The supported co-simulation entry point.  Pass whole monitor-variable
+# values to Renode; monitor variables are not interpolated within strings.
+cosim: build sd-image
+	$(RENODE_ROOT)/renode \
+	  -e '$$cosimExecPath="$(COSIM_EXECUTABLE)"' \
+	  -e '$$cosimContext="$(COSIM_CONTEXT)"' \
+	  -e '$$fw_payload="$(COSIM_OPENSBI_FW_PAYLOAD)"' \
+	  -e '$$vmlinux="$(COSIM_VMLINUX)"' \
+	  -e '$$fdt="$(COSIM_FDT)"' \
+	  -e 's @$(COSIM_RESC)'
+
+
+sd-image: $(COSIM_SD_IMAGE_DEPS)
+
+# Use GNU Make for Verilator's generated C++ makefile so `-j` reaches the
+# C++ compilation through Make's jobserver, as in Makefile.cvwsoc's sim-fast.
+$(COSIM_EXECUTABLE): $(COSIM_VERILATOR_MK)
+	$(MAKE) -C $(COSIM_BUILD_DIR) -f $(notdir $(COSIM_VERILATOR_MK)) V$(COSIM_TOP)
+
+$(COSIM_VERILATOR_MK): $(COSIM_DEPS) $(COPIED_ROOT)/config/config.vh
+	mkdir -p $(COSIM_BUILD_DIR)
+	$(VERILATOR) --cc --exe --timing --autoflush \
+	  --Mdir $(COSIM_BUILD_DIR) -o V$(COSIM_TOP) \
+	  --top-module $(COSIM_TOP) \
+	  --threads $(THREADS) \
+	  -CFLAGS "-std=c++14 -O3" \
+	  $(COSIM_WARN_ARGS) $(COSIM_TRACE_ARGS) $(COSIM_INCLUDES) \
+	  $(DEFINE_ARGS) \
+	  $(RENODE_SV_SRCS) $(COSIM_RTL_SRCS) \
+	  $(COSIM_CPP) $(RENODE_CPP_SRCS)
+
+# sdModel reads an uncompressed raw image. The checked-in gzip archive is a
+# tarball containing the raw `imagesd.bin` member.
+$(COSIM_SD_IMAGE): $(COSIM_SD_IMAGE_GZ) FORCE
+	mkdir -p $(dir $@)
+	tar -xOzf $< imagesd.bin > $@.tmp
+	mv $@.tmp $@
+
+$(COSIM_FDT): $(COSIM_DIR)/renode/hifive-cvw-freedom-u540.dts
+	dtc -I dts -o $(COSIM_FDT) $(COSIM_DIR)/renode/hifive-cvw-freedom-u540.dts
+
+
+print-config:
+	@echo WALLY=$(WALLY)
+	@echo BASE_CVWSOC_MAKEFILE=$(BASE_CVWSOC_MAKEFILE)
+	@echo COSIM_DIR=$(COSIM_DIR)
+	@echo CONFIG=$(CONFIG)
+	@echo CONFIG_VH=$(CONFIG_VH)
+	@echo CVWSOC_AXI_SRC=$(CVWSOC_AXI_SRC)
+	@echo RENODE_LIB_DIR=$(RENODE_LIB_DIR)
+	@echo COSIM_BUILD_DIR=$(COSIM_BUILD_DIR)
+	@echo COSIM_MACHINE=$(COSIM_MACHINE)
+	@echo COSIM_SD_IMAGE_WIC_GZ=$(COSIM_SD_IMAGE_WIC_GZ)
+	@echo COSIM_SD_IMAGE=$(COSIM_SD_IMAGE)
+	@echo COSIM_RESC=$(COSIM_RESC)
+
+# Deliberately not named "clean": Makefile.cvwsoc already owns that target.
+cosim-clean:
+	rm -rf $(COSIM_BUILD_DIR)

@@ -1,0 +1,45 @@
+:name: hifive-cvw-freedom-u540
+
+$name?="hifive-cvw-freedom-u540"
+$platform?=$ORIGIN/hifive-cvw-freedom-u540.repl
+# Set by Makefile.hifive-cvw's `run` target. They are complete monitor values,
+$cosimExecPath?=""
+$cosimContext?=""
+$fw_payload?=""
+$vmlinux?=""
+$fdt?=""
+
+
+#$bootargs?="console=ttySIF0,115200 earlycon=sbi mem=256M"
+$bootargs?="console=ttySIF0,115200 earlycon=sifive,0x10010000 ignore_loglevel loglevel=8 mem=256M  rdinit=/bin/sh"
+
+$fdtAddress=0x86000000
+
+using sysbus
+mach create $name
+machine LoadPlatformDescription $platform
+showAnalyzer uart0
+
+cvw_axi0 SimulationContextLinux $cosimContext
+cvw_axi0 SimulationFilePathLinux $cosimExecPath
+
+macro reset """
+    sysbus LoadELF $fw_payload
+    sysbus LoadFdt $fdt $fdtAddress $bootargs
+    sysbus LoadSymbolsFrom $vmlinux
+
+    # OpenSBI entry convention: a0 = boot hart ID, a1 = FDT address.
+    e51 SetRegister 10 0x0
+    e51 SetRegister 11 $fdtAddress
+"""
+runMacro $reset
+
+
+# Uncomment if boot is not stable
+e51 IsHalted true
+u54_2 IsHalted true
+u54_3 IsHalted true
+u54_4 IsHalted true
+
+u54_1 SetRegister 10 1
+u54_1 SetRegister 11 $fdtAddress
