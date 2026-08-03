@@ -270,7 +270,7 @@ if {$board=="ArtyA7"} {
 } elseif {$board=="nexysa7rv32w64soc"} {
     source ../constraints/debug-boot-tiny.xdc
 } elseif {$board=="genesys2rv32w64soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" ||$board=="genesys2socxlnx" } {
-    source ../constraints/debug-boot.xdc
+    source ../constraints/debug-boot-cvwsoc.xdc
 } else {
     #source ../constraints/vcu-small-debug.xdc
     #source ../constraints/small-debug.xdc
@@ -351,13 +351,7 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
 }
 
 if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
-    if {$board=="genesys2socxlnx" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" } {
-        set hook [file normalize ../constraints/constraints-genesys2soc-timing.tcl]
-    } elseif {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc"} {
-        set hook [file normalize ../constraints/constraints-cvwsoc-timing.tcl]
-    } else {
-        set hook [file normalize ../constraints/constraints-$board-timing.tcl]
-    }
+    set hook [file normalize ../constraints/constraints-cvwsoc-timing.tcl]
     set_property STEPS.INIT_DESIGN.TCL.POST $hook [get_runs impl_1]
 
     # CHECK!! MIGHT NOT BE NEEDED LATER (supposedly takes long!!)
@@ -365,7 +359,7 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
     # is this causing Vivado crashes 2024.2 crashes??
     #set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
 
-    set_property STEPS.INIT_DESIGN.TCL.POST $hook [get_runs impl_1]
+    #set_property STEPS.INIT_DESIGN.TCL.POST $hook [get_runs impl_1]
 
     # WARNING: maybe this option also made it crash?? same option as above?
     #set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]

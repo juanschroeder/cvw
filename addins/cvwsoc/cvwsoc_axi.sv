@@ -35,7 +35,11 @@ module cvwsoc_axi #(
     parameter type ddr_axi_req_t  = logic,
     parameter type ddr_axi_resp_t = logic,
     parameter type ddr_csr_axi_req_t  = logic,
-    parameter type ddr_csr_axi_resp_t = logic
+    parameter type ddr_csr_axi_resp_t = logic,
+    parameter type ahb_axi_req_t = logic,
+    parameter type ahb_axi_resp_t = logic,
+    parameter type wishbone_axi_req_t = logic,
+    parameter type wishbone_axi_resp_t = logic
   )
   (
     input logic         CPUCLK_i,
@@ -90,12 +94,21 @@ module cvwsoc_axi #(
     input  ddr_axi_resp_t ddr_axi_resp_i,
     output ddr_csr_axi_req_t  ddr_csr_axi_req_o,
     input  ddr_csr_axi_resp_t ddr_csr_axi_resp_i,
+    output ahb_axi_req_t       ahb_axi_req_o,
+    input  ahb_axi_resp_t      ahb_axi_resp_i,
+    output wishbone_axi_req_t  wishbone_axi_req_o,
+    input  wishbone_axi_resp_t wishbone_axi_resp_i,
 
     input logic BUSCLK_i,
     input logic BUSCORERSTn_i,
     input logic BUSRSTn_i,
 
-    output logic [3:0] cpu_axi_irq_o
+    output logic [3:0] cpu_axi_irq_o,
+    output logic ahb_axi_dma_intr_o,
+    output logic ahb_axi_usb_intr_o,
+    output logic ahb_axi_eth_intr_o,
+    output logic ahb_axi_dummy_intr_o,
+    output logic ahb_axi_sdhci_intr_o
   );
 
   // P remains a local alias to preserve the existing logical-SoC uses below.
@@ -134,6 +147,8 @@ module cvwsoc_axi #(
   localparam int unsigned CB_S_IDMA_BE = XBAR_OUT.s_idma_be;
 
   localparam int unsigned CB_M_DDR      = XBAR_OUT.m_ddr;
+  localparam int unsigned CB_M_AHB      = XBAR_OUT.m_ahb;
+  localparam int unsigned CB_M_WISHBONE = XBAR_OUT.m_wishbone;
   localparam int unsigned CB_M_CDMA_REG = XBAR_OUT.m_cdma_reg;
   localparam int unsigned CB_M_VGA_REG  = XBAR_OUT.m_vga_reg;
   localparam int unsigned CB_M_USB_REG  = XBAR_OUT.m_usb_reg;
@@ -167,29 +182,7 @@ module cvwsoc_axi #(
   logic          peripheral_reset;
   logic          peripheral_aresetn;
 
-  // AHB Signals from Wally
-  logic          HCLKOpen;
-  logic          HRESETnOpen;
-  (* mark_debug = "true" *) logic [P.AHBW-1:0]      HRDATAEXT;
-  (* mark_debug = "true" *) logic          HREADYEXT;
-  (* mark_debug = "true" *) logic          HRESPEXT;
-  logic          HSELEXT;
-  (* mark_debug = "true" *) logic [55:0]      HADDR;
-  (* mark_debug = "true" *) logic [P.AHBW-1:0]      HWDATA;
-  (* mark_debug = "true" *) logic [STRB_W-1:0]  HWSTRB;
-  (* mark_debug = "true" *) logic          HWRITE;
-  (* mark_debug = "true" *) logic [2:0]      HSIZE;
-  (* mark_debug = "true" *) logic [2:0]      HBURST;
-  (* mark_debug = "true" *) logic [1:0]      HTRANS;
-  (* mark_debug = "true" *) logic          HREADY;
-  (* mark_debug = "true" *) logic [3:0]      HPROT;
-  (* mark_debug = "true" *) logic          HMASTLOCK;
-
-  // GPIO Signals
-  logic [31:0]      GPIOIN, GPIOOUT, GPIOEN;
-
   logic        usb_irq;
-
   logic        liteeth_irq;
   logic        sdhci_irq;
 
@@ -318,6 +311,21 @@ module cvwsoc_axi #(
   mst_resp_t sdhci_rsp;
   slv_req_t  cdma_req, usb_dma_req;
   slv_resp_t cdma_rsp, usb_dma_rsp;
+  assign ahb_axi_req_o = mst_req[CB_M_AHB];
+  assign mst_resp[CB_M_AHB] = ahb_axi_resp_i;
+  generate
+    if (P.WISHBONE_SUPPORTED) begin : gen_wishbone_axi
+      assign wishbone_axi_req_o = mst_req[CB_M_WISHBONE];
+      assign mst_resp[CB_M_WISHBONE] = wishbone_axi_resp_i;
+    end else begin : gen_no_wishbone_axi
+      assign wishbone_axi_req_o = '0;
+    end
+  endgenerate
+  assign ahb_axi_dma_intr_o = axi_dma_intr_sync;
+  assign ahb_axi_usb_intr_o = usb_irq_ff2;
+  assign ahb_axi_eth_intr_o = liteeth_irq_ff2;
+  assign ahb_axi_dummy_intr_o = 1'b0;
+  assign ahb_axi_sdhci_intr_o = sdhci_irq_ff2;
   // DDR master port (external)
   assign ddr_axi_req_o = mst_req[CB_M_DDR];
   assign mst_resp[CB_M_DDR] = ddr_axi_resp_i;

@@ -46,6 +46,7 @@ nexysa7soc: export XILINX_PART := xc7a100tcsg324-1
 nexysa7soc: export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
 nexysa7soc: export board := nexysa7soc
 nexysa7soc: export SYSTEMCLOCK := 20000000
+nexysa7soc: export BUSCLOCK := 812500000
 nexysa7soc: export MAXSDCCLOCK  :=  10000000
 nexysa7soc: export MIG_ADDR_WIDTH  :=  27
 nexysa7soc: FPGA_NEXYSA7SOC
@@ -56,6 +57,7 @@ nexysa7rv32w64soc: export XILINX_PART := xc7a100tcsg324-1
 nexysa7rv32w64soc: export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
 nexysa7rv32w64soc: export board := nexysa7rv32w64soc
 nexysa7rv32w64soc: export SYSTEMCLOCK := 25000000
+nexysa7rv32w64soc: export BUSCLOCK := 812500000
 nexysa7rv32w64soc: export MAXSDCCLOCK  :=  10000000
 nexysa7rv32w64soc: export MIG_ADDR_WIDTH  :=  27
 nexysa7rv32w64soc: FPGA_NEXYSA7RV32W64SOC
@@ -67,6 +69,7 @@ genesys2soc: export XILINX_PART := xc7k325tffg900-2
 genesys2soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 genesys2soc: export board := genesys2soc
 genesys2soc: export SYSTEMCLOCK := 40000000
+genesys2soc: export BUSCLOCK := 100000000
 genesys2soc: export MAXSDCCLOCK  := 5000000
 genesys2soc: export MIG_ADDR_WIDTH  :=  30
 genesys2soc: export MEM_WIDTH  :=  64
@@ -84,9 +87,10 @@ genesys2rv32soc: export XILINX_PART := xc7k325tffg900-2
 genesys2rv32soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 genesys2rv32soc: export board := genesys2rv32soc
 genesys2rv32soc: export SYSTEMCLOCK := 55000000
+genesys2rv32soc: export BUSCLOCK := 100000000
 genesys2rv32soc: export MAXSDCCLOCK  := 5000000
 genesys2rv32soc: export MIG_ADDR_WIDTH  :=  30
-genesys2rv32soc: export MEM_WIDTH  :=  32
+genesys2rv32soc: export MEM_WIDTH := 32
 genesys2rv32soc: export litedramconfig := genesys2w32soc
 genesys2rv32soc: FPGA_GENESYS2RV32SOC
 
@@ -96,6 +100,7 @@ genesys2rv32minsoc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 genesys2rv32minsoc: export board := genesys2rv32soc
 genesys2rv32minsoc: export boardconfig := genesys2rv32minsoc
 genesys2rv32minsoc: export SYSTEMCLOCK := 55000000
+genesys2rv32minsoc: export BUSCLOCK := 100000000
 genesys2rv32minsoc: export MAXSDCCLOCK  := 5000000
 genesys2rv32minsoc: export MIG_ADDR_WIDTH  :=  30
 genesys2rv32minsoc: export MEM_WIDTH  :=  32
@@ -107,6 +112,7 @@ genesys2rv32w64soc: export XILINX_PART := xc7k325tffg900-2
 genesys2rv32w64soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 genesys2rv32w64soc: export board := genesys2rv32w64soc
 genesys2rv32w64soc: export SYSTEMCLOCK := 55000000
+genesys2rv32w64soc: export BUSCLOCK := 100000000
 genesys2rv32w64soc: export MAXSDCCLOCK  := 5000000
 genesys2rv32w64soc: export MIG_ADDR_WIDTH  :=  30
 genesys2rv32w64soc: export MEM_WIDTH  :=  64
@@ -356,7 +362,7 @@ SDHCI_SRC_DIR = ../src/CopiedFiles_do_not_add_to_repo/sdhci/sw
 .PHONY: zsblsoc zsbl32soc liblitedram liblitedram32
 zsblsoc:
 	$(MAKE) -C ../zsbl clean
-	SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
+	SYSTEMCLOCK=$(BUSCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
 		LITEDRAM_SUPPORTED=$(LITEDRAM_SUPPORTED) LITEDRAM_BASE=$(LITEDRAM_BASE)            \
 		SDHCI_SUPPORTED=$(SDHCI_SUPPORTED) SDHCI_BASE=$(SDHCI_BASE)                       \
 		SDHCI_SRC_DIR=$(SDHCI_SRC_DIR)                                                    \
@@ -376,7 +382,7 @@ zsbl32soc:
 	$(MAKE) -C ../zsbl clean
 	sed 's/elf64-littleriscv/elf32-littleriscv/g' ../zsbl/linker1000.x > ../zsbl/linker1000_32.x
 	$(MAKE) -C ../zsbl                                                                 \
-		SYSTEMCLOCK=$(SYSTEMCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
+		SYSTEMCLOCK=$(BUSCLOCK) EXT_MEM_BASE=$(EXT_MEM_BASE) EXT_MEM_RANGE=$(EXT_MEM_RANGE) \
 		LITEDRAM_SUPPORTED=$(LITEDRAM_SUPPORTED) LITEDRAM_BASE=$(LITEDRAM_BASE)          \
 		SDHCI_SUPPORTED=$(SDHCI_SUPPORTED) SDHCI_BASE=$(SDHCI_BASE)                     \
 		SDHCI_SRC_DIR=$(SDHCI_SRC_DIR)                                                  \

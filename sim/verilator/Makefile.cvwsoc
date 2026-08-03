@@ -44,12 +44,14 @@ CVWSOC_RV32 := $(filter $(BOOL_TRUE),$(RV32))
 SDHCI ?= 0
 DMA ?= 0
 I2S ?= 0
+WISHBONE ?= 0
 BOOTROM ?= 0
 CVWSOC_BOOTROM := $(filter $(BOOL_TRUE),$(BOOTROM))
 # Enable SDHCI with bootrom boot (can't do RAM preload)
 CVWSOC_SIM_SDHCI := $(if $(CVWSOC_BOOTROM),1,$(filter $(BOOL_TRUE),$(SDHCI)))
 CVWSOC_SIM_DMA := $(filter $(BOOL_TRUE),$(DMA))
 CVWSOC_SIM_I2S := $(filter $(BOOL_TRUE),$(I2S))
+CVWSOC_SIM_WISHBONE := $(filter $(BOOL_TRUE),$(WISHBONE))
 CVWSOC_LINUX_PRELOAD_SKIP_INITRD := $(if $(CVWSOC_SIM_SDHCI),1,0)
 WALLYCONF ?= fpgagenesys2soc
 CONFIG ?= $(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF))
@@ -239,7 +241,8 @@ TRACE ?= 0
 TRACE_ENABLED := $(filter-out 0 no NO false FALSE,$(TRACE))
 TRACE_BUILD_ARGS := $(if $(TRACE_ENABLED),--trace-fst,)
 TRACE_PARAM_ARG := $(if $(filter sv,$(TRACE)),MAKE_VCD=1,MAKE_VCD=0)
-ALL_PARAM_ARGS := $(strip $(PARAM_ARGS) $(TRACE_PARAM_ARG))
+FULL_TB_PARAM_ARGS := $(if $(filter testbench_cvwsoc_full,$(TESTBENCH_MODULENAME)),ENABLE_DMA=$(if $(CVWSOC_SIM_DMA),1,0) ENABLE_I2S=$(if $(CVWSOC_SIM_I2S),1,0) ENABLE_SDHCI=$(if $(CVWSOC_SIM_SDHCI),1,0) ENABLE_WISHBONE=$(if $(CVWSOC_SIM_WISHBONE),1,0))
+ALL_PARAM_ARGS := $(strip $(PARAM_ARGS) $(TRACE_PARAM_ARG) $(FULL_TB_PARAM_ARGS))
 EXPANDED_PARAM_ARGS := $(patsubst %,-G%,$(ALL_PARAM_ARGS))
 UART_STDOUT ?= 0
 UART_TIMESTAMP ?= 1
@@ -301,6 +304,7 @@ AXI_SOURCES := \
 	$(PULP_AXI_ROOT)/src/axi_burst_splitter_gran.sv \
 	$(PULP_AXI_ROOT)/src/axi_burst_splitter.sv \
 	$(PULP_AXI_ROOT)/src/axi_to_axi_lite.sv \
+	$(PULP_AXI_ROOT)/src/axi_lite_to_apb.sv \
 	$(PULP_AXI_ROOT)/src/axi_cdc_dst.sv \
 	$(PULP_AXI_ROOT)/src/axi_cdc_src.sv \
 	$(PULP_AXI_ROOT)/src/axi_cut.sv \
@@ -362,6 +366,7 @@ I2S_SOURCES := $(if $(CVWSOC_SIM_I2S), \
 
 
 CORE_SOURCES := $(filter-out \
+	$(COPIED_ROOT)/uncore/uncore.sv \
 	$(wildcard $(COPIED_ROOT)/testbench/sdc/*.sv) \
 	$(wildcard $(COPIED_ROOT)/ahb-to-axi/*/*.sv) \
 	$(wildcard $(COPIED_ROOT)/cvwsoc/*.sv) \
@@ -372,8 +377,6 @@ CORE_SOURCES := $(filter-out \
 	$(wildcard $(COPIED_ROOT)/sdhci/hw/*/*.sv), \
 	$(wildcard $(COPIED_ROOT)/*/*.sv) \
 	$(wildcard $(COPIED_ROOT)/*/*/*.sv))
-
-#	$(wildcard $(COPIED_ROOT)/testbench/sdc/*.sv)
 
 SDHCI_PERIPH_SOURCES := \
 	$(wildcard $(COPIED_ROOT)/pulp/tech_cells/src/rtl/*.sv) \
@@ -398,6 +401,34 @@ SDHCI_PERIPH_SOURCES := \
 	$(wildcard $(COPIED_ROOT)/cvwsoc/sdhci/sd*.v) \
 	$(wildcard $(COPIED_ROOT)/cvwsoc/sdhci/*.sv)
 
+# The legacy-AHB Wishbone island is now instantiated by cvwsoc_wishbone.
+# Keep its bridge, decoder, UART, and stubs in the curated simulation file
+# list even though the rest of cvwsoc is intentionally excluded from
+# CORE_SOURCES.
+WISHBONE_SOURCES := \
+	$(wildcard $(COPIED_ROOT)/cvwsoc/wishbone/*.sv) \
+	$(COPIED_ROOT)/wb2axip/rtl/axlite2wbsp.v \
+	$(COPIED_ROOT)/wb2axip/rtl/axilwr2wbsp.v \
+	$(COPIED_ROOT)/wb2axip/rtl/axilrd2wbsp.v \
+	$(COPIED_ROOT)/wb2axip/rtl/wbarbiter.v
+
+# CVWSoC refactoring modules live with the other CVWSoC addins.  Keep these
+# explicit because CORE_SOURCES intentionally excludes the cvwsoc directory.
+CVWSOC_REFACTOR_SOURCES := \
+	$(WALLY)/addins/cvwsoc/cvwsoc_axi.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_cpu.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_cpu_wally.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_system.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_apb.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_bootrom.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_onchip_ram.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_wishbone.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_adrdecs.sv \
+	$(WALLY)/addins/cvwsoc/axi_lite_to_ahb_with_size.sv \
+	$(WALLY)/addins/cvwsoc/axi_mmio_to_axilite32_v3.sv \
+	$(WALLY)/addins/cvwsoc/axi_to_axi_lite_with_size.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_ahb.sv
+
 
 # FIXME: separate this into groups?
 PERIPH_SOURCES := \
@@ -415,6 +446,7 @@ INCLUDE_PATH := \
 	-I$(PULP_COMMON_CELLS_ROOT)/include \
 	-I$(PULP_REGISTER_INTERFACE_ROOT)/include \
 	-I$(IDMA_ROOT)/src/include \
+	-I$(COPIED_ROOT)/oc_uart_16550 \
 	-I$(SDHCI_ROOT)/include
 
 VERILOG_AXI_SOURCES := \
@@ -424,7 +456,8 @@ SOURCES := \
 	$(COMMON_CELLS_SOURCES) \
 	$(AXI_SOURCES) \
 	$(COPIED_ROOT)/cvw.sv \
-	$(COPIED_ROOT)/cvwsoc/cvwsoc_pkg.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_pkg.sv \
+	$(CVWSOC_REFACTOR_SOURCES) \
 	$(WALLY)/testbench/$(TESTBENCH).sv \
 	$(CORE_SOURCES) \
 	$(BRIDGE_RTL) \
@@ -433,6 +466,7 @@ SOURCES := \
 	$(PULP_REGISTER_INTERFACE_SOURCES) \
 	$(IDMA_SOURCES) \
 	$(I2S_SOURCES) \
+	$(WISHBONE_SOURCES) \
 	$(PERIPH_SOURCES)
 
 DEPENDENCIES := \
@@ -455,6 +489,9 @@ $(IDMA_GENERATED_SOURCES):
 OPT_GEN ?= VM_PARALLEL_BUILDS=1 OPT_FAST="-O3 -march=native" OPT_GLOBAL="-O3 -march=native" OPT_SLOW="-O1"
 OPT_COMP ?= -O3
 VERILATOR_USER_CPPFLAGS ?= -DsetBit=set
+ifneq ($(filter testbench_cvwsoc_full,$(TESTBENCH_MODULENAME)),)
+VERILATOR_USER_CPPFLAGS += -DCVWSOC_FULL_TB
+endif
 
 define RUN_VERILATOR
 	mkdir -p $(VERILATOR_DIR)/logs
@@ -1004,6 +1041,7 @@ $(WORKDIR)/V$(TESTBENCH).mk: $(DEPENDENCIES)
 	$(WRAPPER) \
 	$(DEFINE_ARGS) \
 	$(if $(filter $(BOOL_TRUE),$(CVWSOC_SIM_AXI_RAM)),-DSIM_AXI_RAM,) \
+	$(if $(filter testbench_cvwsoc_full,$(TESTBENCH_MODULENAME)),-DCVWSOC_FULL_TB,) \
 	$(if $(CVWSOC_SIM_SDHCI),-DSIM_AXI_SDHCI,) \
 	$(if $(CVWSOC_SIM_DMA),-DSIM_AXI_DMA,) \
 	$(if $(CVWSOC_SIM_I2S),-DSIM_I2S,) \

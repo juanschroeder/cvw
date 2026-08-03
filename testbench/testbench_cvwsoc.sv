@@ -211,6 +211,8 @@ module testbench_cvwsoc #(
   logic [P.AHBW-1:0]    HRDATAEXT;
   logic                 HREADYEXT;
   logic                 HRESPEXT;
+  logic [P.AHBW-1:0]    HRDATA;
+  logic                 HRESP;
   logic                 HSELEXT;
   logic                 HCLK;
   logic                 HRESETn;
@@ -224,6 +226,8 @@ module testbench_cvwsoc #(
   logic [1:0]           HTRANS;
   logic                 HMASTLOCK;
   logic                 HREADY;
+  logic                 MTimerInt, MSwInt, MExtInt, SExtInt;
+  logic [63:0]          MTIME_CLINT;
   logic [P.XLEN-1:0]    PCM;
   logic                 InstrValidM;
   logic [31:0]          InstrM;
@@ -398,20 +402,20 @@ module testbench_cvwsoc #(
   mst_req_t  [XBAR_NUM_MST_PORTS-1:0] mst_req;
   mst_resp_t [XBAR_NUM_MST_PORTS-1:0] mst_resp;
 
-  assign PCM            = soc.core.ifu.PCM;
-  assign InstrValidM    = soc.core.ieu.InstrValidM;
-  assign InstrM         = soc.core.InstrM;
-  assign TrapM          = soc.core.TrapM;
-  assign StallM         = soc.core.StallM;
-  assign FlushM         = soc.core.FlushM;
+  assign PCM            = cpu.core.ifu.PCM;
+  assign InstrValidM    = cpu.core.ieu.InstrValidM;
+  assign InstrM         = cpu.core.InstrM;
+  assign TrapM          = cpu.core.TrapM;
+  assign StallM         = cpu.core.StallM;
+  assign FlushM         = cpu.core.FlushM;
 
-  assign dbg_uncore_hselregions             = soc.uncoregen.uncore.HSELRegions;
-  assign dbg_uncore_hsel_axisdhci           = soc.uncoregen.uncore.HSELAXISDHCI;
-  assign dbg_uncore_hsel_axisdhci_d         = soc.uncoregen.uncore.HSELAXISDHCID;
-  assign dbg_uncore_hsel_axidma             = soc.uncoregen.uncore.HSELAXIDMA;
-  assign dbg_uncore_hsel_axidma_d           = soc.uncoregen.uncore.HSELAXIDMAD;
-  assign dbg_uncore_hsel_axisidma           = soc.uncoregen.uncore.HSELAXISIDMA;
-  assign dbg_uncore_hsel_axisidma_d         = soc.uncoregen.uncore.HSELAXISIDMAD;
+  assign dbg_uncore_hselregions             = system.HSELRegions;
+  assign dbg_uncore_hsel_axisdhci           = system.HSELAXISDHCI;
+  assign dbg_uncore_hsel_axisdhci_d         = system.HSELAXISDHCID;
+  assign dbg_uncore_hsel_axidma             = system.HSELAXIDMA;
+  assign dbg_uncore_hsel_axidma_d           = system.HSELAXIDMAD;
+  assign dbg_uncore_hsel_axisidma           = system.HSELAXISIDMA;
+  assign dbg_uncore_hsel_axisidma_d         = system.HSELAXISIDMAD;
   // AHB is pipelined: HADDR/HWRITE describe the address phase while the
   // delayed select and HREADYEXT describe completion of its data phase.
   assign dbg_idmaaxis_ahb_addr_accept = dbg_uncore_hsel_axisidma &&
@@ -420,57 +424,57 @@ module testbench_cvwsoc #(
                                       !HREADYEXT;
   assign dbg_idmaaxis_ahb_data_complete = dbg_uncore_hsel_axisidma_d &&
                                           HREADYEXT;
-  assign dbg_load_misaligned_fault_m        = soc.core.LoadMisalignedFaultM;
-  assign dbg_load_access_fault_m            = soc.core.LoadAccessFaultM;
-  assign dbg_load_page_fault_m              = soc.core.LoadPageFaultM;
-  assign dbg_store_amo_misaligned_fault_m   = soc.core.StoreAmoMisalignedFaultM;
-  assign dbg_store_amo_access_fault_m       = soc.core.StoreAmoAccessFaultM;
-  assign dbg_store_amo_page_fault_m         = soc.core.StoreAmoPageFaultM;
-  assign dbg_instr_misaligned_fault_m       = soc.core.InstrMisalignedFaultM;
-  assign dbg_instr_access_fault_m           = soc.core.priv.priv.InstrAccessFaultM;
-  assign dbg_instr_page_fault_m             = soc.core.priv.priv.InstrPageFaultM;
-  assign dbg_trap_cause_m                   = soc.core.priv.priv.CauseM;
-  assign dbg_trap_exception_m               = soc.core.priv.priv.ExceptionM;
-  assign dbg_trap_interrupt_m               = soc.core.priv.priv.InterruptM;
-  assign dbg_trap_epc_m                     = soc.core.EPCM;
-  assign dbg_trap_vector_m                  = soc.core.TrapVectorM;
-  assign dbg_trap_tval_src_m                = soc.core.IEUAdrxTvalM;
-  assign dbg_gpr_ra                         = soc.core.ieu.dp.regf.rf[1];
-  assign dbg_gpr_sp                         = soc.core.ieu.dp.regf.rf[2];
-  assign dbg_gpr_s1                         = soc.core.ieu.dp.regf.rf[9];
-  assign dbg_gpr_a0                         = soc.core.ieu.dp.regf.rf[10];
-  assign dbg_gpr_a1                         = soc.core.ieu.dp.regf.rf[11];
-  assign dbg_gpr_a2                         = soc.core.ieu.dp.regf.rf[12];
-  assign dbg_gpr_s2                         = soc.core.ieu.dp.regf.rf[18];
-  assign dbg_gpr_s3                         = soc.core.ieu.dp.regf.rf[19];
-  assign dbg_gpr_s4                         = soc.core.ieu.dp.regf.rf[20];
-  assign dbg_gpr_regwrite_w                 = soc.core.ieu.RegWriteW;
-  assign dbg_gpr_rd_w                       = soc.core.ieu.RdW;
-  assign dbg_gpr_result_w                   = soc.core.ieu.dp.ResultW;
+  assign dbg_load_misaligned_fault_m        = cpu.core.LoadMisalignedFaultM;
+  assign dbg_load_access_fault_m            = cpu.core.LoadAccessFaultM;
+  assign dbg_load_page_fault_m              = cpu.core.LoadPageFaultM;
+  assign dbg_store_amo_misaligned_fault_m   = cpu.core.StoreAmoMisalignedFaultM;
+  assign dbg_store_amo_access_fault_m       = cpu.core.StoreAmoAccessFaultM;
+  assign dbg_store_amo_page_fault_m         = cpu.core.StoreAmoPageFaultM;
+  assign dbg_instr_misaligned_fault_m       = cpu.core.InstrMisalignedFaultM;
+  assign dbg_instr_access_fault_m           = cpu.core.priv.priv.InstrAccessFaultM;
+  assign dbg_instr_page_fault_m             = cpu.core.priv.priv.InstrPageFaultM;
+  assign dbg_trap_cause_m                   = cpu.core.priv.priv.CauseM;
+  assign dbg_trap_exception_m               = cpu.core.priv.priv.ExceptionM;
+  assign dbg_trap_interrupt_m               = cpu.core.priv.priv.InterruptM;
+  assign dbg_trap_epc_m                     = cpu.core.EPCM;
+  assign dbg_trap_vector_m                  = cpu.core.TrapVectorM;
+  assign dbg_trap_tval_src_m                = cpu.core.IEUAdrxTvalM;
+  assign dbg_gpr_ra                         = cpu.core.ieu.dp.regf.rf[1];
+  assign dbg_gpr_sp                         = cpu.core.ieu.dp.regf.rf[2];
+  assign dbg_gpr_s1                         = cpu.core.ieu.dp.regf.rf[9];
+  assign dbg_gpr_a0                         = cpu.core.ieu.dp.regf.rf[10];
+  assign dbg_gpr_a1                         = cpu.core.ieu.dp.regf.rf[11];
+  assign dbg_gpr_a2                         = cpu.core.ieu.dp.regf.rf[12];
+  assign dbg_gpr_s2                         = cpu.core.ieu.dp.regf.rf[18];
+  assign dbg_gpr_s3                         = cpu.core.ieu.dp.regf.rf[19];
+  assign dbg_gpr_s4                         = cpu.core.ieu.dp.regf.rf[20];
+  assign dbg_gpr_regwrite_w                 = cpu.core.ieu.RegWriteW;
+  assign dbg_gpr_rd_w                       = cpu.core.ieu.RdW;
+  assign dbg_gpr_result_w                   = cpu.core.ieu.dp.ResultW;
 
-  assign dbg_uncore_hsel_ram       = soc.uncoregen.uncore.HSELRam;
-  assign dbg_uncore_hsel_ram_d     = soc.uncoregen.uncore.HSELRamD;
-  assign dbg_uncore_haddr          = soc.uncoregen.uncore.HADDR;
-  assign dbg_uncore_hwdata         = soc.uncoregen.uncore.HWDATA;
-  assign dbg_uncore_hwstrb         = soc.uncoregen.uncore.HWSTRB;
-  assign dbg_uncore_hwrite         = soc.uncoregen.uncore.HWRITE;
-  assign dbg_uncore_hsize          = soc.uncoregen.uncore.HSIZE;
-  assign dbg_uncore_hburst         = soc.uncoregen.uncore.HBURST;
-  assign dbg_uncore_htrans         = soc.uncoregen.uncore.HTRANS;
-  assign dbg_uncore_hready         = soc.uncoregen.uncore.HREADY;
-  assign dbg_uncore_hrdata         = soc.uncoregen.uncore.HRDATA;
-  assign dbg_uncore_hread_ram      = soc.uncoregen.uncore.HREADRam;
-  assign dbg_uncore_hresp_ram      = soc.uncoregen.uncore.HRESPRam;
-  assign dbg_uncore_hready_ram     = soc.uncoregen.uncore.HREADYRam;
+  assign dbg_uncore_hsel_ram       = system.HSELRam;
+  assign dbg_uncore_hsel_ram_d     = system.HSELRamD;
+  assign dbg_uncore_haddr          = system.HADDR;
+  assign dbg_uncore_hwdata         = system.HWDATA;
+  assign dbg_uncore_hwstrb         = system.HWSTRB;
+  assign dbg_uncore_hwrite         = system.HWRITE;
+  assign dbg_uncore_hsize          = system.HSIZE;
+  assign dbg_uncore_hburst         = system.HBURST;
+  assign dbg_uncore_htrans         = system.HTRANS;
+  assign dbg_uncore_hready         = system.HREADY;
+  assign dbg_uncore_hrdata         = system.HRDATA;
+  assign dbg_uncore_hread_ram      = system.HREADRam;
+  assign dbg_uncore_hresp_ram      = system.HRESPRam;
+  assign dbg_uncore_hready_ram     = system.HREADYRam;
 
-  assign HRDATAINT      = soc.core.HRDATA;
+  assign HRDATAINT      = HRDATA;
 
-  assign PCLK = soc.uncoregen.uncore.PCLK;
-  assign PSEL = soc.uncoregen.uncore.PSEL;
-  assign PADDR = soc.uncoregen.uncore.PADDR;
-  assign PWDATA = soc.uncoregen.uncore.PWDATA;
-  assign PSTRB = soc.uncoregen.uncore.PSTRB;
-  assign PRDATA = soc.uncoregen.uncore.PRDATA;
+  assign PCLK = system.apb.bridge.PCLK;
+  assign PSEL = system.apb.bridge.PSEL;
+  assign PADDR = system.apb.bridge.PADDR;
+  assign PWDATA = system.apb.bridge.PWDATA;
+  assign PSTRB = system.apb.bridge.PSTRB;
+  assign PRDATA = system.apb.bridge.PRDATA;
 
   //--------------------------------
   // EXTRA DEBUG STUFF (REMOVE)
@@ -491,59 +495,31 @@ module testbench_cvwsoc #(
   //----------------------------------
 
   // ---------------------------------------------------------------------------
-  // DUT
+  // Transitional composition: the CPU wrapper and CVWSoC system retain the
+  // original AHB and interrupt contract, without instantiating uncore.sv.
   // ---------------------------------------------------------------------------
-  wallypipelinedsoc #(SOC_P) soc (
-    .clk(clk),
-    .reset_ext(reset_ext),
-    .reset(reset),
-    .HRDATAEXT(HRDATAEXT),
-    .HREADYEXT(HREADYEXT),
-    .HRESPEXT(HRESPEXT),
-    .HSELEXT(HSELEXT),
-    .ExternalStall(ExternalStall),
-    .HCLK(HCLK),
-    .HRESETn(HRESETn),
-    .HADDR(HADDR),
-    .HWDATA(HWDATA),
-    .HWSTRB(HWSTRB),
-    .HWRITE(HWRITE),
-    .HSIZE(HSIZE),
-    .HBURST(HBURST),
-    .HPROT(HPROT),
-    .HTRANS(HTRANS),
-    .HMASTLOCK(HMASTLOCK),
-    .HREADY(HREADY),
-    .TIMECLK(1'b0),
-    .GPIOIN(GPIOIN),
-    .GPIOOUT(GPIOOUT),
-    .GPIOEN(GPIOEN),
-    .UARTSin(UARTSin),
-    .UARTSout(UARTSout),
-    .SPIIn(SPIIn),
-    .SPIOut(SPIOut),
-    .SPICS(SPICS),
-    .SPICLK(SPICLK),
-    .SDCIn(SDCIn),
-    .SDCCmd(SDCCmd),
-    .SDCCS(SDCCS),
-    .SDCCLK(SDCCLK),
-    .WB_UART_RX(WB_UART_RX),
-    .WB_UART_TX(WB_UART_TX),
-    .WB_RMII_REF_CLK(WB_RMII_REF_CLK),
-    .WB_RMII_CRS_DV(WB_RMII_CRS_DV),
-    .WB_RMII_RX_DATA(WB_RMII_RX_DATA),
-    .WB_RMII_TX_DATA(WB_RMII_TX_DATA),
-    .WB_RMII_TX_EN(WB_RMII_TX_EN),
-    .WB_RMII_MDC(WB_RMII_MDC),
-    .WB_RMII_MDIO(WB_RMII_MDIO),
-    .WB_RMII_RST_N(WB_RMII_RST_N),
-    .WB_RMII_PHY_IRQ(WB_RMII_PHY_IRQ),
-    .AXI_DMAIntr(AXI_IDMAIntr),
-    .AXI_USBIntr(AXI_USBIntr),
-    .AXI_EthIntr(AXI_EthIntr),
-    .AXI_SDHCIIntr(AXI_SDHCIIntr),
-    .AXI_DummyIntr(AXI_DummyIntr)
+  cvwsoc_cpu #(SOC_P) cpu (
+    .clk, .reset_ext, .reset,
+    .HRDATA, .HREADY, .HRESP,
+    .HCLK, .HRESETn, .HADDR, .HWDATA, .HWSTRB, .HWRITE, .HSIZE, .HBURST,
+    .HPROT, .HTRANS, .HMASTLOCK,
+    .MTimerInt, .MExtInt, .SExtInt, .MSwInt, .MTIME_CLINT, .ExternalStall
+  );
+
+  cvwsoc_system #(SOC_P) system (
+    .HCLK, .HRESETn, .TIMECLK(1'b0),
+    .HADDR, .HWDATA, .HWSTRB, .HWRITE, .HSIZE, .HBURST, .HPROT, .HTRANS,
+    .HMASTLOCK, .HRDATAEXT, .HREADYEXT, .HRESPEXT,
+    .HRDATA, .HREADY, .HRESP, .HSELEXT,
+    .MTimerInt, .MSwInt, .MExtInt, .SExtInt,
+    .GPIOIN, .GPIOOUT, .GPIOEN, .UARTSin, .UARTSout,
+    .MTIME_CLINT, .SPIIn, .SPIOut, .SPICS, .SPICLK,
+    .SDCIn, .SDCCmd, .SDCCS, .SDCCLK,
+    .WB_UART_RX, .WB_UART_TX, .WB_RMII_REF_CLK, .WB_RMII_CRS_DV,
+    .WB_RMII_RX_DATA, .WB_RMII_TX_DATA, .WB_RMII_TX_EN, .WB_RMII_MDC,
+    .WB_RMII_MDIO, .WB_RMII_RST_N, .WB_RMII_PHY_IRQ,
+    .AXI_DMAIntr(AXI_IDMAIntr), .AXI_USBIntr, .AXI_EthIntr,
+    .AXI_DummyIntr, .AXI_SDHCIIntr
   );
 
   ahb_to_axi4_burst #(
@@ -2105,7 +2081,7 @@ module testbench_cvwsoc #(
 
   // ---------------------------------------------------------------------------
   // PLIC debug for SDHCI interrupt routed as PLIC_AXI_DUMMY_ID / AXIDummyIntr
-  // Expected hierarchy: soc.uncore.plic.plic
+  // Expected hierarchy: system.apb.plic.plic
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
   // PLIC debug exported by bind from plic_apb_dbg_bind
@@ -2325,37 +2301,37 @@ module testbench_cvwsoc #(
 
   task automatic dump_cpu_gprs;
     begin
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[1]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[2]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[3]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[4]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[5]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[6]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[7]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[8]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[9]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[10]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[11]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[12]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[13]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[14]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[15]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[16]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[17]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[18]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[19]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[20]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[21]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[22]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[23]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[24]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[25]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[26]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[27]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[28]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[29]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[30]);
-      $dumpvars(0, testbench_cvwsoc.soc.core.ieu.dp.regf.rf[31]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[1]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[2]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[3]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[4]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[5]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[6]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[7]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[8]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[9]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[10]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[11]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[12]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[13]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[14]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[15]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[16]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[17]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[18]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[19]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[20]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[21]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[22]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[23]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[24]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[25]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[26]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[27]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[28]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[29]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[30]);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.ieu.dp.regf.rf[31]);
     end
   endtask
 
@@ -2365,7 +2341,7 @@ module testbench_cvwsoc #(
       $dumpvars(0, testbench_cvwsoc.PCM);
       $dumpvars(0, testbench_cvwsoc.InstrValidM);
       $dumpvars(0, testbench_cvwsoc.TrapM);
-      $dumpvars(0, testbench_cvwsoc.soc.core.InstrM);
+      $dumpvars(0, testbench_cvwsoc.cpu.core.InstrM);
       dump_cpu_gprs();
 
       $dumpvars(0, testbench_cvwsoc.HSELEXT);
@@ -2456,10 +2432,10 @@ module testbench_cvwsoc #(
       end else begin
         dump_bridge_debug_scope();
         if (trace_uart_dump) begin
-          $dumpvars(0, testbench_cvwsoc.soc.uncoregen.uncore.uartgen.uart.MEMWb);
-          $dumpvars(0, testbench_cvwsoc.soc.uncoregen.uncore.uartgen.uart.uartPC.A);
-          $dumpvars(0, testbench_cvwsoc.soc.uncoregen.uncore.uartgen.uart.uartPC.Din);
-          $dumpvars(0, testbench_cvwsoc.soc.uncoregen.uncore.uartgen.uart.uartPC.DLAB);
+          $dumpvars(0, testbench_cvwsoc.system.apb.uartgen.uart.MEMWb);
+          $dumpvars(0, testbench_cvwsoc.system.apb.uartgen.uart.uartPC.A);
+          $dumpvars(0, testbench_cvwsoc.system.apb.uartgen.uart.uartPC.Din);
+          $dumpvars(0, testbench_cvwsoc.system.apb.uartgen.uart.uartPC.DLAB);
         end
       end
       $dumpflush;
@@ -2535,7 +2511,7 @@ module testbench_cvwsoc #(
                 ". Override with +BOOTROM_BIN=<path> if needed."});
         $finish;
       end
-      bytes_read = $fread(soc.uncoregen.uncore.bootrom.bootrom.memory.ROM,
+          bytes_read = $fread(system.bootrom.romgen.bootrom.memory.ROM,
                            file_handle,
                            BOOTROM_PRELOAD_START);
       $fclose(file_handle);
@@ -2543,7 +2519,7 @@ module testbench_cvwsoc #(
     end else begin
       $display("Loading at %0d, %0d words of boot ROM from %s", BOOTROM_PRELOAD_START, BOOTROM_WORDS - 1, bootrom_memh);
       $readmemh(bootrom_memh,
-                soc.uncoregen.uncore.bootrom.bootrom.memory.ROM,
+                system.bootrom.romgen.bootrom.memory.ROM,
                 BOOTROM_PRELOAD_START,
                 BOOTROM_WORDS - 1);
       $display("Loaded boot ROM hex from %s", bootrom_memh);
@@ -2552,7 +2528,7 @@ module testbench_cvwsoc #(
     if (SOC_P.UNCORE_RAM_SUPPORTED) begin
       if (uncore_ram_memh.len() != 0) begin
         $readmemh(uncore_ram_memh,
-                  soc.uncoregen.uncore.ram.ram.memory.ram.RAM,
+                  system.ram.ramgen.ram.memory.ram.RAM,
                   0,
                   UNCORE_RAM_WORDS - 1);
         $display("Loaded uncore RAM hex from %s", uncore_ram_memh);
@@ -2717,11 +2693,11 @@ module testbench_cvwsoc #(
         uart_shell_prefix = "";
         uart_shell_line = "";
       end else if (
-          ~soc.uncoregen.uncore.uartgen.uart.MEMWb &&
-          soc.uncoregen.uncore.uartgen.uart.uartPC.A == 3'b000 &&
-          ~soc.uncoregen.uncore.uartgen.uart.uartPC.DLAB) begin
+          ~system.apb.uartgen.uart.MEMWb &&
+          system.apb.uartgen.uart.uartPC.A == 3'b000 &&
+          ~system.apb.uartgen.uart.uartPC.DLAB) begin
         uart_char_valid <= 1'b1;
-        uart_byte = soc.uncoregen.uncore.uartgen.uart.uartPC.Din;
+        uart_byte = system.apb.uartgen.uart.uartPC.Din;
         uart_char_data  <= uart_byte;
         uart_char_str = $sformatf("%c", uart_byte);
         emit_uart_prefix = uart_timestamp && uart_line_start &&
