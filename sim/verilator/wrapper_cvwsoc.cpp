@@ -23,9 +23,41 @@
 #include "verilated_fst_c.h"
 #endif
 
+#ifdef CVWSOC_FULL_TB
+#include "Vtestbench_cvwsoc_full.h"
+#include "Vtestbench_cvwsoc_full__Dpi.h"
+#include "Vtestbench_cvwsoc_full___024root.h"
+#include "Vtestbench_cvwsoc_full_testbench_cvwsoc_full.h"
+using Vtestbench_cvwsoc = Vtestbench_cvwsoc_full;
+#else
 #include "Vtestbench_cvwsoc.h"
 #include "Vtestbench_cvwsoc__Dpi.h"
 #include "Vtestbench_cvwsoc___024root.h"
+#endif
+
+#ifdef CVWSOC_FULL_TB
+// Verilator may retain the testbench as a public cell rather than inline it
+// into rootp.  Its public cell API is the supported C++ access path in that
+// case; rootp is only valid for inlined public_flat_* objects.
+#define DUT_UART_MODEL(top) ((top)->testbench_cvwsoc_full)
+#define DUT_UART_RX UARTSin
+#define DUT_UART_TX UARTSout
+#define DUT_UART_CHAR_VALID uart_char_valid
+#define DUT_UART_CHAR_DATA uart_char_data
+#define DUT_UART_FCR __PVT__ahb_island__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__FCR
+#define DUT_UART_RX_FIFO_HEAD __PVT__ahb_island__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxfifohead
+#define DUT_UART_RX_FIFO_ENTRIES __PVT__ahb_island__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxfifoentries
+#define DUT_UART_RX_DATA_READY __PVT__ahb_island__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxdataready
+#define DUT_UART_RX_BUFFER __PVT__ahb_island__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__RXBR
+#define DUT_UART_LSR __PVT__ahb_island__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__LSR
+#define DUT_UART_RX_STATE __PVT__ahb_island__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxstate
+#define DUT_UART_RX_SHIFTREG __PVT__ahb_island__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxshiftreg
+#define DUT_UART_SIN_SYNC __PVT__ahb_island__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__SINsync
+#endif
+
+#ifndef DUT_UART_MODEL
+#define DUT_UART_MODEL(top) ((top)->rootp)
+#endif
 
 #ifndef DUT_UART_RX
 #define DUT_UART_RX testbench_cvwsoc__DOT__UARTSin
@@ -44,39 +76,39 @@
 #endif
 
 #ifndef DUT_UART_FCR
-#define DUT_UART_FCR testbench_cvwsoc__DOT__soc__DOT__uncoregen__DOT__uncore__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__FCR
+#define DUT_UART_FCR testbench_cvwsoc__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__FCR
 #endif
 
 #ifndef DUT_UART_RX_FIFO_HEAD
-#define DUT_UART_RX_FIFO_HEAD testbench_cvwsoc__DOT__soc__DOT__uncoregen__DOT__uncore__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxfifohead
+#define DUT_UART_RX_FIFO_HEAD testbench_cvwsoc__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxfifohead
 #endif
 
 #ifndef DUT_UART_RX_FIFO_ENTRIES
-#define DUT_UART_RX_FIFO_ENTRIES testbench_cvwsoc__DOT__soc__DOT__uncoregen__DOT__uncore__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxfifoentries
+#define DUT_UART_RX_FIFO_ENTRIES testbench_cvwsoc__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxfifoentries
 #endif
 
 #ifndef DUT_UART_RX_DATA_READY
-#define DUT_UART_RX_DATA_READY testbench_cvwsoc__DOT__soc__DOT__uncoregen__DOT__uncore__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxdataready
+#define DUT_UART_RX_DATA_READY testbench_cvwsoc__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxdataready
 #endif
 
 #ifndef DUT_UART_RX_BUFFER
-#define DUT_UART_RX_BUFFER testbench_cvwsoc__DOT__soc__DOT__uncoregen__DOT__uncore__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__RXBR
+#define DUT_UART_RX_BUFFER testbench_cvwsoc__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__RXBR
 #endif
 
 #ifndef DUT_UART_LSR
-#define DUT_UART_LSR testbench_cvwsoc__DOT__soc__DOT__uncoregen__DOT__uncore__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__LSR
+#define DUT_UART_LSR testbench_cvwsoc__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__LSR
 #endif
 
 #ifndef DUT_UART_RX_STATE
-#define DUT_UART_RX_STATE testbench_cvwsoc__DOT__soc__DOT__uncoregen__DOT__uncore__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxstate
+#define DUT_UART_RX_STATE testbench_cvwsoc__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxstate
 #endif
 
 #ifndef DUT_UART_RX_SHIFTREG
-#define DUT_UART_RX_SHIFTREG testbench_cvwsoc__DOT__soc__DOT__uncoregen__DOT__uncore__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxshiftreg
+#define DUT_UART_RX_SHIFTREG testbench_cvwsoc__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__rxshiftreg
 #endif
 
 #ifndef DUT_UART_SIN_SYNC
-#define DUT_UART_SIN_SYNC testbench_cvwsoc__DOT__soc__DOT__uncoregen__DOT__uncore__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__SINsync
+#define DUT_UART_SIN_SYNC testbench_cvwsoc__DOT__system__DOT__apb__DOT__uartgen__DOT__uart__DOT__uartPC__DOT__SINsync
 #endif
 
 extern "C" const char* getenvval(const char* pszName) {
@@ -248,7 +280,7 @@ class UartPtyBridge {
         }
 
         poll_host();
-        top->rootp->DUT_UART_RX = 1;
+        DUT_UART_MODEL(top)->DUT_UART_RX = 1;
 
         if (!rx_fifo_.empty() && can_accept_byte(top)) {
             inject_rx_byte(top, rx_fifo_.front());
@@ -262,9 +294,9 @@ class UartPtyBridge {
             return;
         }
 
-        const int char_valid = top->rootp->DUT_UART_CHAR_VALID ? 1 : 0;
+        const int char_valid = DUT_UART_MODEL(top)->DUT_UART_CHAR_VALID ? 1 : 0;
         if (tx_to_pty_ && char_valid && !tx_prev_valid_) {
-            const unsigned char ch = static_cast<unsigned char>(top->rootp->DUT_UART_CHAR_DATA & 0xffU);
+            const unsigned char ch = static_cast<unsigned char>(DUT_UART_MODEL(top)->DUT_UART_CHAR_DATA & 0xffU);
             const ssize_t rc = ::write(master_fd_, &ch, 1);
             (void)rc;
         }
@@ -274,19 +306,19 @@ class UartPtyBridge {
   private:
     template <typename Top>
     bool can_accept_byte(Top* top) const {
-        const bool fifo_enabled = (top->rootp->DUT_UART_FCR & 0x01U) != 0;
-        if (top->rootp->DUT_UART_RX_STATE != kUartIdle) {
+        const bool fifo_enabled = (DUT_UART_MODEL(top)->DUT_UART_FCR & 0x01U) != 0;
+        if (DUT_UART_MODEL(top)->DUT_UART_RX_STATE != kUartIdle) {
             return false;
         }
         if (fifo_enabled) {
-            return top->rootp->DUT_UART_RX_FIFO_ENTRIES < 15;
+            return DUT_UART_MODEL(top)->DUT_UART_RX_FIFO_ENTRIES < 15;
         }
-        return top->rootp->DUT_UART_RX_DATA_READY == 0;
+        return DUT_UART_MODEL(top)->DUT_UART_RX_DATA_READY == 0;
     }
 
     template <typename Top>
     void inject_rx_byte(Top* top, std::uint8_t byte) {
-        auto* root = top->rootp;
+        auto* root = DUT_UART_MODEL(top);
         std::uint16_t shiftreg = 0x0001U;  // valid stop bit, no framing/parity error
         for (unsigned bit = 0; bit < 8; ++bit) {
             if ((byte >> bit) & 0x1U) {
@@ -394,7 +426,7 @@ int main(int argc, char** argv, char**) {
         }
     }
 
-    topp->rootp->DUT_UART_RX = 1;
+    DUT_UART_MODEL(topp)->DUT_UART_RX = 1;
 
     std::signal(SIGINT, on_stop);
     std::signal(SIGTERM, on_stop);
@@ -468,6 +500,7 @@ int main(int argc, char** argv, char**) {
         }
 
         topp->eval();
+
 
         if (uart.enabled()) {
             uart.sample_output(topp.get(), contextp->time());

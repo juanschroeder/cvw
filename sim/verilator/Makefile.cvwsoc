@@ -41,23 +41,34 @@ export WALLY
 BOOL_TRUE := 1 yes YES true TRUE
 RV32 ?= 0
 CVWSOC_RV32 := $(filter $(BOOL_TRUE),$(RV32))
+CVA6 ?= 0
+VEX ?= 0
+CVWSOC_VEXRISCV := $(filter $(BOOL_TRUE),$(VEX))
+ifneq ($(CVWSOC_VEXRISCV),)
+ifneq ($(filter 1,$(CVA6)),)
+$(error VEX=1 and CVA6=1 select different CPU implementations)
+endif
+endif
 SDHCI ?= 0
 DMA ?= 0
 I2S ?= 0
+WISHBONE ?= 0
 BOOTROM ?= 0
 CVWSOC_BOOTROM := $(filter $(BOOL_TRUE),$(BOOTROM))
 # Enable SDHCI with bootrom boot (can't do RAM preload)
 CVWSOC_SIM_SDHCI := $(if $(CVWSOC_BOOTROM),1,$(filter $(BOOL_TRUE),$(SDHCI)))
 CVWSOC_SIM_DMA := $(filter $(BOOL_TRUE),$(DMA))
 CVWSOC_SIM_I2S := $(filter $(BOOL_TRUE),$(I2S))
+CVWSOC_SIM_WISHBONE := $(filter $(BOOL_TRUE),$(WISHBONE))
 CVWSOC_LINUX_PRELOAD_SKIP_INITRD := $(if $(CVWSOC_SIM_SDHCI),1,0)
 WALLYCONF ?= fpgagenesys2soc
-CONFIG ?= $(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF))
+# CVA6 and Vexriscv require the RV32 system's 64-bit AXI data bus.
+CONFIG ?= $(if $(CVWSOC_VEXRISCV),fpgagenesys2vexsoc,$(if $(filter 1,$(CVA6)),$(if $(CVWSOC_RV32),fpgagenesys2cva6rv32w64soc,fpgagenesys2cva6soc),$(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF))))
 CVWSOC_SIM_AXI_RAM ?= $(if $(CVWSOC_SIM_SDHCI),0,1)
 CVWSOC_CONFIG_RV32 := $(findstring rv32,$(CONFIG))
 CVWSOC_CONFIG_RV32W64 := $(findstring rv32w64,$(CONFIG))
-CVWSOC_XLEN ?= $(if $(or $(CVWSOC_RV32),$(CVWSOC_CONFIG_RV32)),32,64)
-CVWSOC_BUS_WIDTH ?= $(if $(CVWSOC_CONFIG_RV32W64),64,$(CVWSOC_XLEN))
+CVWSOC_XLEN ?= $(if $(or $(CVWSOC_RV32),$(CVWSOC_CONFIG_RV32),$(CVWSOC_VEXRISCV)),32,64)
+CVWSOC_BUS_WIDTH ?= $(if $(or $(CVWSOC_CONFIG_RV32W64),$(CVWSOC_VEXRISCV)),64,$(CVWSOC_XLEN))
 CVWSOC_WORD_BYTES ?= $(if $(filter 32,$(CVWSOC_BUS_WIDTH)),4,8)
 VERILATOR ?= verilator
 VERILATOR_DIR := $(WALLY)/sim/verilator
@@ -71,15 +82,22 @@ SDHCI_ROOT := $(COPIED_ROOT)/sdhci/hw
 IDMA_ROOT := $(PULP_ROOT)/idma
 
 CVWSOC_DEPLOY_ROOT ?= /yocto/fpga/kas-cvwsoc/build/tmp/deploy/images
-CVWSOC_MACHINE ?= $(if $(CVWSOC_RV32),cvwsoc-virt32,cvwsoc-virt)
+CVWSOC_MACHINE ?= $(if $(CVWSOC_VEXRISCV),vexriscvsoc-virt32,$(if $(filter 1,$(CVA6)),$(if $(filter 32,$(CVWSOC_XLEN)),cva6soc-virt32,cva6soc-virt),$(if $(filter 32,$(CVWSOC_XLEN)),cvwsoc-virt32,cvwsoc-virt)))
 CVWSOC_DEPLOY_DIR ?= $(CVWSOC_DEPLOY_ROOT)/$(CVWSOC_MACHINE)
 CVWSOC_PRELOAD_ROOT ?= $(VERILATOR_DIR)/preload/cvwsoc
-CVWSOC_PRELOAD_DIR ?= $(CVWSOC_PRELOAD_ROOT)/$(CVWSOC_MACHINE)
-CVWSOC_DTS_SRC ?= $(WALLY)/linux/devicetree/$(if $(filter 32,$(CVWSOC_XLEN)),wally-virt32soc.dts,wally-virtsoc.dts)
-CVWSOC_ORIG_DTB ?= $(CVWSOC_DEPLOY_DIR)/$(if $(CVWSOC_RV32),wally-virt32soc.dtb,wally-virtsoc.dtb)
+# The VexRiscv core is RV32 on a 64-bit memory bus.
+CVWSOC_PRELOAD_MACHINE ?= $(if $(CVWSOC_VEXRISCV),vexriscv-virt32,$(CVWSOC_MACHINE))
+CVWSOC_PRELOAD_DIR ?= $(CVWSOC_PRELOAD_ROOT)/$(CVWSOC_PRELOAD_MACHINE)
+CVWSOC_DEFAULT_DTS_SRC := $(WALLY)/linux/devicetree/$(if $(filter 32,$(CVWSOC_XLEN)),wally-virt32soc.dts,wally-virtsoc.dts)
+CVWSOC_CVA6_DTS_SRC := $(CVWSOC_PRELOAD_DIR)/wally-virtsoc-cva6.dts
+CVWSOC_CVA6_ISA_EXTENSIONS := "i", "m", "a", "f", "d", "c", "zba", "zbb", "zbc", "zbs", "zca", "zcb", "zcd", "zicntr", "zicond", "zicsr", "zifencei", "zihpm"
+CVWSOC_VEXRISCV_DTS_SRC := $(CVWSOC_PRELOAD_DIR)/wally-virtsoc-vexriscv.dts
+CVWSOC_VEXRISCV_ISA_EXTENSIONS := "i", "m", "a", "f", "d", "c", "zicsr", "zifencei"
+CVWSOC_DTS_SRC ?= $(if $(CVWSOC_VEXRISCV),$(CVWSOC_VEXRISCV_DTS_SRC),$(if $(filter 1,$(CVA6)),$(CVWSOC_CVA6_DTS_SRC),$(CVWSOC_DEFAULT_DTS_SRC)))
+CVWSOC_ORIG_DTB ?= $(CVWSOC_DEPLOY_DIR)/$(if $(filter 32,$(CVWSOC_XLEN)),wally-virt32soc.dtb,wally-virtsoc.dtb)
 CVWSOC_FW_JUMP_BIN ?= $(CVWSOC_DEPLOY_DIR)/fw_jump.bin
 CVWSOC_UBOOT_BIN ?= $(CVWSOC_DEPLOY_DIR)/u-boot.bin
-CVWSOC_UBOOT_DTB ?= $(CVWSOC_DEPLOY_DIR)/$(if $(CVWSOC_RV32),cvwsoc-virt32.dtb,cvwsoc-virt.dtb)
+CVWSOC_UBOOT_DTB ?= $(CVWSOC_DEPLOY_DIR)/$(if $(filter 32,$(CVWSOC_XLEN)),cvwsoc-virt32.dtb,cvwsoc-virt.dtb)
 RISCV_GCC_BIN ?= riscv64-unknown-elf-gcc
 RISCV_OBJCOPY_BIN ?= riscv64-unknown-elf-objcopy
 CVWSOC_STUB_MARCH ?= $(if $(filter 32,$(CVWSOC_XLEN)),rv32imac,rv64imac)
@@ -239,7 +257,8 @@ TRACE ?= 0
 TRACE_ENABLED := $(filter-out 0 no NO false FALSE,$(TRACE))
 TRACE_BUILD_ARGS := $(if $(TRACE_ENABLED),--trace-fst,)
 TRACE_PARAM_ARG := $(if $(filter sv,$(TRACE)),MAKE_VCD=1,MAKE_VCD=0)
-ALL_PARAM_ARGS := $(strip $(PARAM_ARGS) $(TRACE_PARAM_ARG))
+FULL_TB_PARAM_ARGS := ENABLE_DMA=$(if $(CVWSOC_SIM_DMA),1,0) ENABLE_I2S=$(if $(CVWSOC_SIM_I2S),1,0) ENABLE_SDHCI=$(if $(CVWSOC_SIM_SDHCI),1,0) ENABLE_WISHBONE=$(if $(CVWSOC_SIM_WISHBONE),1,0)
+ALL_PARAM_ARGS := $(strip $(PARAM_ARGS) $(TRACE_PARAM_ARG) $(FULL_TB_PARAM_ARGS))
 EXPANDED_PARAM_ARGS := $(patsubst %,-G%,$(ALL_PARAM_ARGS))
 UART_STDOUT ?= 0
 UART_TIMESTAMP ?= 1
@@ -248,8 +267,7 @@ UART_PTY_TX ?= 1
 UART_SHELL_TAGS ?= 0
 
 CONFIG_VH ?= $(WALLY)/config/deriv/$(CONFIG)/config.vh
-TESTBENCH ?= testbench_cvwsoc
-TESTBENCH_MODULENAME ?= testbench_cvwsoc
+TESTBENCH := testbench_cvwsoc_full
 BRIDGE_RTL := $(WALLY)/addins/ahb-to-axi/rtl/ahb_to_axi4_burst.sv
 BRIDGE_PERF_RTL := $(WALLY)/addins/ahb-to-axi/rtl/axi_perf_monitor.sv
 WRAPPER ?= $(WALLY)/sim/verilator/wrapper_cvwsoc.cpp
@@ -291,8 +309,19 @@ COMMON_CELLS_SOURCES := \
 	$(PULP_COMMON_CELLS_ROOT)/src/stream_join_dynamic.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/stream_mux.sv \
 	$(PULP_COMMON_CELLS_ROOT)/src/clk_int_div.sv \
-	$(PULP_COMMON_CELLS_ROOT)/src/sync.sv
-
+	$(PULP_COMMON_CELLS_ROOT)/src/sync.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/lfsr.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/lfsr_8bit.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/shift_reg.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/shift_reg_gated.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/popcount.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_demux.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/unread.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/cb_filter_pkg.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_filter.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/stream_xbar.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/cb_filter.sv \
+	$(PULP_COMMON_CELLS_ROOT)/src/sub_per_hash.sv
 
 AXI_SOURCES := \
 	$(PULP_AXI_ROOT)/src/axi_pkg.sv \
@@ -301,6 +330,7 @@ AXI_SOURCES := \
 	$(PULP_AXI_ROOT)/src/axi_burst_splitter_gran.sv \
 	$(PULP_AXI_ROOT)/src/axi_burst_splitter.sv \
 	$(PULP_AXI_ROOT)/src/axi_to_axi_lite.sv \
+	$(PULP_AXI_ROOT)/src/axi_lite_to_apb.sv \
 	$(PULP_AXI_ROOT)/src/axi_cdc_dst.sv \
 	$(PULP_AXI_ROOT)/src/axi_cdc_src.sv \
 	$(PULP_AXI_ROOT)/src/axi_cut.sv \
@@ -314,7 +344,10 @@ AXI_SOURCES := \
 	$(PULP_AXI_ROOT)/src/axi_demux.sv \
 	$(PULP_AXI_ROOT)/src/axi_xbar_unmuxed.sv \
 	$(PULP_AXI_ROOT)/src/axi_xbar.sv \
-	$(PULP_AXI_ROOT)/src/axi_to_detailed_mem.sv
+	$(PULP_AXI_ROOT)/src/axi_to_detailed_mem.sv \
+	$(PULP_AXI_ROOT)/src/axi_id_serialize.sv \
+	$(PULP_AXI_ROOT)/src/axi_serializer.sv \
+	$(PULP_AXI_ROOT)/src/axi_isolate.sv
 
 
 PULP_REGISTER_INTERFACE_SOURCES := \
@@ -362,6 +395,7 @@ I2S_SOURCES := $(if $(CVWSOC_SIM_I2S), \
 
 
 CORE_SOURCES := $(filter-out \
+	$(COPIED_ROOT)/uncore/uncore.sv \
 	$(wildcard $(COPIED_ROOT)/testbench/sdc/*.sv) \
 	$(wildcard $(COPIED_ROOT)/ahb-to-axi/*/*.sv) \
 	$(wildcard $(COPIED_ROOT)/cvwsoc/*.sv) \
@@ -372,8 +406,6 @@ CORE_SOURCES := $(filter-out \
 	$(wildcard $(COPIED_ROOT)/sdhci/hw/*/*.sv), \
 	$(wildcard $(COPIED_ROOT)/*/*.sv) \
 	$(wildcard $(COPIED_ROOT)/*/*/*.sv))
-
-#	$(wildcard $(COPIED_ROOT)/testbench/sdc/*.sv)
 
 SDHCI_PERIPH_SOURCES := \
 	$(wildcard $(COPIED_ROOT)/pulp/tech_cells/src/rtl/*.sv) \
@@ -398,6 +430,180 @@ SDHCI_PERIPH_SOURCES := \
 	$(wildcard $(COPIED_ROOT)/cvwsoc/sdhci/sd*.v) \
 	$(wildcard $(COPIED_ROOT)/cvwsoc/sdhci/*.sv)
 
+# The legacy-AHB Wishbone island is now instantiated by cvwsoc_wishbone.
+# Keep its bridge, decoder, UART, and stubs in the curated simulation file
+# list even though the rest of cvwsoc is intentionally excluded from
+# CORE_SOURCES.
+WISHBONE_SOURCES := \
+	$(wildcard $(COPIED_ROOT)/cvwsoc/wishbone/*.sv) \
+	$(COPIED_ROOT)/wb2axip/rtl/axlite2wbsp.v \
+	$(COPIED_ROOT)/wb2axip/rtl/axilwr2wbsp.v \
+	$(COPIED_ROOT)/wb2axip/rtl/axilrd2wbsp.v \
+	$(COPIED_ROOT)/wb2axip/rtl/wbarbiter.v
+
+# CVWSoC refactoring modules live with the other CVWSoC addins.  Keep these
+# explicit because CORE_SOURCES intentionally excludes the cvwsoc directory.
+CVWSOC_REFACTOR_SOURCES := \
+	$(WALLY)/addins/cvwsoc/cvwsoc_axi.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_ahb.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_cpu.sv \
+	$(WALLY)/addins/cvwsoc/cpu/cvwsoc_cpu_wally.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_system.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_apb.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_bootrom.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_onchip_ram.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_wishbone.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_adrdecs.sv \
+	$(WALLY)/addins/cvwsoc/axi_lite_to_ahb_with_size.sv \
+	$(WALLY)/addins/cvwsoc/axi_mmio_to_axilite32_v3.sv \
+	$(WALLY)/addins/cvwsoc/axi_to_axi_lite_with_size.sv
+
+
+# we use the copied folder because it's patched for 'lzc' module collision
+CVA6_ROOT := $(COPIED_ROOT)/pulp/cva6
+
+CVA6_HPDCACHE_SOURCES := \
+    $(WALLY)/addins/hpdcache/rtl/src/hpdcache_pkg.sv \
+    $(WALLY)/addins/hpdcache/rtl/src/hwpf_stride/hwpf_stride_pkg.sv \
+    $(WALLY)/addins/hpdcache/rtl/src/*.sv \
+    $(WALLY)/addins/hpdcache/rtl/src/common/*.sv \
+    $(WALLY)/addins/hpdcache/rtl/src/utils/*.sv
+
+#    $(WALLY)/addins/hpdcache/rtl/src/target/cva6/*.sv
+
+
+# we use the copied folder because it's patched for 'lzc' module collision
+CVA6_FPU_SOURCES := \
+    $(COPIED_ROOT)/pulp/fpnew/src/fpnew_pkg.sv \
+    $(COPIED_ROOT)/pulp/fpnew/src/*.sv
+
+# newer fpnew?
+#    $(COPIED_ROOT)/pulp/fpnew/src/mxdotp/fpnew_mxdotp_multi_pkg.sv
+
+
+CVA6_OLDFPU_SOURCES := \
+    $(COPIED_ROOT)/pulp/fpu_div_sqrt_mvp/hdl/div_sqrt_top_mvp.sv \
+    $(COPIED_ROOT)/pulp/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv \
+    $(COPIED_ROOT)/pulp/fpu_div_sqrt_mvp/hdl/preprocess_mvp.sv \
+    $(COPIED_ROOT)/pulp/fpu_div_sqrt_mvp/hdl/nrbd_nrsc_mvp.sv \
+    $(COPIED_ROOT)/pulp/fpu_div_sqrt_mvp/hdl/norm_div_sqrt_mvp.sv \
+    $(COPIED_ROOT)/pulp/fpu_div_sqrt_mvp/hdl/control_mvp.sv \
+    $(COPIED_ROOT)/pulp/fpu_div_sqrt_mvp/hdl/iteration_div_sqrt_mvp.sv
+
+
+# TECH CELLS: Change for FPGA
+#	$(COPIED_ROOT)/pulp/tech_cells/src/fpga/tc_sram_xilinx.sv
+CVA6_TECH_CELLS_SOURCES := \
+	$(COPIED_ROOT)/pulp/tech_cells/src/rtl/tc_sram.sv
+
+CVA6_UNBENT_SOURCES := \
+    $(COPIED_ROOT)/pulp/unbent/src/axi_err_unit_wrap.sv \
+    $(COPIED_ROOT)/pulp/unbent/src/bus_err_unit.sv \
+    $(COPIED_ROOT)/pulp/unbent/src/bus_err_unit_reg_pkg.sv \
+    $(COPIED_ROOT)/pulp/unbent/src/bus_err_unit_reg_top.sv \
+    $(COPIED_ROOT)/pulp/unbent/src/bus_err_unit_bare.sv \
+
+CVA6_PULP_RV_ATOMICS_SOURCES := \
+    $(COPIED_ROOT)/pulp/axi_riscv_atomics/src/axi_riscv_atomics_structs.sv \
+    $(COPIED_ROOT)/pulp/axi_riscv_atomics/src/axi_riscv_atomics_wrap.sv \
+    $(COPIED_ROOT)/pulp/axi_riscv_atomics/src/axi_riscv_atomics.sv \
+    $(COPIED_ROOT)/pulp/axi_riscv_atomics/src/axi_riscv_amos.sv \
+    $(COPIED_ROOT)/pulp/axi_riscv_atomics/src/axi_riscv_lrsc.sv \
+    $(COPIED_ROOT)/pulp/axi_riscv_atomics/src/axi_res_tbl.sv \
+    $(COPIED_ROOT)/pulp/axi_riscv_atomics/src/axi_riscv_amos_alu.sv
+
+
+CVA6_PULP_AXI_LLC_SOURCES := \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_reg_wrap.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_pkg.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_reg_pkg.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_reg_top.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_top.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_config.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_chan_splitter.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_hit_miss.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_evict_unit.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_refill_unit.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_merge_unit.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_write_unit.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_read_unit.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_ways.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_data_way.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/axi_llc_burst_cutter.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/eviction_refill/axi_llc_ax_master.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/eviction_refill/axi_llc_r_master.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/eviction_refill/axi_llc_w_master.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/hit_miss_detect/axi_llc_tag_store.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/hit_miss_detect/axi_llc_miss_counters.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/hit_miss_detect/axi_llc_lock_box_bloom.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src/hit_miss_detect/axi_llc_tag_pattern_gen.sv \
+    $(COPIED_ROOT)/pulp/axi_llc/src//hit_miss_detect/axi_llc_evict_box.sv
+
+CVA6_PULP_AXI_LLC_INCLUDE := \
+    $(COPIED_ROOT)/pulp/axi_llc/include
+
+# Old CVA6 CLINT
+#CVA6_CLINT_SOURCES := \
+#    $(COPIED_ROOT)/pulp/cva6/corev_apu/clint/clint.sv
+
+# Cheshire CLINT (not used for now)
+#CVA6_CLINT_SOURCES := \
+#    $(COPIED_ROOT)/pulp/clint/src/clint.sv \
+#    $(COPIED_ROOT)/pulp/clint/src/clint_reg_pkg.sv \
+#    $(COPIED_ROOT)/pulp/clint/src/clint_reg_top.sv \
+
+
+# ariane_axi_pkg: This is in the 'tb' folder, dependency looks weird
+CVA6_OTHER_SOURCES := \
+    $(COPIED_ROOT)/pulp/cva6/corev_apu/tb/ariane_axi_pkg.sv
+
+# Keep the CVA6 architectural base configuration aligned with the selected
+# CVWSoC XLEN.  The IMAC variant is kept here for the planned follow-on RV32
+# configuration change.
+CVA6_RV32_CONFIG_PKG := cv32a6_imafc_sv32_config_pkg.sv
+CVA6_RV64_CONFIG_PKG := cv64a6_imafdchsclic_sv39_wb_config_pkg.sv
+CVA6_CONFIG_PKG := $(if $(CVWSOC_RV32),$(CVA6_RV32_CONFIG_PKG),$(CVA6_RV64_CONFIG_PKG))
+
+CVWSOC_CVA6_CORE_SOURCES := \
+    $(CVA6_HPDCACHE_SOURCES) \
+    $(CVA6_FPU_SOURCES) \
+    $(CVA6_OLDFPU_SOURCES) \
+    $(CVA6_ROOT)/core/include/ariane_pkg.sv \
+    $(CVA6_ROOT)/core/include/std_cache_pkg.sv \
+    $(filter-out $(CVA6_ROOT)/core/include/cv32a6%_config_pkg.sv $(CVA6_ROOT)/core/include/cv64a6%_config_pkg.sv,$(wildcard $(CVA6_ROOT)/core/*/*.sv)) \
+    $(CVA6_ROOT)/core/*.sv \
+    $(CVA6_ROOT)/core/*/*/*.sv \
+    $(CVA6_ROOT)/common/local/util/sram_cache.sv \
+    $(CVA6_ROOT)/common/local/util/sram_pulp.sv \
+    $(CVA6_TECH_CELLS_SOURCES) \
+    $(CVA6_UNBENT_SOURCES) \
+    $(CVA6_PULP_RV_ATOMICS_SOURCES) \
+    $(CVA6_OTHER_SOURCES)
+
+#    $(CVA6_PULP_AXI_LLC_SOURCES)
+#    $(CVA6_CLINT_SOURCES)
+
+
+CVWSOC_CVA6_SOURCES := \
+    $(WALLY)/addins/cvwsoc/cpu/cvwsoc_cva6_pkg.sv \
+    $(CVA6_ROOT)/core/include/config_pkg.sv \
+    $(CVA6_ROOT)/core/include/$(CVA6_CONFIG_PKG) \
+    $(WALLY)/addins/cvwsoc/cpu/cvwsoc_cpu_cva6.sv \
+    $(CVWSOC_CVA6_CORE_SOURCES)
+
+CVWSOC_VEXRISCV_SOURCES := \
+	$(WALLY)/addins/cvwsoc/cpu/cvwsoc_cpu_vexriscv.sv \
+	$(WALLY)/addins/cvwsoc/cpu/VexriscvCVWSoC.v
+
+
+
+CVWSOC_INCLUDE_PATH := \
+    $(WALLY)/addins/cvwsoc/include
+
+CVA6_INCLUDE_PATH := \
+    $(CVA6_ROOT)/core/include
+
+CVA6_HPDCACHE_INCLUDE_PATH := $(WALLY)/addins/hpdcache/rtl/include
 
 # FIXME: separate this into groups?
 PERIPH_SOURCES := \
@@ -415,7 +621,12 @@ INCLUDE_PATH := \
 	-I$(PULP_COMMON_CELLS_ROOT)/include \
 	-I$(PULP_REGISTER_INTERFACE_ROOT)/include \
 	-I$(IDMA_ROOT)/src/include \
-	-I$(SDHCI_ROOT)/include
+	-I$(COPIED_ROOT)/oc_uart_16550 \
+	-I$(SDHCI_ROOT)/include \
+	-I$(CVWSOC_INCLUDE_PATH) \
+	-I$(CVA6_INCLUDE_PATH) \
+	-I$(CVA6_HPDCACHE_INCLUDE_PATH) \
+	-I$(CVA6_PULP_AXI_LLC_INCLUDE)
 
 VERILOG_AXI_SOURCES := \
 	$(wildcard $(COPIED_ROOT)/verilog-axi/rtl/axi_ram.v)
@@ -424,7 +635,8 @@ SOURCES := \
 	$(COMMON_CELLS_SOURCES) \
 	$(AXI_SOURCES) \
 	$(COPIED_ROOT)/cvw.sv \
-	$(COPIED_ROOT)/cvwsoc/cvwsoc_pkg.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_pkg.sv \
+	$(CVWSOC_REFACTOR_SOURCES) \
 	$(WALLY)/testbench/$(TESTBENCH).sv \
 	$(CORE_SOURCES) \
 	$(BRIDGE_RTL) \
@@ -433,7 +645,10 @@ SOURCES := \
 	$(PULP_REGISTER_INTERFACE_SOURCES) \
 	$(IDMA_SOURCES) \
 	$(I2S_SOURCES) \
-	$(PERIPH_SOURCES)
+	$(WISHBONE_SOURCES) \
+	$(PERIPH_SOURCES) \
+	$(CVWSOC_CVA6_SOURCES) \
+	$(CVWSOC_VEXRISCV_SOURCES)
 
 DEPENDENCIES := \
 	$(lastword $(MAKEFILE_LIST)) \
@@ -445,6 +660,18 @@ $(COPIED_ROOT)/config/config.vh: $(CONFIG_VH) FORCE
 	mkdir -p $(dir $@)
 	@if ! cmp -s "$<" "$@"; then cp "$<" "$@"; fi
 
+$(CVWSOC_CVA6_DTS_SRC): $(CVWSOC_DEFAULT_DTS_SRC) | $(CVWSOC_PRELOAD_DIR)
+	@tmp="$@.tmp"; \
+	sed -e '/^[[:space:]]*riscv,isa-extensions[[:space:]]*=/c\      riscv,isa-extensions = $(CVWSOC_CVA6_ISA_EXTENSIONS);' \
+		"$<" > "$$tmp"; \
+	if ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
+
+$(CVWSOC_VEXRISCV_DTS_SRC): $(CVWSOC_DEFAULT_DTS_SRC) | $(CVWSOC_PRELOAD_DIR)
+	@tmp="$@.tmp"; \
+	sed -e '/^[[:space:]]*riscv,isa-extensions[[:space:]]*=/c\      riscv,isa-extensions = $(CVWSOC_VEXRISCV_ISA_EXTENSIONS);' \
+		"$<" > "$$tmp"; \
+	if ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
+
 $(IDMA_GENERATED_SOURCES):
 	$(MAKE) -C $(IDMA_ROOT) \
 		IDMA_REG_DIR=$(PULP_REGISTER_INTERFACE_ROOT) \
@@ -455,10 +682,11 @@ $(IDMA_GENERATED_SOURCES):
 OPT_GEN ?= VM_PARALLEL_BUILDS=1 OPT_FAST="-O3 -march=native" OPT_GLOBAL="-O3 -march=native" OPT_SLOW="-O1"
 OPT_COMP ?= -O3
 VERILATOR_USER_CPPFLAGS ?= -DsetBit=set
+VERILATOR_USER_CPPFLAGS += -DCVWSOC_FULL_TB
 
 define RUN_VERILATOR
 	mkdir -p $(VERILATOR_DIR)/logs
-	args='$(PLUS_ARGS) $(EXTRA_PLUS_ARGS) $(CVWSOC_BOOTROM_PLUS_ARGS) +VERILATOR_THREADS=$(THREADS) +UART_STDOUT=$(UART_STDOUT) +UART_TIMESTAMP=$(UART_TIMESTAMP) +UART_SHELL_TAGS=$(UART_SHELL_TAGS) +HEARTBEAT_SPEED_INTERVAL_CYCLES=$(HEARTBEAT_SPEED_INTERVAL_CYCLES) +UART_PTY_TX=$(UART_PTY_TX)'; \
+args='$(PLUS_ARGS) $(EXTRA_PLUS_ARGS) $(CVWSOC_BOOTROM_PLUS_ARGS) +VERILATOR_THREADS=$(THREADS) +UART_STDOUT=$(UART_STDOUT) +UART_TIMESTAMP=$(UART_TIMESTAMP) +UART_SHELL_TAGS=$(UART_SHELL_TAGS) +HEARTBEAT_SPEED_INTERVAL_CYCLES=$(HEARTBEAT_SPEED_INTERVAL_CYCLES) +UART_PTY_TX=$(UART_PTY_TX)'; \
 	if [[ -n "$(BOOTROM_BIN)" ]]; then args="$$args +BOOTROM_BIN=$(BOOTROM_BIN)"; fi; \
 	if [[ -n "$(EXT_RAM_BIN)" ]]; then args="$$args +EXT_RAM_BIN=$(EXT_RAM_BIN)"; fi; \
 	if [[ -n "$(CVWSOC_SD_IMAGE_DEPS)" ]]; then args="$$args +SD_IMAGE=$(CVWSOC_SD_IMAGE)"; fi; \
@@ -999,11 +1227,12 @@ $(WORKDIR)/V$(TESTBENCH).mk: $(DEPENDENCIES)
 	--Mdir $(WORKDIR) -o V$(TESTBENCH) \
 	--cc --exe $(TRACE_BUILD_ARGS) \
 	$(VLT_FLAGS) $(OPT_COMP) $(PARAMS) $(EXTRA_PARAMS) $(NONPROF) $(WARN_ARGS) \
-	--top-module $(TESTBENCH_MODULENAME) --relative-includes \
+	--top-module $(TESTBENCH) --relative-includes \
 	$(INCLUDE_PATH) \
 	$(WRAPPER) \
 	$(DEFINE_ARGS) \
 	$(if $(filter $(BOOL_TRUE),$(CVWSOC_SIM_AXI_RAM)),-DSIM_AXI_RAM,) \
+	-DCVWSOC_FULL_TB \
 	$(if $(CVWSOC_SIM_SDHCI),-DSIM_AXI_SDHCI,) \
 	$(if $(CVWSOC_SIM_DMA),-DSIM_AXI_DMA,) \
 	$(if $(CVWSOC_SIM_I2S),-DSIM_I2S,) \
@@ -1044,4 +1273,5 @@ clean: cleantb
 		$(CVWSOC_LINUX_FAST_RAW_BOOTROM_BIN) \
 		$(CVWSOC_LINUX_FAST_RAW_EXT_RAM_BIN) \
 		$(CVWSOC_SD_IMAGE) \
-		$(CVWSOC_SD_IMAGE).tmp
+		$(CVWSOC_SD_IMAGE).tmp \
+		$(CVWSOC_PRELOAD_DIR)

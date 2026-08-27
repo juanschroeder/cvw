@@ -42,6 +42,38 @@ proc cvwsoc_async_reg {label cell_re} {
   }
 }
 
+
+# ----------------------------------------------------------------
+# UART: should not be necessary
+#set_false_path -to [get_ports UARTSout]
+#set_false_path -from [get_ports UARTSin]
+
+
+# ----------------------------------------------------------------
+# PLIC to CPU
+cvwsoc_false_path_to "PLIC to CPU Machine External Interrupt Pending input" \
+  {.*sync_meip/reg_q_reg\[0\]/D$}
+cvwsoc_false_path_to "PLIC to CPU Supervisor External Interrupt Pending input" \
+  {.*sync_seip/reg_q_reg\[0\]/D$}
+
+# ----------------------------------------------------------------
+# AHB-bridge
+cvwsoc_false_path_to "CPU to AHB-axi bridge" \
+  {.*bridge/pnd_valid_reg/D}
+
+# ----------------------------------------------------------------
+# SPI SD peripheral
+set cvwsoc_sdspi_inputs  [get_ports -quiet {SDCIn}]
+set cvwsoc_sdspi_outputs [get_ports -quiet {SDCCLK SDCCS SDCCmd}]
+
+if {[llength $cvwsoc_sdspi_inputs]} {
+  set_false_path -from $cvwsoc_sdspi_inputs
+}
+
+if {[llength $cvwsoc_sdspi_outputs]} {
+  set_false_path -to $cvwsoc_sdspi_outputs
+}
+
 # ----------------------------------------------------------------
 # Reset / MIG
 

@@ -32,6 +32,8 @@ module hifive_cvw_cosim;
   localparam cvw_t P_COSIM = make_cosim_p(P);
   localparam cvwsoc_cfg_t C = '{
     wally: P_COSIM,
+    cpu:      CVWSOC_CPU_WALLY, // irrelevant
+    bus: '{ AtopsEnabled: P.CPU_CVA6_ENABLED ? 1'b1 : 1'b0 }, 
     mem_type: CVWSOC_MEM_XILINX_DDR2, // semantic only; cvwsoc_ram is absent
     idma_config: '{AxisDescReqCut: 1'b1},
     vga_config:     '{

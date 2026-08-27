@@ -14,6 +14,16 @@ package cvwsoc_pkg;
     CVWSOC_MEM_UBERDDR3
   } cvwsoc_mem_type_t;
 
+  typedef enum logic [1:0] {
+    CVWSOC_CPU_WALLY,
+    CVWSOC_CPU_CVA6,
+    CVWSOC_CPU_VEXRISCV
+  } cvwsoc_cpu_type_t;
+
+  typedef struct packed {
+    bit             AtopsEnabled; // cut req critical path
+  } cvwsoc_bus_config_t;
+
   typedef struct packed {
     bit             AxisDescReqCut; // cut req critical path
   } cvwsoc_idma_config_t;
@@ -30,6 +40,8 @@ package cvwsoc_pkg;
 
   typedef struct packed {
     cvw_t                   wally;
+    cvwsoc_cpu_type_t       cpu;
+    cvwsoc_bus_config_t     bus;
     cvwsoc_mem_type_t       mem_type;
     cvwsoc_idma_config_t    idma_config;
     cvwsoc_vga_config_t     vga_config;
@@ -37,8 +49,8 @@ package cvwsoc_pkg;
   } cvwsoc_cfg_t;
 
   localparam int unsigned XBAR_MAX_SLV = 7;
-  localparam int unsigned XBAR_MAX_MST = 11;
-  localparam int unsigned XBAR_MAX_RULES = 11;
+  localparam int unsigned XBAR_MAX_MST = 13;
+  localparam int unsigned XBAR_MAX_RULES = 19;
   localparam int unsigned XBAR_PORT_DISABLED = '1;
 
   typedef struct packed {
@@ -55,6 +67,8 @@ package cvwsoc_pkg;
     int unsigned s_idma_be;
 
     int unsigned m_ddr;
+    int unsigned m_ahb;
+    int unsigned m_wishbone;
     int unsigned m_cdma_reg;
     int unsigned m_vga_reg;
     int unsigned m_usb_reg;
@@ -90,6 +104,8 @@ package cvwsoc_pkg;
     out.s_idma_fe_axis = XBAR_PORT_DISABLED;
     out.s_idma_be      = XBAR_PORT_DISABLED;
     out.m_cdma_reg     = XBAR_PORT_DISABLED;
+    out.m_ahb          = XBAR_PORT_DISABLED;
+    out.m_wishbone     = XBAR_PORT_DISABLED;
     out.m_vga_reg      = XBAR_PORT_DISABLED;
     out.m_usb_reg      = XBAR_PORT_DISABLED;
     out.m_eth_reg      = XBAR_PORT_DISABLED;
@@ -148,6 +164,23 @@ package cvwsoc_pkg;
     };
     mst_idx++;
     rule_idx++;
+    // AHB peripherals share one AXI-to-AHB island.  Multiple
+    // address rules select the same xbar master port.
+    out.m_ahb = mst_idx;
+    out.addr_map[rule_idx++] = '{idx: mst_idx, start_addr: cfg.BOOTROM_BASE[31:0], end_addr: cfg.BOOTROM_BASE[31:0] + cfg.BOOTROM_RANGE[31:0] + 32'd1};
+    out.addr_map[rule_idx++] = '{idx: mst_idx, start_addr: cfg.UNCORE_RAM_BASE[31:0], end_addr: cfg.UNCORE_RAM_BASE[31:0] + cfg.UNCORE_RAM_RANGE[31:0] + 32'd1};
+    out.addr_map[rule_idx++] = '{idx: mst_idx, start_addr: cfg.GPIO_BASE[31:0], end_addr: cfg.GPIO_BASE[31:0] + cfg.GPIO_RANGE[31:0] + 32'd1};
+    out.addr_map[rule_idx++] = '{idx: mst_idx, start_addr: cfg.UART_BASE[31:0], end_addr: cfg.UART_BASE[31:0] + cfg.UART_RANGE[31:0] + 32'd1};
+    out.addr_map[rule_idx++] = '{idx: mst_idx, start_addr: cfg.PLIC_BASE[31:0], end_addr: cfg.PLIC_BASE[31:0] + cfg.PLIC_RANGE[31:0] + 32'd1};
+    out.addr_map[rule_idx++] = '{idx: mst_idx, start_addr: cfg.SDC_BASE[31:0], end_addr: cfg.SDC_BASE[31:0] + cfg.SDC_RANGE[31:0] + 32'd1};
+    out.addr_map[rule_idx++] = '{idx: mst_idx, start_addr: cfg.SPI_BASE[31:0], end_addr: cfg.SPI_BASE[31:0] + cfg.SPI_RANGE[31:0] + 32'd1};
+    mst_idx++;
+    if (cfg.WISHBONE_SUPPORTED) begin
+      out.m_wishbone = mst_idx;
+      out.addr_map[rule_idx] = '{idx: mst_idx, start_addr: cfg.WISHBONE_BASE[31:0], end_addr: cfg.WISHBONE_BASE[31:0] + cfg.WISHBONE_RANGE[31:0] + 32'd1};
+      mst_idx++;
+      rule_idx++;
+    end
     if (cfg.XILINX_AXI_DMA_SUPPORTED) begin
       out.m_cdma_reg = mst_idx;
       out.addr_map[rule_idx] = '{idx: mst_idx, start_addr: cfg.XILINX_AXI_DMA_BASE[31:0], end_addr: cfg.XILINX_AXI_DMA_BASE[31:0] + cfg.XILINX_AXI_DMA_RANGE[31:0] + 32'd1};
@@ -238,6 +271,9 @@ package cvwsoc_pkg;
     // The CPU owns the system address map and can access every instantiated
     // crossbar target.
     conn[out.s_cpu][out.m_ddr] = 1'b1;
+    conn[out.s_cpu][out.m_ahb] = 1'b1;
+    if (cfg.WISHBONE_SUPPORTED)
+      conn[out.s_cpu][out.m_wishbone] = 1'b1;
     if (cfg.XILINX_AXI_DMA_SUPPORTED)
       conn[out.s_cpu][out.m_cdma_reg] = 1'b1;
     if (cfg.AXI_VGA_SUPPORTED)

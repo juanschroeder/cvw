@@ -103,3 +103,38 @@
 [submodule "digilent-i2s2"]
   path = addins/digilent-i2s2
   url = https://github.com/Digilent/Pmod-I2S2.git
+[submodule "fpnew"]
+	path = addins/pulp/fpnew
+	url = https://github.com/pulp-platform/cvfpu.git
+	branch = refs/tags/pulp-v0.2.3
+[submodule "fpu_div_sqrt_mvp"]
+	path = addins/pulp/fpu_div_sqrt_mvp
+	url = https://github.com/pulp-platform/fpu_div_sqrt_mvp.git
+[submodule "pulp-cva6"]
+	path = addins/pulp/cva6
+	url = https://github.com/pulp-platform/cva6.git
+	branch = refs/tags/pulp-v2.0.0
+[submodule "cvfpu"]
+	path = addins/pulp/cvfpu
+	url = https://github.com/pulp-platform/cvfpu.git
+	branch = pulp-v0.2.3
+[submodule "unbent"]
+	path = addins/pulp/unbent
+	url = https://github.com/pulp-platform/unbent.git
+	branch = 0.1.6
+[submodule "hpdcache"]
+	path = addins/hpdcache
+	url = https://github.com/openhwgroup/cv-hpdcache.git
+	branch = 04de808
+[submodule "axi_riscv_atomics"]
+	path = addins/pulp/axi_riscv_atomics
+	url = https://github.com/pulp-platform/axi_riscv_atomics.git
+	branch = v0.8.3
+[submodule "axi_llc"]
+	path = addins/pulp/axi_llc
+	url = https://github.com/pulp-platform/axi_llc.git
+	branch = 0.2.2
+[submodule "clint"]
+	path = addins/pulp/clint
+	url = https://github.com/pulp-platform/clint.git
+	branch = 0.2.0

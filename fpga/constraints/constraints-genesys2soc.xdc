@@ -4,7 +4,6 @@
 # This clock is not used by wally or the AHB Bus. However it is used by the AXI BUS on the DD3 IP.
 
 #create_generated_clock -name CLKDiv64_Gen -source [get_pins wallypipelinedsoc/uncore.uncore/sdc.SDC/sd_top/slow_clk_divider/clkMux/I0] -multiply_by 1 -divide_by 1 [get_pins wallypipelinedsoc/uncore.uncore/sdc.SDC/sd_top/slow_clk_divider/clkMux/O]
-create_generated_clock -name SPISDCClock -source [get_pins mmcm/clk_out4] -multiply_by 1 -divide_by 1 [get_pins wallypipelinedsoc/SPICLK]
 
 ##### clock #####
 set_property PACKAGE_PIN AD12 [get_ports default_200mhz_clk_p]
@@ -41,8 +40,9 @@ set_property -dict { PACKAGE_PIN E18   IOSTANDARD LVCMOS12 } [get_ports { GPI[0]
 set_property -dict { PACKAGE_PIN M19   IOSTANDARD LVCMOS12 } [get_ports { GPI[1] }]; #IO_0_15 Sch=btnd
 set_property -dict { PACKAGE_PIN M20   IOSTANDARD LVCMOS12 } [get_ports { GPI[2] }]; #IO_L6P_T0_15 Sch=btnl
 set_property -dict { PACKAGE_PIN C19   IOSTANDARD LVCMOS12 } [get_ports { GPI[3] }]; #IO_L24P_T3_17 Sch=btnr
-set_input_delay -clock [get_clocks clk_out4_mmcm] -min -add_delay 0.000 [get_ports {GPI[*]}]
-set_input_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 0.000 [get_ports {GPI[*]}]
+# Removed: these associated GPO to CPU clock (not valid anymore)
+# set_input_delay -clock [get_clocks clk_out3_mmcm] -min -add_delay 0.000 [get_ports {GPI[*]}]
+# set_input_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 0.000 [get_ports {GPI[*]}]
 set_max_delay -from [get_ports {GPI[*]}] 20.000
 
 
@@ -54,8 +54,9 @@ set_property -dict { PACKAGE_PIN U29   IOSTANDARD LVCMOS33 } [get_ports { GPO[3]
 set_property -dict { PACKAGE_PIN V20   IOSTANDARD LVCMOS33 } [get_ports { GPO[4] }]; #IO_L19N_T3_A09_D25_VREF_14 Sch=led[4]
 set_max_delay -to [get_ports {GPO[*]}] 20.000
 
-set_output_delay -clock [get_clocks clk_out4_mmcm] -min -add_delay 0.000 [get_ports {GPO[*]}]
-set_output_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 0.000 [get_ports {GPO[*]}]
+# Removed: these associated GPO to CPU clock (not valid anymore)
+# set_output_delay -clock [get_clocks clk_out3_mmcm] -min -add_delay 0.000 [get_ports {GPO[*]}]
+# set_output_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 0.000 [get_ports {GPO[*]}]
 
 
 
@@ -64,10 +65,12 @@ set_output_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 0.000 [get_po
 set_property -dict { PACKAGE_PIN Y23   IOSTANDARD LVCMOS33 } [get_ports { UARTSout }]; #IO_L1P_T0_12 Sch=uart_rx_out
 set_property -dict { PACKAGE_PIN Y20   IOSTANDARD LVCMOS33 } [get_ports { UARTSin }]; #IO_0_12 Sch=uart_tx_in
 #set_property DRIVE 4 [get_ports UARTSout]
-set_input_delay -clock [get_clocks clk_out4_mmcm] -min -add_delay 0.000 [get_ports UARTSin]
-set_input_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 0.000 [get_ports UARTSin]
-set_output_delay -clock [get_clocks clk_out4_mmcm] -min -add_delay 0.000 [get_ports UARTSout]
-set_output_delay -clock [get_clocks clk_out4_mmcm] -max -add_delay 0.000 [get_ports UARTSout]
+# Removed: these associated GPO to CPU clock (not valid anymore)
+# These settings below were forcing UART to be associated to CPU clock, but actually CPU clock was not anymore clk_out3
+#set_input_delay -clock [get_clocks clk_out3_mmcm] -min -add_delay 0.000 [get_ports UARTSin]
+#set_input_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 0.000 [get_ports UARTSin]
+#set_output_delay -clock [get_clocks clk_out3_mmcm] -min -add_delay 0.000 [get_ports UARTSout]
+#set_output_delay -clock [get_clocks clk_out3_mmcm] -max -add_delay 0.000 [get_ports UARTSout]
 
 
 ##### reset #####
@@ -114,17 +117,14 @@ set_property PACKAGE_PIN W21 [get_ports SDCWP]
 set_property IOSTANDARD LVCMOS33 [get_ports SDCWP]
 set_property PULLTYPE PULLUP [get_ports SDCWP]
 
-
-set_output_delay -clock [get_clocks SPISDCClock] -min -add_delay 2.500 [get_ports {SDCCS}]
-set_output_delay -clock [get_clocks SPISDCClock] -max -add_delay 10.000 [get_ports {SDCCS}]
-
-set_input_delay -clock [get_clocks SPISDCClock] -min -add_delay 2.500 [get_ports {SDCIn}]
-set_input_delay -clock [get_clocks SPISDCClock] -max -add_delay 10.000 [get_ports {SDCIn}]
-
-set_output_delay -clock [get_clocks SPISDCClock] -min -add_delay 2.000 [get_ports {SDCCmd}]
-set_output_delay -clock [get_clocks SPISDCClock] -max -add_delay 6.000 [get_ports {SDCCmd}]
-
-set_output_delay -clock [get_clocks SPISDCClock] 0.000 [get_ports SDCCLK]
+#create_generated_clock -name SPISDCClock -source [get_pins mmcm/clk_out4] -multiply_by 1 -divide_by 1 [get_pins u_cvwsoc_ahb/SPICLK]
+# set_output_delay -clock [get_clocks SPISDCClock] -min -add_delay 2.500 [get_ports {SDCCS}]
+# set_output_delay -clock [get_clocks SPISDCClock] -max -add_delay 10.000 [get_ports {SDCCS}]
+# set_input_delay -clock [get_clocks SPISDCClock] -min -add_delay 2.500 [get_ports {SDCIn}]
+# set_input_delay -clock [get_clocks SPISDCClock] -max -add_delay 10.000 [get_ports {SDCIn}]
+# set_output_delay -clock [get_clocks SPISDCClock] -min -add_delay 2.000 [get_ports {SDCCmd}]
+# set_output_delay -clock [get_clocks SPISDCClock] -max -add_delay 6.000 [get_ports {SDCCmd}]
+# set_output_delay -clock [get_clocks SPISDCClock] 0.000 [get_ports SDCCLK]
 
 
 # SDHCI onboard microSD connector I/Os
