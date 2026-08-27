@@ -14,13 +14,13 @@ module cvwsoc_cpu_wally import cvw::*; #(
   logic reset;
   logic HCLK, HRESETn;
   // AHB
-  (* mark_debug = "true" *)logic HWRITE, HMASTLOCK, HREADY, HRESP;
-  (* mark_debug = "true" *)logic [P.PA_BITS-1:0] HADDR;
-  (* mark_debug = "true" *)logic [P.AHBW-1:0] HWDATA, HRDATA;
-  (* mark_debug = "true" *)logic [P.AHBW/8-1:0] HWSTRB;
-  (* mark_debug = "true" *)logic [2:0] HSIZE, HBURST;
-  (* mark_debug = "true" *)logic [3:0] HPROT;
-  (* mark_debug = "true" *)logic [1:0] HTRANS;
+  logic HWRITE, HMASTLOCK, HREADY, HRESP;
+  logic [P.PA_BITS-1:0] HADDR;
+  logic [P.AHBW-1:0] HWDATA, HRDATA;
+  logic [P.AHBW/8-1:0] HWSTRB;
+  logic [2:0] HSIZE, HBURST;
+  logic [3:0] HPROT;
+  logic [1:0] HTRANS;
 
   // AXI
   logic [AXI_ID_W-1:0] awid, bid, arid, rid;
@@ -77,10 +77,27 @@ module cvwsoc_cpu_wally import cvw::*; #(
 
   assign reset = ~rst_ni;
   wallypipelinedcore #(P) core (
-    .clk(clk_i), .reset, .MTimerInt(mtip_i), .MExtInt(meip_i), .SExtInt(seip_i),
-    .MSwInt(msip_i), .MTIME_CLINT(mtime_i), .HRDATA, .HREADY, .HRESP,
-    .HCLK, .HRESETn, .HADDR, .HWDATA, .HWSTRB, .HWRITE, .HSIZE, .HBURST,
-    .HPROT, .HTRANS, .HMASTLOCK, .ExternalStall(external_stall_i));
+    .clk(clk_i), .reset,
+    .MTimerInt(mtip_i),
+    .MExtInt(meip_i),
+    .SExtInt(seip_i),
+    .MSwInt(msip_i),
+    .MTIME_CLINT(mtime_i),
+    .HRDATA,
+    .HREADY,
+    .HRESP,
+    .HCLK,
+    .HRESETn,
+    .HADDR,
+    .HWDATA,
+    .HWSTRB,
+    .HWRITE,
+    .HSIZE,
+    .HBURST,
+    .HPROT,
+    .HTRANS,
+    .HMASTLOCK,
+    .ExternalStall(external_stall_i));
 
   ahb_to_axi4_burst #(.AW(32), .DW(P.AHBW), .IW(AXI_ID_W)
   ) bridge (

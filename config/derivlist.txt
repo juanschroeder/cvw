@@ -181,9 +181,32 @@ AXI_SDHCI_RANGE         64'h00001FFF
 # missing stuff here
 
 
-
 deriv fpganexysa7rv32w64soc fpganexysa7rv32soc
 AHBW                    64
+
+# CVA6 WB caches/config is inefficiently big for Artix-A7 100T
+deriv fpganexysa7cva6rv32w64soc fpganexysa7rv32w64soc
+CPU_CVA6_ENABLED            1
+DCACHE_NUMWAYS              8
+DCACHE_WAYSIZEINBYTES       2048
+DCACHE_LINELENINBITS        128
+ICACHE_NUMWAYS              4
+ICACHE_WAYSIZEINBYTES       4096
+ICACHE_LINELENINBITS        128
+#WISHBONE_SUPPORTED          0
+#WISHBONE_ETH_SUPPORTED      0
+#AXI_USB_SUPPORTED           0
+#DCACHE_NUMWAYS              4
+#DCACHE_LINELENINBITS        512
+#DCACHE_WAYSIZEINBYTES       4096
+#ICACHE_LINELENINBITS        512
+#AXIS_IDMA_SUPPORTED         0
+#AXIS_I2S_SUPPORTED          0
+
+
+# Vexriscv: CPU config is fixed for the moment
+deriv fpganexysa7vexsoc fpganexysa7rv32w64soc
+CPU_VEXRISCV_ENABLED        1
 
 
 deriv fpgagenesys2soc fpgagenesys2
@@ -329,6 +352,29 @@ AXIS_IDMA_RANGE             64'h00000FFF
 AXIS_I2S_SUPPORTED          1
 UBERDDR3_SUPPORTED          1
 LITEDRAM_SUPPORTED          0
+
+# CVA6 cache geometry matches the former apply_cvwsoc_cfg() override.
+deriv fpgagenesys2cva6soc fpgagenesys2soc
+CPU_CVA6_ENABLED            1
+DCACHE_NUMWAYS              8
+DCACHE_WAYSIZEINBYTES       4096
+DCACHE_LINELENINBITS        512
+ICACHE_NUMWAYS              4
+ICACHE_WAYSIZEINBYTES       4096
+ICACHE_LINELENINBITS        512
+
+deriv fpgagenesys2cva6rv32w64soc fpgagenesys2rv32w64soc
+CPU_CVA6_ENABLED            1
+DCACHE_NUMWAYS              8
+DCACHE_WAYSIZEINBYTES       4096
+DCACHE_LINELENINBITS        512
+ICACHE_NUMWAYS              4
+ICACHE_WAYSIZEINBYTES       4096
+ICACHE_LINELENINBITS        512
+
+# Vexriscv: CPU config is fixed for the moment
+deriv fpgagenesys2vexsoc fpgagenesys2rv32w64soc
+CPU_VEXRISCV_ENABLED        1
 
 
 # temporary spitest configuration

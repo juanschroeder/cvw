@@ -14,6 +14,16 @@ package cvwsoc_pkg;
     CVWSOC_MEM_UBERDDR3
   } cvwsoc_mem_type_t;
 
+  typedef enum logic [1:0] {
+    CVWSOC_CPU_WALLY,
+    CVWSOC_CPU_CVA6,
+    CVWSOC_CPU_VEXRISCV
+  } cvwsoc_cpu_type_t;
+
+  typedef struct packed {
+    bit             AtopsEnabled; // cut req critical path
+  } cvwsoc_bus_config_t;
+
   typedef struct packed {
     bit             AxisDescReqCut; // cut req critical path
   } cvwsoc_idma_config_t;
@@ -30,6 +40,8 @@ package cvwsoc_pkg;
 
   typedef struct packed {
     cvw_t                   wally;
+    cvwsoc_cpu_type_t       cpu;
+    cvwsoc_bus_config_t     bus;
     cvwsoc_mem_type_t       mem_type;
     cvwsoc_idma_config_t    idma_config;
     cvwsoc_vga_config_t     vga_config;

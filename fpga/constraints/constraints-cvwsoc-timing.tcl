@@ -52,9 +52,9 @@ proc cvwsoc_async_reg {label cell_re} {
 # ----------------------------------------------------------------
 # PLIC to CPU
 cvwsoc_false_path_to "PLIC to CPU Machine External Interrupt Pending input" \
-  {.*sync_meip/mid_reg/D}
+  {.*sync_meip/reg_q_reg\[0\]/D$}
 cvwsoc_false_path_to "PLIC to CPU Supervisor External Interrupt Pending input" \
-  {.*sync_seip/mid_reg/D}
+  {.*sync_seip/reg_q_reg\[0\]/D$}
 
 # ----------------------------------------------------------------
 # AHB-bridge

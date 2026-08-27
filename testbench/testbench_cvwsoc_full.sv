@@ -48,6 +48,9 @@ module testbench_cvwsoc_full #(
   localparam cvw_t SP = sim_cfg(P);
   localparam cvwsoc_cfg_t C = '{
     wally: SP,
+    cpu:      SP.CPU_VEXRISCV_ENABLED ? CVWSOC_CPU_VEXRISCV :
+              (SP.CPU_CVA6_ENABLED ? CVWSOC_CPU_CVA6 : CVWSOC_CPU_WALLY),
+    bus: '{ AtopsEnabled: P.CPU_CVA6_ENABLED ? 1'b1 : 1'b0 }, 
     mem_type: CVWSOC_MEM_XILINX_DDR3,
     idma_config: '{AxisDescReqCut: 0},
     vga_config: '{CutSplitterPath: 0, BufferDepth: 32, MaxReadTxns: 4},
@@ -282,7 +285,6 @@ module testbench_cvwsoc_full #(
   logic [3:0] irqs;
   island_axi_req_t ahb_req, wb_req;
   island_axi_resp_t ahb_resp, wb_resp;
-  logic ahb_dma_intr, ahb_usb_intr, ahb_eth_intr, ahb_dummy_intr, ahb_sdhci_intr;
   logic wb_uart_irq, wb_eth_irq;
   logic [31:0] GPIOOUT, GPIOEN;
   logic SPIOut;
@@ -397,7 +399,8 @@ module testbench_cvwsoc_full #(
   logic [SP.AHBW/8-1:0] m_axi_wstrb;
 
   cvwsoc_cpu #(
-    .P(SP),
+    //.P(SP),
+    .C(C),
     .AXI_ID_W(ID_W),
     .cpu_axi_req_t(cpu_req_t),
     .cpu_axi_resp_t(cpu_resp_t)
@@ -475,14 +478,7 @@ module testbench_cvwsoc_full #(
     .BUSCLK_i(bus_clk),
     .BUSCORERSTn_i(~bus_reset),
     .BUSRSTn_i(~bus_reset),
-    .cpu_axi_irq_o(irqs),
-    //.cpu_meip_o(meip),
-    //.cpu_seip_o(seip),
-    //.ahb_meip_i(ahb_meip),
-    //.ahb_seip_i(ahb_seip),
-    .ahb_axi_dma_intr_o(ahb_dma_intr),.ahb_axi_usb_intr_o(ahb_usb_intr),
-    .ahb_axi_eth_intr_o(ahb_eth_intr),.ahb_axi_dummy_intr_o(ahb_dummy_intr),
-    .ahb_axi_sdhci_intr_o(ahb_sdhci_intr));
+    .cpu_axi_irq_o(irqs));
 
   cvwsoc_ahb #(
     .P(SP),
@@ -511,11 +507,11 @@ module testbench_cvwsoc_full #(
     .SDCCLK,
     .WBUartIntr(wb_uart_irq),
     .WBEthIntr(wb_eth_irq),
-    .AXI_DMAIntr(ahb_dma_intr),
-    .AXI_USBIntr(ahb_usb_intr),
-    .AXI_EthIntr(ahb_eth_intr),
-    .AXI_DummyIntr(ahb_dummy_intr),
-    .AXI_SDHCIIntr(ahb_sdhci_intr)
+    .AXI_DMAIntr(irqs[0]),
+    .AXI_USBIntr(irqs[1]),
+    .AXI_EthIntr(irqs[2]),
+    .AXI_DummyIntr(1'b0),
+    .AXI_SDHCIIntr(irqs[3])
   );
 
   assign meip = ahb_meip;
@@ -561,104 +557,104 @@ module testbench_cvwsoc_full #(
   // Bridge-trace aliases must observe the bridge pins, not the legacy
   // always-selected external-AHB convention.  In this wrapper the bridge
   // deliberately rejects speculative/unmapped CPU addresses with hsel_axi.
-  assign HSELEXT = cpu.wally.hsel_axi;
-  assign HADDR = cpu.wally.HADDR;
-  assign HWDATA = cpu.wally.HWDATA;
-  assign HWSTRB = cpu.wally.HWSTRB;
-  assign HWRITE = cpu.wally.HWRITE;
-  assign HSIZE = cpu.wally.HSIZE;
-  assign HBURST = cpu.wally.HBURST;
-  assign HTRANS = cpu.wally.HTRANS;
-  assign HREADY = cpu.wally.HREADY;
-  assign HRDATAEXT = cpu.wally.HRDATA;
-  assign HREADYEXT = cpu.wally.HREADY;
-  assign HRESPEXT = cpu.wally.HRESP;
-  assign m_axi_awid = cpu.wally.awid;
-  assign m_axi_awaddr = cpu.wally.awaddr;
-  assign m_axi_awlen = cpu.wally.awlen;
-  assign m_axi_awsize = cpu.wally.awsize;
-  assign m_axi_awburst = cpu.wally.awburst;
-  assign m_axi_awvalid = cpu.wally.awvalid;
-  assign m_axi_awready = cpu.wally.awready;
-  assign m_axi_wdata = cpu.wally.wdata;
-  assign m_axi_wstrb = cpu.wally.wstrb;
-  assign m_axi_wlast = cpu.wally.wlast;
-  assign m_axi_wvalid = cpu.wally.wvalid;
-  assign m_axi_wready = cpu.wally.wready;
-  assign m_axi_bid = cpu.wally.bid;
-  assign m_axi_bresp = cpu.wally.bresp;
-  assign m_axi_bvalid = cpu.wally.bvalid;
-  assign m_axi_bready = cpu.wally.bready;
-  assign m_axi_arid = cpu.wally.arid;
-  assign m_axi_araddr = cpu.wally.araddr;
-  assign m_axi_arlen = cpu.wally.arlen;
-  assign m_axi_arsize = cpu.wally.arsize;
-  assign m_axi_arburst = cpu.wally.arburst;
-  assign m_axi_arvalid = cpu.wally.arvalid;
-  assign m_axi_arready = cpu.wally.arready;
-  assign m_axi_rid = cpu.wally.rid;
-  assign m_axi_rdata = cpu.wally.rdata;
-  assign m_axi_rresp = cpu.wally.rresp;
-  assign m_axi_rlast = cpu.wally.rlast;
-  assign m_axi_rvalid = cpu.wally.rvalid;
-  assign m_axi_rready = cpu.wally.rready;
+  assign HSELEXT = cpu.HSELEXT;
+  assign HADDR = cpu.HADDR;
+  assign HWDATA = cpu.HWDATA;
+  assign HWSTRB = cpu.HWSTRB;
+  assign HWRITE = cpu.HWRITE;
+  assign HSIZE = cpu.HSIZE;
+  assign HBURST = cpu.HBURST;
+  assign HTRANS = cpu.HTRANS;
+  assign HREADY = cpu.HREADY;
+  assign HRDATAEXT = cpu.HRDATAEXT;
+  assign HREADYEXT = cpu.HREADYEXT;
+  assign HRESPEXT = cpu.HRESPEXT;
+  assign m_axi_awid = cpu.m_axi_awid;
+  assign m_axi_awaddr = cpu.m_axi_awaddr;
+  assign m_axi_awlen = cpu.m_axi_awlen;
+  assign m_axi_awsize = cpu.m_axi_awsize;
+  assign m_axi_awburst = cpu.m_axi_awburst;
+  assign m_axi_awvalid = cpu.m_axi_awvalid;
+  assign m_axi_awready = cpu.m_axi_awready;
+  assign m_axi_wdata = cpu.m_axi_wdata;
+  assign m_axi_wstrb = cpu.m_axi_wstrb;
+  assign m_axi_wlast = cpu.m_axi_wlast;
+  assign m_axi_wvalid = cpu.m_axi_wvalid;
+  assign m_axi_wready = cpu.m_axi_wready;
+  assign m_axi_bid = cpu.m_axi_bid;
+  assign m_axi_bresp = cpu.m_axi_bresp;
+  assign m_axi_bvalid = cpu.m_axi_bvalid;
+  assign m_axi_bready = cpu.m_axi_bready;
+  assign m_axi_arid = cpu.m_axi_arid;
+  assign m_axi_araddr = cpu.m_axi_araddr;
+  assign m_axi_arlen = cpu.m_axi_arlen;
+  assign m_axi_arsize = cpu.m_axi_arsize;
+  assign m_axi_arburst = cpu.m_axi_arburst;
+  assign m_axi_arvalid = cpu.m_axi_arvalid;
+  assign m_axi_arready = cpu.m_axi_arready;
+  assign m_axi_rid = cpu.m_axi_rid;
+  assign m_axi_rdata = cpu.m_axi_rdata;
+  assign m_axi_rresp = cpu.m_axi_rresp;
+  assign m_axi_rlast = cpu.m_axi_rlast;
+  assign m_axi_rvalid = cpu.m_axi_rvalid;
+  assign m_axi_rready = cpu.m_axi_rready;
 
-  assign PCM = cpu.wally.core.ifu.PCM;
-  assign dbg_pcf = cpu.wally.core.ifu.PCF;
-  assign dbg_pcd = cpu.wally.core.ifu.PCD;
-  assign dbg_icache_instr_f = cpu.wally.core.ifu.ICacheInstrF;
-  assign dbg_instr_raw_f = cpu.wally.core.ifu.InstrRawF;
-  assign dbg_postspill_instr_raw_f = cpu.wally.core.ifu.PostSpillInstrRawF;
-  assign dbg_instr_raw_d = cpu.wally.core.ifu.InstrRawD;
-  assign dbg_instr_d = cpu.wally.core.ifu.InstrD;
-  assign dbg_icache_miss_f = cpu.wally.core.ifu.ICacheMiss;
-  assign dbg_icache_stall_f = cpu.wally.core.ifu.ICacheStallF;
-  assign dbg_cacheable_f = cpu.wally.core.ifu.CacheableF;
-  assign InstrValidM = cpu.wally.core.ieu.InstrValidM;
-  assign InstrM = cpu.wally.core.InstrM;
-  assign TrapM = cpu.wally.core.TrapM;
-  assign StallM = cpu.wally.core.StallM;
-  assign FlushM = cpu.wally.core.FlushM;
-  assign dbg_load_misaligned_fault_m = cpu.wally.core.LoadMisalignedFaultM;
-  assign dbg_load_access_fault_m = cpu.wally.core.LoadAccessFaultM;
-  assign dbg_load_page_fault_m = cpu.wally.core.LoadPageFaultM;
-  assign dbg_store_amo_misaligned_fault_m = cpu.wally.core.StoreAmoMisalignedFaultM;
-  assign dbg_store_amo_access_fault_m = cpu.wally.core.StoreAmoAccessFaultM;
-  assign dbg_store_amo_page_fault_m = cpu.wally.core.StoreAmoPageFaultM;
-  assign dbg_instr_misaligned_fault_m = cpu.wally.core.InstrMisalignedFaultM;
-  assign dbg_instr_access_fault_m = cpu.wally.core.priv.priv.InstrAccessFaultM;
-  assign dbg_instr_page_fault_m = cpu.wally.core.priv.priv.InstrPageFaultM;
-  assign dbg_trap_cause_m = cpu.wally.core.priv.priv.CauseM;
-  assign dbg_trap_exception_m = cpu.wally.core.priv.priv.ExceptionM;
-  assign dbg_trap_interrupt_m = cpu.wally.core.priv.priv.InterruptM;
-  assign dbg_trap_epc_m = cpu.wally.core.EPCM;
-  assign dbg_trap_vector_m = cpu.wally.core.TrapVectorM;
-  assign dbg_trap_tval_src_m = cpu.wally.core.IEUAdrxTvalM;
-  assign dbg_gpr_ra = cpu.wally.core.ieu.dp.regf.rf[1];
-  assign dbg_gpr_sp = cpu.wally.core.ieu.dp.regf.rf[2];
-  assign dbg_gpr_s1 = cpu.wally.core.ieu.dp.regf.rf[9];
-  assign dbg_gpr_a0 = cpu.wally.core.ieu.dp.regf.rf[10];
-  assign dbg_gpr_a1 = cpu.wally.core.ieu.dp.regf.rf[11];
-  assign dbg_gpr_a2 = cpu.wally.core.ieu.dp.regf.rf[12];
-  assign dbg_gpr_s2 = cpu.wally.core.ieu.dp.regf.rf[18];
-  assign dbg_gpr_s3 = cpu.wally.core.ieu.dp.regf.rf[19];
-  assign dbg_gpr_s4 = cpu.wally.core.ieu.dp.regf.rf[20];
-  assign dbg_gpr_regwrite_w = cpu.wally.core.ieu.RegWriteW;
-  assign dbg_gpr_rd_w = cpu.wally.core.ieu.RdW;
-  assign dbg_gpr_result_w = cpu.wally.core.ieu.dp.ResultW;
+  assign PCM = cpu.PCM;
+  assign dbg_pcf = cpu.dbg_pcf;
+  assign dbg_pcd = cpu.dbg_pcd;
+  assign dbg_icache_instr_f = cpu.dbg_icache_instr_f;
+  assign dbg_instr_raw_f = cpu.dbg_instr_raw_f;
+  assign dbg_postspill_instr_raw_f = cpu.dbg_postspill_instr_raw_f;
+  assign dbg_instr_raw_d = cpu.dbg_instr_raw_d;
+  assign dbg_instr_d = cpu.dbg_instr_d;
+  assign dbg_icache_miss_f = cpu.dbg_icache_miss_f;
+  assign dbg_icache_stall_f = cpu.dbg_icache_stall_f;
+  assign dbg_cacheable_f = cpu.dbg_cacheable_f;
+  assign InstrValidM = cpu.InstrValidM;
+  assign InstrM = cpu.InstrM;
+  assign TrapM = cpu.TrapM;
+  assign StallM = cpu.StallM;
+  assign FlushM = cpu.FlushM;
+  assign dbg_load_misaligned_fault_m = cpu.dbg_load_misaligned_fault_m;
+  assign dbg_load_access_fault_m = cpu.dbg_load_access_fault_m;
+  assign dbg_load_page_fault_m = cpu.dbg_load_page_fault_m;
+  assign dbg_store_amo_misaligned_fault_m = cpu.dbg_store_amo_misaligned_fault_m;
+  assign dbg_store_amo_access_fault_m = cpu.dbg_store_amo_access_fault_m;
+  assign dbg_store_amo_page_fault_m = cpu.dbg_store_amo_page_fault_m;
+  assign dbg_instr_misaligned_fault_m = cpu.dbg_instr_misaligned_fault_m;
+  assign dbg_instr_access_fault_m = cpu.dbg_instr_access_fault_m;
+  assign dbg_instr_page_fault_m = cpu.dbg_instr_page_fault_m;
+  assign dbg_trap_cause_m = cpu.dbg_trap_cause_m;
+  assign dbg_trap_exception_m = cpu.dbg_trap_exception_m;
+  assign dbg_trap_interrupt_m = cpu.dbg_trap_interrupt_m;
+  assign dbg_trap_epc_m = cpu.dbg_trap_epc_m;
+  assign dbg_trap_vector_m = cpu.dbg_trap_vector_m;
+  assign dbg_trap_tval_src_m = cpu.dbg_trap_tval_src_m;
+  assign dbg_gpr_ra = cpu.dbg_gpr_ra;
+  assign dbg_gpr_sp = cpu.dbg_gpr_sp;
+  assign dbg_gpr_s1 = cpu.dbg_gpr_s1;
+  assign dbg_gpr_a0 = cpu.dbg_gpr_a0;
+  assign dbg_gpr_a1 = cpu.dbg_gpr_a1;
+  assign dbg_gpr_a2 = cpu.dbg_gpr_a2;
+  assign dbg_gpr_s2 = cpu.dbg_gpr_s2;
+  assign dbg_gpr_s3 = cpu.dbg_gpr_s3;
+  assign dbg_gpr_s4 = cpu.dbg_gpr_s4;
+  assign dbg_gpr_regwrite_w = cpu.dbg_gpr_regwrite_w;
+  assign dbg_gpr_rd_w = cpu.dbg_gpr_rd_w;
+  assign dbg_gpr_result_w = cpu.dbg_gpr_result_w;
 
-  assign dbg_cpu_haddr = cpu.wally.HADDR;
-  assign dbg_cpu_hwdata = cpu.wally.HWDATA;
-  assign dbg_cpu_hwstrb = cpu.wally.HWSTRB;
-  assign dbg_cpu_hwrite = cpu.wally.HWRITE;
-  assign dbg_cpu_hsize = cpu.wally.HSIZE;
-  assign dbg_cpu_hburst = cpu.wally.HBURST;
-  assign dbg_cpu_hprot = cpu.wally.HPROT;
-  assign dbg_cpu_htrans = cpu.wally.HTRANS;
-  assign dbg_cpu_hmastlock = cpu.wally.HMASTLOCK;
-  assign dbg_cpu_hrdata = cpu.wally.HRDATA;
-  assign dbg_cpu_hready = cpu.wally.HREADY;
-  assign dbg_cpu_hresp = cpu.wally.HRESP;
+//   assign dbg_cpu_haddr = cpu.HADDR;
+//   assign dbg_cpu_hwdata = cpu.HWDATA;
+//   assign dbg_cpu_hwstrb = cpu.HWSTRB;
+//   assign dbg_cpu_hwrite = cpu.HWRITE;
+//   assign dbg_cpu_hsize = cpu.HSIZE;
+//   assign dbg_cpu_hburst = cpu.HBURST;
+//   assign dbg_cpu_hprot = cpu.HPROT;
+//   assign dbg_cpu_htrans = cpu.HTRANS;
+//   assign dbg_cpu_hmastlock = cpu.HMASTLOCK;
+//   assign dbg_cpu_hrdata = cpu.HRDATA;
+//   assign dbg_cpu_hready = cpu.HREADY;
+//   assign dbg_cpu_hresp = cpu.HRESP;
 
   assign dbg_cpu_axi_awid = cpu_req.aw.id;
   assign dbg_cpu_axi_awaddr = cpu_req.aw.addr;

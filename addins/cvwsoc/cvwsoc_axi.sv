@@ -103,12 +103,9 @@ module cvwsoc_axi #(
     input logic BUSCORERSTn_i,
     input logic BUSRSTn_i,
 
-    output logic [3:0] cpu_axi_irq_o,
-    output logic ahb_axi_dma_intr_o,
-    output logic ahb_axi_usb_intr_o,
-    output logic ahb_axi_eth_intr_o,
-    output logic ahb_axi_dummy_intr_o,
-    output logic ahb_axi_sdhci_intr_o
+    // BUSCLK interrupt vector for the PLIC: 
+    //      [0]=DMA, [1]=USB, [2]=Ethernet, [3]=SDHCI.
+    output logic [3:0] cpu_axi_irq_o
   );
 
   // P remains a local alias to preserve the existing logical-SoC uses below.
@@ -206,9 +203,6 @@ module cvwsoc_axi #(
   assign vga_b_5 = vga_b_5_internal[4:0];
 
   (* mark_debug = "true" *) logic       dma_irq_raw;
-  logic       dma_introut_sync;
-  logic       axi_dma_intr_sync;
-  (* ASYNC_REG="TRUE" *) logic [1:0] dma_irq_sync;
   logic      usb_phy_resetn_sync;
 
 
@@ -226,9 +220,6 @@ module cvwsoc_axi #(
 
   // USB clock
   logic            clk48MHz_raw, clk48MHz;
-(* ASYNC_REG="TRUE" *) logic usb_irq_ff1, usb_irq_ff2;
-(* ASYNC_REG="TRUE" *) logic liteeth_irq_ff1, liteeth_irq_ff2;
-(* ASYNC_REG="TRUE" *) logic sdhci_irq_ff1, sdhci_irq_ff2;
 
 
   logic        audio_clk;
@@ -250,8 +241,7 @@ module cvwsoc_axi #(
   assign rst_req = rst_req_i;
   assign resetn_comb = resetn_comb_i;
 
-  // CPU-facing interrupt boundary.
-  assign cpu_axi_irq_o = {sdhci_irq_ff2, liteeth_irq_ff2, usb_irq_ff2, axi_dma_intr_sync};
+  assign cpu_axi_irq_o = {sdhci_irq, liteeth_irq, usb_irq, dma_irq_raw};
 
 
   typedef logic [SLV_ID_W-1:0] slv_id_t;
@@ -301,8 +291,7 @@ module cvwsoc_axi #(
   axis_req_t idma_axis_req;
   axis_rsp_t idma_axis_rsp;
 
-  // PULP-facing peripheral interfaces stay bundled.  The flat cb_* vectors
-  // are only an adapter boundary for the optional Xilinx crossbar.
+  // PULP-facing peripheral interfaces.
   mst_req_t  vga_reg_req;
   mst_resp_t vga_reg_rsp;
   slv_req_t  vga_scan_req;
@@ -321,14 +310,53 @@ module cvwsoc_axi #(
       assign wishbone_axi_req_o = '0;
     end
   endgenerate
-  assign ahb_axi_dma_intr_o = axi_dma_intr_sync;
-  assign ahb_axi_usb_intr_o = usb_irq_ff2;
-  assign ahb_axi_eth_intr_o = liteeth_irq_ff2;
-  assign ahb_axi_dummy_intr_o = 1'b0;
-  assign ahb_axi_sdhci_intr_o = sdhci_irq_ff2;
-  // DDR master port (external)
-  assign ddr_axi_req_o = mst_req[CB_M_DDR];
-  assign mst_resp[CB_M_DDR] = ddr_axi_resp_i;
+  // ATOPS: This is added to support ATOPs. 
+  if (!C.bus.AtopsEnabled) begin
+    // DDR master port (external)
+    assign ddr_axi_req_o = mst_req[CB_M_DDR];
+    assign mst_resp[CB_M_DDR] = ddr_axi_resp_i;
+
+  end else begin
+
+    axi_riscv_atomics_structs #(
+        .AxiAddrWidth     ( ADDR_W       ),
+        .AxiDataWidth     ( DATA_W       ),
+        .AxiIdWidth       ( MST_ID_W     ),
+        .AxiUserWidth     ( 1            ),
+
+        .AxiMaxReadTxns   ( 16           ),
+        // .AxiMaxWriteTxns  ( 16           ), // Cheshire LLC value
+        // Check: meet timing for this axi_riscv_atomics_structs at 100 MHz bus (Cheshire is 50 MHz)
+        .AxiMaxWriteTxns  ( 8           ),
+
+        .AxiUserAsId      ( 1'b1         ),
+        .AxiUserIdMsb     ( 0            ),
+        .AxiUserIdLsb     ( 0            ),
+
+        .RiscvWordWidth   ( P.XLEN       ),
+        // FIXME: This should be probably configurable. 
+        // Original tested value
+        //.NAxiCuts         ( 0            ),
+        // Using Cheshire value for LLC (otherwise it doesn't meet timing for CV64A6)
+        .NAxiCuts         ( 1            ),
+        .CutOupPopInpGnt  (1'b1),
+
+        .axi_req_t        ( mst_req_t    ),
+        .axi_rsp_t        ( mst_resp_t   )
+    ) i_ddr_atomics (
+        .clk_i            (BUSCLK),
+        .rst_ni           (BUSRSTn),
+
+        .axi_slv_req_i    (mst_req[CB_M_DDR]),
+        .axi_slv_rsp_o    (mst_resp[CB_M_DDR]),
+
+        .axi_mst_req_o    (ddr_axi_req_o),
+        .axi_mst_rsp_i    (ddr_axi_resp_i)
+    );
+
+    // FIXME: LLC might be instantiated here (in-between) later
+
+  end
   // DDR master control port
   generate
     if (P.LITEDRAM_SUPPORTED) begin : gen_dram_csr_connection
@@ -789,7 +817,7 @@ module cvwsoc_axi #(
         XBAR_OUT.addr_map[N_RULES-1:0];
     axi_xbar #(
         .Cfg            (XBAR_CFG),
-        .ATOPs          (1'b0),
+        .ATOPs          (C.bus.AtopsEnabled),
         .Connectivity   (XBAR_CONNECTIVITY),
 
         .slv_aw_chan_t  (slv_aw_t),
@@ -1315,17 +1343,6 @@ module cvwsoc_axi #(
     assign usb_irq = 1'b0;
   end
 
-  // Synchronize USB interrupt into the CPU clock domain.
-  always_ff @(posedge CPUCLK or negedge peripheral_aresetn) begin
-    if (!peripheral_aresetn) begin
-        usb_irq_ff1 <= 1'b0;
-        usb_irq_ff2 <= 1'b0;
-    end else begin
-        usb_irq_ff1 <= usb_irq;       // usb_irq is from BUSCLK domain
-        usb_irq_ff2 <= usb_irq_ff1;
-    end
-  end
-
   if (P.AXI_ETH_SUPPORTED) begin : gen_axi_eth
     logic liteeth_reg_awready, liteeth_reg_wready, liteeth_reg_arready;
     logic liteeth_reg_bvalid, liteeth_reg_rvalid, liteeth_reg_rlast;
@@ -1423,18 +1440,6 @@ module cvwsoc_axi #(
     assign liteeth_irq = 1'b0;
   end
 
-
-  // Synchronize Ethernet interrupt into the CPU clock domain.
-  always_ff @(posedge CPUCLK or negedge peripheral_aresetn) begin
-    if (!peripheral_aresetn) begin
-        liteeth_irq_ff1 <= 1'b0;
-        liteeth_irq_ff2 <= 1'b0;
-    end else begin
-        liteeth_irq_ff1 <= liteeth_irq;       // liteeth_irq is from BUSCLK domain
-        liteeth_irq_ff2 <= liteeth_irq_ff1;
-    end
-  end
-
   if (P.AXI_SDHCI_SUPPORTED) begin : gen_axi_sdhci
     logic sdhci_reg_awready, sdhci_reg_wready, sdhci_reg_arready;
     logic sdhci_reg_bvalid, sdhci_reg_rvalid, sdhci_reg_rlast;
@@ -1444,10 +1449,26 @@ module cvwsoc_axi #(
 
     assign SD_CLK   = sd_clk_o;
     assign SD_CMD   = sd_cmd_en ? sd_cmd_o : 1'bz;
-    assign sd_cmd_i = SD_CMD;
     assign SD_DAT   = sd_dat_en ? sd_dat_o : 4'bzzzz;
+
+   // SD CARD SIMULATION
+`ifdef SIM_AXI_SDHCI
+    sd_card i_sd_card (
+      .sd_clk_i ( sd_clk_o  ),
+      .cmd_en_i ( sd_cmd_en ),
+      .cmd_i    ( sd_cmd_o  ),
+      .cmd_o    ( sd_cmd_i  ),
+      .dat_en_i ( sd_dat_en ),
+      .dat_i    ( sd_dat_o  ),
+      .dat_o    ( sd_dat_i  )
+    );
+
+    assign sd_cd_ni = 1'b0;
+`else
+    assign sd_cmd_i = SD_CMD;
     assign sd_dat_i = SD_DAT;
     assign sd_cd_ni = SD_CD_N;
+`endif
 
     axi_sdhci_wrap #(
       .AXI_ADDR_W ( ADDR_W   ),
@@ -1764,16 +1785,6 @@ module cvwsoc_axi #(
     assign sdhci_irq = 1'b0;
     assign {sd_clk_o, sd_cd_ni, sd_cmd_en, sd_cmd_o, sd_cmd_i, sd_dat_en, sd_dat_o, sd_dat_i} = '0;
 
-  end
-
-  always_ff @(posedge CPUCLK or negedge peripheral_aresetn) begin
-    if (!peripheral_aresetn) begin
-        sdhci_irq_ff1 <= 1'b0;
-        sdhci_irq_ff2 <= 1'b0;
-    end else begin
-        sdhci_irq_ff1 <= sdhci_irq;       // sdhci_irq is from BUSCLK domain
-        sdhci_irq_ff2 <= sdhci_irq_ff1;
-    end
   end
 
 
@@ -2121,17 +2132,5 @@ module cvwsoc_axi #(
     assign idma_xbar_slv_rsp = '0;
     assign dma_irq_raw = 1'b0;
   end
-
-  always_ff @(posedge CPUCLK or posedge peripheral_reset) begin
-    if (peripheral_reset) begin
-      dma_irq_sync <= 2'b00;
-    end else begin
-      dma_irq_sync <= {dma_irq_sync[0], dma_irq_raw};
-    end
-  end
-
-  assign dma_introut_sync = dma_irq_sync[1];
-  assign axi_dma_intr_sync = dma_introut_sync;
-
 
 endmodule

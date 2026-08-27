@@ -50,7 +50,14 @@ module cvwsoc_ahb import cvw::*; #(
   logic HMASTLOCK;
   logic [2:0] axil_awsize, axil_arsize;
   logic [P.PA_BITS-1:0] system_haddr;
+  logic axi_sdhci_intr_plic;
   assign system_haddr = {{(P.PA_BITS-ADDR_W){1'b0}}, HADDR};
+
+  // FIXME: SDHCI's status-derived IRQ can be latched by the PLIC after Linux
+  // has cleared the status. Keeping this two-stage delay at the PLIC boundary
+  // until SDHCI/PLIC setup is fixed properly.
+  sync #(.STAGES(2)) i_sync_axi_sdhci_intr (
+    .clk_i, .rst_ni, .serial_i(AXI_SDHCIIntr), .serial_o(axi_sdhci_intr_plic));
 
   // Keep PULP's burst splitter, and retain AXI SIZE on local wires for the
   // AXI-Lite-to-AHB bridge.  SIZE is not part of the AXI-Lite protocol.
@@ -96,5 +103,5 @@ module cvwsoc_ahb import cvw::*; #(
     .AXI_USBIntr,
     .AXI_EthIntr,
     .AXI_DummyIntr,
-    .AXI_SDHCIIntr );
+    .AXI_SDHCIIntr(axi_sdhci_intr_plic) );
 endmodule

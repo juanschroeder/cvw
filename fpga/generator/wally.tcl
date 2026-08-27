@@ -119,10 +119,12 @@ if {$board=="ArtyA7" || $board=="genesys2" || $board=="nexysa7" || $board=="nexy
     set_property PROCESSING_ORDER NORMAL [get_files  ../constraints/constraints-$boardSubName.xdc]
 }
 
-# only tested on the Genesys 2
 if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc"} {
 
     add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cvwsoc_pkg.sv
+    add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/cvwsoc_cpu_vexriscv.sv
+    add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/cvwsoc_cpu_cva6.sv
+    add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/VexriscvCVWSoC.v
 
     set uberddr3_supported [expr {[info exists ::env(UBERDDR3_SUPPORTED)] ? $::env(UBERDDR3_SUPPORTED) : "0"}]
     set litedram_supported  [expr {[info exists ::env(LITEDRAM_SUPPORTED)]  ? $::env(LITEDRAM_SUPPORTED)  : "0"}]
@@ -155,20 +157,32 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
 
 if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
 
+    # CVA6 config
+    set cva6_config_pkg "cv64a6_imafdchsclic_sv39_wb_config_pkg.sv"
+    if {[info exists ::env(boardconfig)] && [string match "*cva6rv32w64soc" $::env(boardconfig)]} {
+        set cva6_config_pkg "cv32a6_imafc_sv32_config_pkg.sv"
+    }
+
     set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared \
         ../src/CopiedFiles_do_not_add_to_repo/cvwsoc \
+        ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/include \
         ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550 \
         ../src/CopiedFiles_do_not_add_to_repo/sdhci/hw/include \
+        ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include \
+        ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/pmp/include \
+        ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/common/local/util \
+        ../../addins/hpdcache/rtl/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/axi/include \
         ../../addins/pulp/axi_stream/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/src/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/common_cells/include} [current_fileset]
 
-    # cvwsoc stuff
-    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/*/*.v ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/*/*.sv]
-    # Pulp files
-    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/*/src/*.sv]
+    set cvwsoc_subdir_srcs [glob -type f ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/*/*.v \
+                                          ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/*/*.sv]
+    set cvwsoc_subdir_srcs [lsearch -all -inline -not -glob $cvwsoc_subdir_srcs "*/cvwsoc/cpu/*"]
+    add_files $cvwsoc_subdir_srcs
+
     # FIXME: what to do with patches in this 'vendor' subfolder?
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/vendor/*/src/*.sv]
     # verilog-axi stuff
@@ -219,6 +233,34 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_reg64_1d_reg_top.sv]
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_reg64_1d_top.sv]
 
+    # non-Wally CPUs stuff
+    # Pulp files. CVA6 uses fpnew; do not also compile the duplicate cvfpu copy.
+    set pulp_srcs [glob -type f ../src/CopiedFiles_do_not_add_to_repo/pulp/*/src/*.sv]
+    set pulp_srcs [lsearch -all -inline -not -glob $pulp_srcs "*/cvfpu/*"]
+    add_files $pulp_srcs
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/*.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/cache_subsystem/*.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/frontend/*.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/cva6_mmu/*.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/cva6_iti/*.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/cvxif_example/*.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/pmp/src/*.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/config_pkg.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/$cva6_config_pkg \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/aes_pkg.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/std_cache_pkg.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/wt_cache_pkg.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/build_config_pkg.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/riscv_pkg.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/ariane_pkg.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/common/local/util/*.sv]
+    add_files [glob -type f  ../../addins/hpdcache/rtl/src/*.sv \
+                             ../../addins/hpdcache/rtl/src/common/*.sv \
+                             ../../addins/hpdcache/rtl/src/utils/*.sv \
+                             ../../addins/hpdcache/rtl/src/hwpf_stride/*.sv]
+    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/fpu_div_sqrt_mvp/hdl/*.sv]
+    add_files ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/corev_apu/tb/ariane_axi_pkg.sv
+
     report_compile_order -constraints > reports/compile_order.rpt
 }
 
@@ -232,6 +274,12 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
     report_compile_order -fileset sources_1 -used_in synthesis -sources
     puts "###########################################################################"
 }
+
+# TARGET_VIVADO: CVA6 requirement (normally done by Bender)
+set defs [get_property verilog_define [current_fileset]]
+lappend defs TARGET_VIVADO
+set_property verilog_define $defs [current_fileset]
+get_property verilog_define [current_fileset]
 
 
 launch_runs synth_1 -jobs 16

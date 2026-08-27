@@ -29,13 +29,14 @@ connect_debug_port u_ila_spi/clk [get_nets CPUCLK]
 # set_property port_width 64 [get_debug_ports u_ila_spi/probe0]
 # set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_spi/probe0]
 #connect_debug_port u_ila_spi/probe0 [get_nets [list {cpu/wally/core/PCM[0]} {cpu/wally/core/PCM[1]} {cpu/wally/core/PCM[2]} {cpu/wally/core/PCM[3]} {cpu/wally/core/PCM[4]} {cpu/wally/core/PCM[5]} {cpu/wally/core/PCM[6]} {cpu/wally/core/PCM[7]} {cpu/wally/core/PCM[8]} {cpu/wally/core/PCM[9]} {cpu/wally/core/PCM[10]} {cpu/wally/core/PCM[11]} {cpu/wally/core/PCM[12]} {cpu/wally/core/PCM[13]} {cpu/wally/core/PCM[14]} {cpu/wally/core/PCM[15]} {cpu/wally/core/PCM[16]} {cpu/wally/core/PCM[17]} {cpu/wally/core/PCM[18]} {cpu/wally/core/PCM[19]} {cpu/wally/core/PCM[20]} {cpu/wally/core/PCM[21]} {cpu/wally/core/PCM[22]} {cpu/wally/core/PCM[23]} {cpu/wally/core/PCM[24]} {cpu/wally/core/PCM[25]} {cpu/wally/core/PCM[26]} {cpu/wally/core/PCM[27]} {cpu/wally/core/PCM[28]} {cpu/wally/core/PCM[29]} {cpu/wally/core/PCM[30]} {cpu/wally/core/PCM[31]} {cpu/wally/core/PCM[32]} {cpu/wally/core/PCM[33]} {cpu/wally/core/PCM[34]} {cpu/wally/core/PCM[35]} {cpu/wally/core/PCM[36]} {cpu/wally/core/PCM[37]} {cpu/wally/core/PCM[38]} {cpu/wally/core/PCM[39]} {cpu/wally/core/PCM[40]} {cpu/wally/core/PCM[41]} {cpu/wally/core/PCM[42]} {cpu/wally/core/PCM[43]} {cpu/wally/core/PCM[44]} {cpu/wally/core/PCM[45]} {cpu/wally/core/PCM[46]} {cpu/wally/core/PCM[47]} {cpu/wally/core/PCM[48]} {cpu/wally/core/PCM[49]} {cpu/wally/core/PCM[50]} {cpu/wally/core/PCM[51]} {cpu/wally/core/PCM[52]} {cpu/wally/core/PCM[53]} {cpu/wally/core/PCM[54]} {cpu/wally/core/PCM[55]} {cpu/wally/core/PCM[56]} {cpu/wally/core/PCM[57]} {cpu/wally/core/PCM[58]} {cpu/wally/core/PCM[59]} {cpu/wally/core/PCM[60]} {cpu/wally/core/PCM[61]} {cpu/wally/core/PCM[62]} {cpu/wally/core/PCM[63]} ]]
-ila_add_probe u_ila_spi -bus cpu/wally/core/PCM -msb auto -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus cpu/wally/core/InstrM -msb 31 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -net cpu/wally/core/TrapM
-ila_add_probe u_ila_spi -net cpu/wally/core/InstrValidM
+ila_add_probe u_ila_spi -bus cpu/PCM -msb auto -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus cpu/InstrM -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -net cpu/TrapM
+ila_add_probe u_ila_spi -net cpu/InstrValidM
 # connect_debug_port u_ila_spi/probe3 [get_nets [list {cpu/wally/core/InstrM[0]} {cpu/wally/core/InstrM[1]} {cpu/wally/core/InstrM[2]} {cpu/wally/core/InstrM[3]} {cpu/wally/core/InstrM[4]} {cpu/wally/core/InstrM[5]} {cpu/wally/core/InstrM[6]} {cpu/wally/core/InstrM[7]} {cpu/wally/core/InstrM[8]} {cpu/wally/core/InstrM[9]} {cpu/wally/core/InstrM[10]} {cpu/wally/core/InstrM[11]} {cpu/wally/core/InstrM[12]} {cpu/wally/core/InstrM[13]} {cpu/wally/core/InstrM[14]} {cpu/wally/core/InstrM[15]} {cpu/wally/core/InstrM[16]} {cpu/wally/core/InstrM[17]} {cpu/wally/core/InstrM[18]} {cpu/wally/core/InstrM[19]} {cpu/wally/core/InstrM[20]} {cpu/wally/core/InstrM[21]} {cpu/wally/core/InstrM[22]} {cpu/wally/core/InstrM[23]} {cpu/wally/core/InstrM[24]} {cpu/wally/core/InstrM[25]} {cpu/wally/core/InstrM[26]} {cpu/wally/core/InstrM[27]} {cpu/wally/core/InstrM[28]} {cpu/wally/core/InstrM[29]} {cpu/wally/core/InstrM[30]} {cpu/wally/core/InstrM[31]} ]]
-ila_add_probe u_ila_spi -net cpu/wally/core/StallM
-ila_add_probe u_ila_spi -net cpu/wally/core/FlushM
+ila_add_probe u_ila_spi -net cpu/StallM
+ila_add_probe u_ila_spi -net cpu/FlushM
+# FIXME: Wally specific signals
 # ila_add_probe u_ila_spi -bus cpu/wally/core/RdE -msb 4 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_spi -bus cpu/wally/core/RdM -msb 4 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_spi -bus cpu/wally/core/ieu/RdW -msb 4 -lsb 0 -order lsb2msb
@@ -49,7 +50,7 @@ ila_add_probe u_ila_spi -net cpu/wally/core/FlushM
 # ila_add_probe u_ila_spi -bus cpu/wally/core/MemRWM  -msb 1 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_spi -bus cpu/wally/core/lsu/ReadDataM  -msb 63 -lsb 0 -order lsb2msb
 
-# SD card (SPI bus) signals
+# SD card (SPI bus) signals => they are now in the AXI bus (FIX path)
 # ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCCLK
 # ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCIn
 # ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/SDCCS[0]
@@ -57,29 +58,30 @@ ila_add_probe u_ila_spi -net cpu/wally/core/FlushM
 # ila_add_probe u_ila_spi -bus wallypipelinedsoc/uncoregen.uncore/sdc.sdc/controller/CurrState  -msb 2 -lsb 0 -order lsb2msb
 # ila_add_probe u_ila_spi -net wallypipelinedsoc/uncoregen.uncore/sdc.sdc/ReceiveFIFOReadInc
 
-# AHB bus signals
+# AHB bus signals (do not apply to CVA6)
 #ila_add_probe u_ila_spi -bus cpu/wally/core/ebu.ebu/HTRANS -msb 1 -lsb 0 -order lsb2msb
 #ila_add_probe u_ila_spi -bus HSIZE -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus cpu/wally/core/HSIZE -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus cpu/wally/core/lsu/LSUHWSTRB -msb auto -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus cpu/HSIZE -msb 2 -lsb 0 -order lsb2msb
+#ila_add_probe u_ila_spi -bus cpu/wally/core/lsu/LSUHWSTRB -msb auto -lsb 0 -order lsb2msb
 
-ila_add_probe u_ila_spi -bus cpu/wally/HSIZE -msb 2 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus cpu/wally/HWDATA -msb auto -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus cpu/wally/HRDATA  -msb auto -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus cpu/HSIZE -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus cpu/HWDATA -msb auto -lsb 0 -order lsb2msb
+#ila_add_probe u_ila_spi -bus cpu/HRDATA  -msb auto -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus cpu/HRDATAEXT  -msb auto -lsb 0 -order lsb2msb
 #ila_add_probe u_ila_spi -bus cpu/wally/core/lsu/LSUHWSTRB -msb auto -lsb 0 -order lsb2msb
 
 
 
-ila_add_probe u_ila_spi -net cpu/wally/HREADY
-ila_add_probe u_ila_spi -net cpu/wally/HWRITE
-ila_add_probe u_ila_spi -bus cpu/wally/HTRANS -msb 1 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus cpu/wally/HADDR -msb 31 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -net cpu/HREADY
+ila_add_probe u_ila_spi -net cpu/HWRITE
+ila_add_probe u_ila_spi -bus cpu/HTRANS -msb 1 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus cpu/HADDR -msb 31 -lsb 0 -order lsb2msb
 #ila_add_probe u_ila_spi -bus cpu/wally/HRDATAEXT -msb auto -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus cpu/wally/HPROT -msb 3 -lsb 0 -order lsb2msb
-ila_add_probe u_ila_spi -bus cpu/wally/HBURST -msb 2 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus cpu/HPROT -msb 3 -lsb 0 -order lsb2msb
+ila_add_probe u_ila_spi -bus cpu/HBURST -msb 2 -lsb 0 -order lsb2msb
 #ila_add_probe u_ila_spi -net HREADYEXT
-ila_add_probe u_ila_spi -net cpu/wally/hready_axi
-ila_add_probe u_ila_spi -net cpu/wally/hsel_axi
+ila_add_probe u_ila_spi -net cpu/hready_axi
+ila_add_probe u_ila_spi -net cpu/hsel_axi
 #ila_add_probe u_ila_spi -net HRESPEXT
 # ila_add_probe u_ila_spi -net HMASTLOCK
 #ila_add_probe u_ila_spi -bus HWSTRB -msb 7 -lsb 0 -order lsb2msb
@@ -171,6 +173,10 @@ set_property ALL_PROBE_SAME_MU_CNT 1 [get_debug_cores u_ila_axi]
 set_property port_width 1 [get_debug_ports u_ila_axi/clk]
 connect_debug_port u_ila_axi/clk [get_nets u_cvwsoc_axi/BUSCLK_i]
 
+
+## REMARK: SIGNALS PATHS BELOW NEED TO BE RECHECKED, MIGHT NOT WORK AFTER THE REDESIGN
+## REMARK: SIGNALS PATHS BELOW NEED TO BE RECHECKED, MIGHT NOT WORK AFTER THE REDESIGN
+## REMARK: SIGNALS PATHS BELOW NEED TO BE RECHECKED, MIGHT NOT WORK AFTER THE REDESIGN
 
 # USB
 # ila_add_probe u_ila_axi -bus   u_cvwsoc_axi/usb_m_axi_awid -msb 3 -lsb 0 -order lsb2msb

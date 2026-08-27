@@ -42,81 +42,96 @@ nexysa7: FPGA_NEXYSA7
 boardconfig = $(board)
 litedramconfig = genesys2soc
 
-nexysa7soc: export XILINX_PART := xc7a100tcsg324-1
-nexysa7soc: export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
+NEXYSA7_SOC_TARGETS := nexysa7soc nexysa7rv32w64soc nexysa7cva6rv32w64soc nexysa7vexsoc
+$(NEXYSA7_SOC_TARGETS): export XILINX_PART := xc7a100tcsg324-1
+$(NEXYSA7_SOC_TARGETS): export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
+$(NEXYSA7_SOC_TARGETS): export MAXSDCCLOCK := 10000000
+$(NEXYSA7_SOC_TARGETS): export MIG_ADDR_WIDTH := 27
+$(NEXYSA7_SOC_TARGETS): export BUSCLOCK := 60000000
+
+GENESYS2_SOC_TARGETS := genesys2soc genesys2cva6soc genesys2cva6rv32w64soc \
+	genesys2socxlnx genesys2rv32soc genesys2rv32minsoc genesys2rv32w64soc genesys2vexsoc
+$(GENESYS2_SOC_TARGETS): export XILINX_PART := xc7k325tffg900-2
+$(GENESYS2_SOC_TARGETS): export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
+$(GENESYS2_SOC_TARGETS): export MAXSDCCLOCK := 5000000
+$(GENESYS2_SOC_TARGETS): export MIG_ADDR_WIDTH := 30
+$(GENESYS2_SOC_TARGETS): export BUSCLOCK := 100000000
+
 nexysa7soc: export board := nexysa7soc
 nexysa7soc: export SYSTEMCLOCK := 20000000
-nexysa7soc: export BUSCLOCK := 812500000
-nexysa7soc: export MAXSDCCLOCK  :=  10000000
-nexysa7soc: export MIG_ADDR_WIDTH  :=  27
 nexysa7soc: FPGA_NEXYSA7SOC
 nexysa7soc: export litedramconfig := nexysa7soc
 nexysa7soc: export MEM_WIDTH  :=  64
 
-nexysa7rv32w64soc: export XILINX_PART := xc7a100tcsg324-1
-nexysa7rv32w64soc: export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
 nexysa7rv32w64soc: export board := nexysa7rv32w64soc
 nexysa7rv32w64soc: export SYSTEMCLOCK := 25000000
-nexysa7rv32w64soc: export BUSCLOCK := 812500000
-nexysa7rv32w64soc: export MAXSDCCLOCK  :=  10000000
-nexysa7rv32w64soc: export MIG_ADDR_WIDTH  :=  27
 nexysa7rv32w64soc: FPGA_NEXYSA7RV32W64SOC
 nexysa7rv32w64soc: export litedramconfig := nexysa7soc
 nexysa7rv32w64soc: export MEM_WIDTH  :=  64
 
+nexysa7cva6rv32w64soc: export board := nexysa7rv32w64soc
+nexysa7cva6rv32w64soc: export boardconfig := nexysa7cva6rv32w64soc
+nexysa7cva6rv32w64soc: export SYSTEMCLOCK := 25000000
+nexysa7cva6rv32w64soc: FPGA_NEXYSA7RV32W64SOC
+nexysa7cva6rv32w64soc: export litedramconfig := nexysa7soc
+nexysa7cva6rv32w64soc: export MEM_WIDTH  :=  64
 
-genesys2soc: export XILINX_PART := xc7k325tffg900-2
-genesys2soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
+nexysa7vexsoc: export board := nexysa7rv32w64soc
+nexysa7vexsoc: export boardconfig := nexysa7vexsoc
+nexysa7vexsoc: export SYSTEMCLOCK := 60000000
+nexysa7vexsoc: FPGA_NEXYSA7RV32W64SOC
+nexysa7vexsoc: export litedramconfig := nexysa7soc
+nexysa7vexsoc: export MEM_WIDTH  :=  64
+
+
 genesys2soc: export board := genesys2soc
 genesys2soc: export SYSTEMCLOCK := 40000000
-genesys2soc: export BUSCLOCK := 100000000
-genesys2soc: export MAXSDCCLOCK  := 5000000
-genesys2soc: export MIG_ADDR_WIDTH  :=  30
 genesys2soc: export MEM_WIDTH  :=  64
 genesys2soc: FPGA_GENESYS2SOC
 
-genesys2socxlnx: export XILINX_PART := xc7k325tffg900-2
-genesys2socxlnx: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 genesys2socxlnx: export board := genesys2socxlnx
 genesys2socxlnx: export SYSTEMCLOCK := 40000000
-genesys2socxlnx: export MAXSDCCLOCK  := 5000000
-genesys2socxlnx: export MIG_ADDR_WIDTH  :=  30
 genesys2socxlnx: FPGA_GENESYS2SOCXLNX
 
-genesys2rv32soc: export XILINX_PART := xc7k325tffg900-2
-genesys2rv32soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 genesys2rv32soc: export board := genesys2rv32soc
 genesys2rv32soc: export SYSTEMCLOCK := 55000000
-genesys2rv32soc: export BUSCLOCK := 100000000
-genesys2rv32soc: export MAXSDCCLOCK  := 5000000
-genesys2rv32soc: export MIG_ADDR_WIDTH  :=  30
 genesys2rv32soc: export MEM_WIDTH := 32
 genesys2rv32soc: export litedramconfig := genesys2w32soc
 genesys2rv32soc: FPGA_GENESYS2RV32SOC
 
 # same build as rv32soc but different config (no changes beyond this)
-genesys2rv32minsoc: export XILINX_PART := xc7k325tffg900-2
-genesys2rv32minsoc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 genesys2rv32minsoc: export board := genesys2rv32soc
 genesys2rv32minsoc: export boardconfig := genesys2rv32minsoc
 genesys2rv32minsoc: export SYSTEMCLOCK := 55000000
-genesys2rv32minsoc: export BUSCLOCK := 100000000
-genesys2rv32minsoc: export MAXSDCCLOCK  := 5000000
-genesys2rv32minsoc: export MIG_ADDR_WIDTH  :=  30
 genesys2rv32minsoc: export MEM_WIDTH  :=  32
 genesys2rv32minsoc: export litedramconfig := genesys2w32soc
 genesys2rv32minsoc: FPGA_GENESYS2RV32SOC
 
 # same FPGA build as rv32 with different config
-genesys2rv32w64soc: export XILINX_PART := xc7k325tffg900-2
-genesys2rv32w64soc: export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 genesys2rv32w64soc: export board := genesys2rv32w64soc
 genesys2rv32w64soc: export SYSTEMCLOCK := 55000000
-genesys2rv32w64soc: export BUSCLOCK := 100000000
-genesys2rv32w64soc: export MAXSDCCLOCK  := 5000000
-genesys2rv32w64soc: export MIG_ADDR_WIDTH  :=  30
 genesys2rv32w64soc: export MEM_WIDTH  :=  64
 genesys2rv32w64soc: FPGA_GENESYS2RV32SOC
+
+# CVA6: use genesys2 setup but genesys2cva6 boardconfig
+genesys2cva6soc: export board := genesys2soc
+genesys2cva6soc: export boardconfig := genesys2cva6soc
+genesys2cva6soc: export SYSTEMCLOCK := 55000000
+genesys2cva6soc: export MEM_WIDTH  :=  64
+genesys2cva6soc: FPGA_GENESYS2SOC
+
+genesys2cva6rv32w64soc: export board := genesys2rv32w64soc
+genesys2cva6rv32w64soc: export boardconfig := genesys2cva6rv32w64soc
+genesys2cva6rv32w64soc: export SYSTEMCLOCK := 60000000
+genesys2cva6rv32w64soc: export MEM_WIDTH  :=  64
+genesys2cva6rv32w64soc: FPGA_GENESYS2RV32SOC
+
+# VEX: use genesys2 setup but genesys2vex boardconfig
+genesys2vexsoc: export board := genesys2rv32w64soc
+genesys2vexsoc: export boardconfig := genesys2vexsoc
+genesys2vexsoc: export SYSTEMCLOCK := 125000000
+genesys2vexsoc: export MEM_WIDTH  :=  64
+genesys2vexsoc: FPGA_GENESYS2RV32SOC
 
 
 CONFIG_VH = ../../config/deriv/fpga$(boardconfig)/config.vh
@@ -132,24 +147,15 @@ BOOTROM_BASE = $(shell grep 'BOOTROM_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnu
 UNCORE_RAM_BASE = $(shell grep 'UNCORE_RAM_BASE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/0x\1/g')
 UNCORE_RAM_RANGE = $(shell grep 'UNCORE_RAM_RANGE' $(CONFIG_VH) | sed 's/.*=.*h\([[:alnum:]]*\);/\1/g' | sed 's/\(.*\)/base=16;\1+1/g' | bc | sed 's/\(.*\)/0x\1/g')
 _UBERDDR3_SUPPORTED = $(shell grep 'UBERDDR3_SUPPORTED' $(CONFIG_VH) | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
-genesys2soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
-genesys2soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
-genesys2soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
-genesys2rv32soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
-genesys2rv32soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
-genesys2rv32soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
-genesys2rv32w64soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
-genesys2rv32w64soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
-genesys2rv32w64soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
-genesys2rv32minsoc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
-genesys2rv32minsoc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
-genesys2rv32minsoc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
-nexysa7soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
-nexysa7soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
-nexysa7soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
-nexysa7rv32w64soc: export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
-nexysa7rv32w64soc: export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
-nexysa7rv32w64soc: export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
+
+SOC_CONFIG_TARGETS := \
+	genesys2soc genesys2cva6soc genesys2cva6rv32w64soc \
+	genesys2rv32soc genesys2rv32minsoc genesys2rv32w64soc genesys2vexsoc \
+	nexysa7soc nexysa7rv32w64soc nexysa7cva6rv32w64soc nexysa7vexsoc
+$(SOC_CONFIG_TARGETS): export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
+$(SOC_CONFIG_TARGETS): export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
+$(SOC_CONFIG_TARGETS): export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)
+
 
 .PHONY: FPGA_Arty FPGA_VCU
 FPGA_Arty: PreProcessFiles IP_Arty zsbl
@@ -278,6 +284,14 @@ PreProcessFiles:
 
 PULP_DIR := ../src/CopiedFiles_do_not_add_to_repo/pulp
 PULP_LZC := $(PULP_DIR)/common_cells/src/lzc.sv
+PULP_LFSR := $(PULP_DIR)/common_cells/src/lfsr.sv
+CVA6_DECODER := $(PULP_DIR)/cva6/core/decoder.sv
+CVA6_ALU := $(PULP_DIR)/cva6/core/alu.sv
+CVA6_BTB := $(PULP_DIR)/cva6/core/frontend/btb.sv
+CVA6_CONTROLLER := $(PULP_DIR)/cva6/core/controller.sv
+CVA6_AXI_ADAPTER := $(PULP_DIR)/cva6/core/cache_subsystem/axi_adapter.sv
+
+CVA6_DIR := $(PULP_DIR)/cva6
 .PHONY: PreProcessFilesSoC
 PreProcessFilesSoC: PreProcessFiles
 	cp ../../config/deriv/fpga$(boardconfig)/config.vh ../src/CopiedFiles_do_not_add_to_repo/config/config.vh
@@ -304,7 +318,7 @@ PreProcessFilesSoC: PreProcessFiles
 	cp ../../addins/digilent-i2s2/shared/src/hdl/axis_i2s2.v \
 	   ../src/CopiedFiles_do_not_add_to_repo/digilent-i2s2/
 	# Apply patches
-	# modify PULP files to prevent name collision for 'lzc'
+	# modify PULP files to prevent name collision with Wally 'lzc'
 	# rename the module itself (only in the defining file)
 	sed -i -E 's/^([[:space:]]*module[[:space:]]+)lzc([[:space:]]*#)/\1lzc_pulp\2/' $(PULP_LZC)
 	sed -i -E 's/^([[:space:]]*module[[:space:]]+)lzc([[:space:]]*\()/\1lzc_pulp\2/' $(PULP_LZC)
@@ -312,6 +326,11 @@ PreProcessFilesSoC: PreProcessFiles
 	# rename instantiations that look like: lzc #( ... )
 	find $(PULP_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
 	  xargs -0 sed -i -E 's/\<lzc\>([[:space:]]*#[[:space:]]*\()/lzc_pulp\1/g'
+	# CVA6/common_cells and the Ethernet RTL both define an lfsr module.
+	# Keep the CVA6 version distinct because CVA6 uses the LfsrWidth interface.
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)lfsr([[:space:]]*#)/\1lfsr_cva6\2/' $(PULP_LFSR)
+	find $(CVA6_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
+	  xargs -0 sed -i -E 's/\<lfsr\>([[:space:]]*#[[:space:]]*\()/lfsr_cva6\1/g'
 	# patch common-cells
 	patch -d "$(PULP_DIR)/common_cells" -p1 -N --forward < "$(PULP_DIR)/0001-common-cells-clk-div-insert-regional-buf.patch"
 	# patch AXI
@@ -342,6 +361,44 @@ PreProcessFilesSoC: PreProcessFiles
 
 	# LITTLE_ENDIAN for UART core
 	grep -q 'define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v || sed -i '1i`define LITLE_ENDIAN' ../src/CopiedFiles_do_not_add_to_repo/oc_uart_16550/uart_defines.v
+
+	# modify PULP files to prevent name collision with Wally 'decoder', 'alu', 'btb', and 'controller'
+	# rename the module itself (only in the defining file)
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)decoder([[:space:]]*#)/\1decoder_cva6\2/' $(CVA6_DECODER)
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)decoder([[:space:]]*\()/\1decoder_cva6\2/' $(CVA6_DECODER)
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)decoder\b/\1decoder_cva6/' $(CVA6_DECODER)
+	sed -i -E 's/(endmodule[[:space:]]*:[[:space:]]*)decoder\b/\1decoder_cva6/' $(CVA6_DECODER)
+	# rename instantiations that look like: decoder #( ... )
+	find $(CVA6_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
+	  xargs -0 sed -i -E 's/\<decoder\>([[:space:]]*#[[:space:]]*\()/decoder_cva6\1/g'
+
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)alu([[:space:]]*#)/\1alu_cva6\2/' $(CVA6_ALU)
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)alu([[:space:]]*\()/\1alu_cva6\2/' $(CVA6_ALU)
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)alu\b/\1alu_cva6/' $(CVA6_ALU)
+	sed -i -E 's/(endmodule[[:space:]]*:[[:space:]]*)alu\b/\1alu_cva6/' $(CVA6_ALU)
+	# rename instantiations that look like: alu... #( ... )
+	find $(CVA6_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
+	  xargs -0 sed -i -E 's/\<alu\>([[:space:]]*#[[:space:]]*\()/alu_cva6\1/g'
+
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)btb([[:space:]]*#)/\1btb_cva6\2/' $(CVA6_BTB)
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)btb([[:space:]]*\()/\1btb_cva6\2/' $(CVA6_BTB)
+	sed -i -E 's/(endmodule[[:space:]]*:[[:space:]]*)btb\b/\1btb_cva6/' $(CVA6_BTB)
+	# rename instantiations that look like: btb #( ... )
+	find $(CVA6_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
+	  xargs -0 sed -i -E 's/\<btb\>([[:space:]]*#[[:space:]]*\()/btb_cva6\1/g'
+
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)controller([[:space:]]*#)/\1controller_cva6\2/' $(CVA6_CONTROLLER)
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)controller([[:space:]]*\()/\1controller_cva6\2/' $(CVA6_CONTROLLER)
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)controller\b/\1controller_cva6/' $(CVA6_CONTROLLER)
+	# rename instantiations that look like: controller #( ... )
+	find $(CVA6_DIR) -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
+	  xargs -0 sed -i -E 's/\<controller\>([[:space:]]*#[[:space:]]*\()/controller_cva6\1/g'
+
+	# CVA6 and verilog-axi both define axi_adapter with different interfaces.
+	sed -i -E 's/^([[:space:]]*module[[:space:]]+)axi_adapter([[:space:]]*#)/\1axi_adapter_cva6\2/' $(CVA6_AXI_ADAPTER)
+	find $(CVA6_DIR)/core -type f \( -name "*.sv" -o -name "*.svh" -o -name "*.v" \) -print0 | \
+	  xargs -0 sed -i -E 's/\<axi_adapter\>([[:space:]]*#[[:space:]]*\()/axi_adapter_cva6\1/g'
+
 
 # build the Zero stage boot loader (ZSBL)
 .PHONY: zsbl

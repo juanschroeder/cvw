@@ -195,6 +195,8 @@ typedef struct packed {
   logic [63:0]  UNCACHED_MEM_BASE;
   logic [63:0]  UNCACHED_MEM_RANGE;
   logic         AXIS_I2S_SUPPORTED;
+  logic         CPU_CVA6_ENABLED;
+  logic         CPU_VEXRISCV_ENABLED;
 
 // Test modes
 

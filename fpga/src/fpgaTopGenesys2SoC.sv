@@ -53,19 +53,19 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
    output logic         SDCCS,
    input logic         SDCCD,
    input logic         SDCWP,
-`ifdef RVVI_SYNTH_SUPPORTED
- /*
-     * Ethernet: 100BASE-T MII
-     */
-   //output logic         phy_ref_clk, // *** add back in when we add rvvi
-   input logic         phy_rx_clk,
-   input logic [3:0]   phy_rxd,
-   input logic         phy_rxctl,
-   input logic         phy_tx_clk,
-   output logic [3:0]  phy_txd,
-   output logic         phy_tx_en,
-   //output logic         phy_reset_n,
-`endif
+// `ifdef RVVI_SYNTH_SUPPORTED
+//  /*
+//      * Ethernet: 100BASE-T MII
+//      */
+//    //output logic         phy_ref_clk, // *** add back in when we add rvvi
+//    input logic         phy_rx_clk,
+//    input logic [3:0]   phy_rxd,
+//    input logic         phy_rxctl,
+//    input logic         phy_tx_clk,
+//    output logic [3:0]  phy_txd,
+//    output logic         phy_tx_en,
+//    //output logic         phy_reset_n,
+// `endif
 
    inout logic [31:0]  ddr3_dq,
    inout logic [3:0]   ddr3_dqs_n,
@@ -86,18 +86,18 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     // WB UART
     , input logic WB_UART_RX
     , output logic WB_UART_TX
-`ifdef P_WISHBONE_ETH_SUPPORTED
-    // WB Ethernet
-    , output logic WB_RMII_REF_CLK,
-    input logic WB_RMII_CRS_DV,
-    input  logic [1:0]  WB_RMII_RX_DATA,
-    output logic [1:0]  WB_RMII_TX_DATA,
-    output logic        WB_RMII_TX_EN,
-    output logic        WB_RMII_MDC,
-    inout  wire         WB_RMII_MDIO,
-    output logic        WB_RMII_RST_N,
-    input logic        WB_RMII_PHY_IRQ
-`endif
+// `ifdef P_WISHBONE_ETH_SUPPORTED
+//     // WB Ethernet
+//     , output logic WB_RMII_REF_CLK,
+//     input logic WB_RMII_CRS_DV,
+//     input  logic [1:0]  WB_RMII_RX_DATA,
+//     output logic [1:0]  WB_RMII_TX_DATA,
+//     output logic        WB_RMII_TX_EN,
+//     output logic        WB_RMII_MDC,
+//     inout  wire         WB_RMII_MDIO,
+//     output logic        WB_RMII_RST_N,
+//     input logic        WB_RMII_PHY_IRQ
+// `endif
     , input  logic          rgmii_clocks_rx,
     output logic          rgmii_clocks_tx,
     input  logic          rgmii_int_n,
@@ -134,9 +134,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   localparam int unsigned STRB_W = P.AHBW/8;
 
-  // Keep Wally's logical configuration intact while selecting the CVWSoC
-  // memory implementation locally.  This preserves the existing variants
-  // until the legacy memory flags are retired from cvw_t.
   function automatic cvwsoc_mem_type_t cvwsoc_mem_type_from_wally(input cvw_t cfg);
     if (cfg.LITEDRAM_SUPPORTED)
       return CVWSOC_MEM_LITEDRAM_GENESYS2;
@@ -147,6 +144,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
   localparam cvwsoc_cfg_t C = '{
     wally:    P,
+    cpu:      (P.CPU_VEXRISCV_ENABLED ? CVWSOC_CPU_VEXRISCV :
+                (P.CPU_CVA6_ENABLED ? CVWSOC_CPU_CVA6 : CVWSOC_CPU_WALLY)),
+    bus: '{ AtopsEnabled: P.CPU_CVA6_ENABLED ? 1'b1 : 1'b0 }, 
     mem_type: cvwsoc_mem_type_from_wally(P),
     idma_config:    '{
                         AxisDescReqCut: 1'b0
@@ -208,8 +208,6 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   wishbone_axi_resp_t wishbone_axi_resp;
 
   logic ahb_meip, ahb_seip;
-  logic ahb_dma_intr, ahb_usb_intr, ahb_eth_intr;
-  logic ahb_dummy_intr, ahb_sdhci_intr;
   logic wb_uart_irq, wb_eth_irq;
   (* mark_debug = "true" *) logic ddr_busclk, ddr_buscorerstn, ddr_busrstn;
 
@@ -269,48 +267,48 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   (* mark_debug = "true" *) logic            cpu_m_axi_rlast;
   (* mark_debug = "true" *) logic            cpu_m_axi_rready;
 
-  assign cpu_m_axi_awid = cpu.wally.awid;
-  assign cpu_m_axi_awaddr = cpu.wally.awaddr;
-  assign cpu_m_axi_awlen = cpu.wally.awlen;
-  assign cpu_m_axi_awsize = cpu.wally.awsize;
-  assign cpu_m_axi_awburst = cpu.wally.awburst;
-  assign cpu_m_axi_awvalid = cpu.wally.awvalid;
-  assign cpu_m_axi_awready = cpu.wally.awready;
-  assign cpu_m_axi_wdata = cpu.wally.wdata;
-  assign cpu_m_axi_wstrb = cpu.wally.wstrb;
-  assign cpu_m_axi_wlast = cpu.wally.wlast;
-  assign cpu_m_axi_wvalid = cpu.wally.wvalid;
-  assign cpu_m_axi_wready = cpu.wally.wready;
-  assign cpu_m_axi_bid = cpu.wally.bid;
-  assign cpu_m_axi_bresp = cpu.wally.bresp;
-  assign cpu_m_axi_bvalid = cpu.wally.bvalid;
-  assign cpu_m_axi_bready = cpu.wally.bready;
-  assign cpu_m_axi_arid = cpu.wally.arid;
-  assign cpu_m_axi_araddr = cpu.wally.araddr;
-  assign cpu_m_axi_arlen = cpu.wally.arlen;
-  assign cpu_m_axi_arsize = cpu.wally.arsize;
-  assign cpu_m_axi_arburst = cpu.wally.arburst;
-  assign cpu_m_axi_arvalid = cpu.wally.arvalid;
-  assign cpu_m_axi_arready = cpu.wally.arready;
-  assign cpu_m_axi_rid = cpu.wally.rid;
-  assign cpu_m_axi_rdata = cpu.wally.rdata;
-  assign cpu_m_axi_rresp = cpu.wally.rresp;
-  assign cpu_m_axi_rlast = cpu.wally.rlast;
-  assign cpu_m_axi_rvalid = cpu.wally.rvalid;
-  assign cpu_m_axi_rready = cpu.wally.rready;
+  assign cpu_m_axi_awid = bridge_axi_req.aw.id;
+  assign cpu_m_axi_awaddr = bridge_axi_req.aw.addr;
+  assign cpu_m_axi_awlen = bridge_axi_req.aw.len;
+  assign cpu_m_axi_awsize = bridge_axi_req.aw.size;
+  assign cpu_m_axi_awburst = bridge_axi_req.aw.burst;
+  assign cpu_m_axi_awvalid = bridge_axi_req.aw_valid;
+  assign cpu_m_axi_awready = bridge_axi_resp.aw_ready;
+  assign cpu_m_axi_wdata = bridge_axi_req.w.data;
+  assign cpu_m_axi_wstrb = bridge_axi_req.w.strb;
+  assign cpu_m_axi_wlast = bridge_axi_req.w.last;
+  assign cpu_m_axi_wvalid = bridge_axi_req.w_valid;
+  assign cpu_m_axi_wready = bridge_axi_resp.w_ready;
+  assign cpu_m_axi_bid = bridge_axi_resp.b.id;
+  assign cpu_m_axi_bresp = bridge_axi_resp.b.resp;
+  assign cpu_m_axi_bvalid = bridge_axi_resp.b_valid;
+  assign cpu_m_axi_bready = bridge_axi_req.b_ready;
+  assign cpu_m_axi_arid = bridge_axi_req.ar.id;
+  assign cpu_m_axi_araddr = bridge_axi_req.ar.addr;
+  assign cpu_m_axi_arlen = bridge_axi_req.ar.len;
+  assign cpu_m_axi_arsize = bridge_axi_req.ar.size;
+  assign cpu_m_axi_arburst = bridge_axi_req.ar.burst;
+  assign cpu_m_axi_arvalid = bridge_axi_req.ar_valid;
+  assign cpu_m_axi_arready = bridge_axi_resp.ar_ready;
+  assign cpu_m_axi_rid = bridge_axi_resp.r.id;
+  assign cpu_m_axi_rdata = bridge_axi_resp.r.data;
+  assign cpu_m_axi_rresp = bridge_axi_resp.r.resp;
+  assign cpu_m_axi_rlast = bridge_axi_resp.r.last;
+  assign cpu_m_axi_rvalid = bridge_axi_resp.r_valid;
+  assign cpu_m_axi_rready = bridge_axi_req.r_ready;
 
 
-`ifndef P_WISHBONE_ETH_SUPPORTED
-  wire phy_ref_clk_raw;
-  wire rmii_clk50;
-  logic WB_RMII_REF_CLK;
-  logic WB_RMII_CRS_DV;
-  logic [1:0] WB_RMII_RX_DATA;
-  logic [1:0] WB_RMII_TX_DATA;
-  logic WB_RMII_TX_EN, WB_RMII_MDC;
-  wire WB_RMII_MDIO;
-  logic WB_RMII_RST_N, WB_RMII_PHY_IRQ;
-`endif
+// `ifndef P_WISHBONE_ETH_SUPPORTED
+//   wire phy_ref_clk_raw;
+//   wire rmii_clk50;
+//   logic WB_RMII_REF_CLK;
+//   logic WB_RMII_CRS_DV;
+//   logic [1:0] WB_RMII_RX_DATA;
+//   logic [1:0] WB_RMII_TX_DATA;
+//   logic WB_RMII_TX_EN, WB_RMII_MDC;
+//   wire WB_RMII_MDIO;
+//   logic WB_RMII_RST_N, WB_RMII_PHY_IRQ;
+// `endif
 
   assign GPIOIN = {25'b0, SDCCD, SDCWP, 1'b0, GPI};
   assign GPO = GPIOOUT[4:0];
@@ -328,10 +326,10 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .locked(cpu_clk_locked) );
 
 // FIXME!!
-`ifndef P_WISHBONE_ETH_SUPPORTED
-  BUFG u_bufg_rmii (.I(phy_ref_clk_raw), .O(rmii_clk50));
-  assign WB_RMII_REF_CLK = rmii_clk50;
-`endif
+// `ifndef P_WISHBONE_ETH_SUPPORTED
+//   BUFG u_bufg_rmii (.I(phy_ref_clk_raw), .O(rmii_clk50));
+//   assign WB_RMII_REF_CLK = rmii_clk50;
+// `endif
 
   assign rst_req = ~resetn | south_reset;
   assign resetn_comb = ~rst_req;
@@ -359,7 +357,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   assign cpu_meip = ahb_meip;
 
   cvwsoc_cpu #(
-    .P(P), 
+    .C(C),
     .AXI_ID_W(CPU_AXI_ID_WIDTH),
     .cpu_axi_req_t(cpu_axi_req_t),
     .cpu_axi_resp_t(cpu_axi_resp_t)
@@ -478,12 +476,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
 
     .cpu_axi_req_i(bridge_axi_req),
     .cpu_axi_resp_o(bridge_axi_resp),
-    .cpu_axi_irq_o(cpu_axi_irq),
-    .ahb_axi_dma_intr_o(ahb_dma_intr),
-    .ahb_axi_usb_intr_o(ahb_usb_intr),
-    .ahb_axi_eth_intr_o(ahb_eth_intr),
-    .ahb_axi_dummy_intr_o(ahb_dummy_intr),
-    .ahb_axi_sdhci_intr_o(ahb_sdhci_intr)
+    .cpu_axi_irq_o(cpu_axi_irq)
   );
 
   cvwsoc_ahb #(
@@ -513,11 +506,11 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .SDCCLK,
     .WBUartIntr(wb_uart_irq),
     .WBEthIntr(wb_eth_irq),
-    .AXI_DMAIntr(ahb_dma_intr),
-    .AXI_USBIntr(ahb_usb_intr),
-    .AXI_EthIntr(ahb_eth_intr),
-    .AXI_DummyIntr(ahb_dummy_intr),
-    .AXI_SDHCIIntr(ahb_sdhci_intr)
+    .AXI_DMAIntr(cpu_axi_irq[0]),
+    .AXI_USBIntr(cpu_axi_irq[1]),
+    .AXI_EthIntr(cpu_axi_irq[2]),
+    .AXI_DummyIntr(1'b0),
+    .AXI_SDHCIIntr(cpu_axi_irq[3])
   );
 
   assign cpu_meip = ahb_meip;
@@ -557,145 +550,145 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
   endgenerate
 
 
-  (* mark_debug = "true" *)  logic IlaTrigger;
+//   (* mark_debug = "true" *)  logic IlaTrigger;
 
-  if(RVVI_SYNTH_SUPPORTED) begin : rvvi_synth
-    localparam MAX_CSRS = 3;
-    localparam TOTAL_CSRS = 36;
-    localparam [31:0] RVVI_INIT_TIME_OUT = 32'd100000000;
-    localparam [31:0] RVVI_PACKET_DELAY = 32'd400;
+//   if(RVVI_SYNTH_SUPPORTED) begin : rvvi_synth
+//     localparam MAX_CSRS = 3;
+//     localparam TOTAL_CSRS = 36;
+//     localparam [31:0] RVVI_INIT_TIME_OUT = 32'd100000000;
+//     localparam [31:0] RVVI_PACKET_DELAY = 32'd400;
 
-    // pipeline controls
-    logic                                             StallE, StallM, StallW, FlushE, FlushM, FlushW;
-    // required
-    logic [P.XLEN-1:0]                                PCM;
-    logic                                             InstrValidM;
-    logic [31:0]                                      InstrRawD;
-    logic [P.AHBW-1:0]                                Mcycle, Minstret;
-    logic                                             TrapM;
-    logic [1:0]                                       PrivilegeModeW;
-    // registers gpr and fpr
-    logic                                             GPRWen, FPRWen;
-    logic [4:0]                                       GPRAddr, FPRAddr;
-    logic [P.XLEN-1:0]                                GPRValue, FPRValue;
-    logic [P.XLEN-1:0]                                CSRArray [TOTAL_CSRS-1:0];
+//     // pipeline controls
+//     logic                                             StallE, StallM, StallW, FlushE, FlushM, FlushW;
+//     // required
+//     logic [P.XLEN-1:0]                                PCM;
+//     logic                                             InstrValidM;
+//     logic [31:0]                                      InstrRawD;
+//     logic [P.AHBW-1:0]                                Mcycle, Minstret;
+//     logic                                             TrapM;
+//     logic [1:0]                                       PrivilegeModeW;
+//     // registers gpr and fpr
+//     logic                                             GPRWen, FPRWen;
+//     logic [4:0]                                       GPRAddr, FPRAddr;
+//     logic [P.XLEN-1:0]                                GPRValue, FPRValue;
+//     logic [P.XLEN-1:0]                                CSRArray [TOTAL_CSRS-1:0];
 
-    logic                                             valid;
-    logic [72+(5*P.XLEN) + MAX_CSRS*(P.XLEN+16)-1:0] rvvi;
+//     logic                                             valid;
+//     logic [72+(5*P.XLEN) + MAX_CSRS*(P.XLEN+16)-1:0] rvvi;
 
-    assign StallE         = fpgaTop.cpu.wally.core.StallE;
-    assign StallM         = fpgaTop.cpu.wally.core.StallM;
-    assign StallW         = fpgaTop.cpu.wally.core.StallW;
-    assign FlushE         = fpgaTop.cpu.wally.core.FlushE;
-    assign FlushM         = fpgaTop.cpu.wally.core.FlushM;
-    assign FlushW         = fpgaTop.cpu.wally.core.FlushW;
-    assign InstrValidM    = fpgaTop.cpu.wally.core.ieu.InstrValidM;
-    assign InstrRawD      = fpgaTop.cpu.wally.core.ifu.InstrRawD;
-    assign PCM            = fpgaTop.cpu.wally.core.ifu.PCM;
-    assign Mcycle         = fpgaTop.cpu.wally.core.priv.priv.csr.counters.counters.HPMCOUNTER_REGW[0];
-    assign Minstret       = fpgaTop.cpu.wally.core.priv.priv.csr.counters.counters.HPMCOUNTER_REGW[2];
-    assign TrapM          = fpgaTop.cpu.wally.core.TrapM;
-    assign PrivilegeModeW = fpgaTop.cpu.wally.core.priv.priv.privmode.PrivilegeModeW;
-    assign GPRAddr        = fpgaTop.cpu.wally.core.ieu.dp.regf.a3;
-    assign GPRWen         = fpgaTop.cpu.wally.core.ieu.dp.regf.we3;
-    assign GPRValue       = fpgaTop.cpu.wally.core.ieu.dp.regf.wd3;
-    assign FPRAddr        = fpgaTop.cpu.wally.core.fpu.fpu.fregfile.a4;
-    assign FPRWen         = fpgaTop.cpu.wally.core.fpu.fpu.fregfile.we4;
-    assign FPRValue       = fpgaTop.cpu.wally.core.fpu.fpu.fregfile.wd4;
+//     assign StallE         = fpgaTop.cpu.wally.core.StallE;
+//     assign StallM         = fpgaTop.cpu.wally.core.StallM;
+//     assign StallW         = fpgaTop.cpu.wally.core.StallW;
+//     assign FlushE         = fpgaTop.cpu.wally.core.FlushE;
+//     assign FlushM         = fpgaTop.cpu.wally.core.FlushM;
+//     assign FlushW         = fpgaTop.cpu.wally.core.FlushW;
+//     assign InstrValidM    = fpgaTop.cpu.wally.core.ieu.InstrValidM;
+//     assign InstrRawD      = fpgaTop.cpu.wally.core.ifu.InstrRawD;
+//     assign PCM            = fpgaTop.cpu.wally.core.ifu.PCM;
+//     assign Mcycle         = fpgaTop.cpu.wally.core.priv.priv.csr.counters.counters.HPMCOUNTER_REGW[0];
+//     assign Minstret       = fpgaTop.cpu.wally.core.priv.priv.csr.counters.counters.HPMCOUNTER_REGW[2];
+//     assign TrapM          = fpgaTop.cpu.wally.core.TrapM;
+//     assign PrivilegeModeW = fpgaTop.cpu.wally.core.priv.priv.privmode.PrivilegeModeW;
+//     assign GPRAddr        = fpgaTop.cpu.wally.core.ieu.dp.regf.a3;
+//     assign GPRWen         = fpgaTop.cpu.wally.core.ieu.dp.regf.we3;
+//     assign GPRValue       = fpgaTop.cpu.wally.core.ieu.dp.regf.wd3;
+//     assign FPRAddr        = fpgaTop.cpu.wally.core.fpu.fpu.fregfile.a4;
+//     assign FPRWen         = fpgaTop.cpu.wally.core.fpu.fpu.fregfile.we4;
+//     assign FPRValue       = fpgaTop.cpu.wally.core.fpu.fpu.fregfile.wd4;
 
-    assign CSRArray[0] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MSTATUS_REGW; // 12'h300
-    assign CSRArray[1] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MSTATUSH_REGW; // 12'h310
-    assign CSRArray[2] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MTVEC_REGW; // 12'h305
-    assign CSRArray[3] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MEPC_REGW; // 12'h341
-    assign CSRArray[4] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MCOUNTEREN_REGW; // 12'h306
-    assign CSRArray[5] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MCOUNTINHIBIT_REGW; // 12'h320
-    assign CSRArray[6] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MEDELEG_REGW; // 12'h302
-    assign CSRArray[7] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIDELEG_REGW; // 12'h303
-    assign CSRArray[8] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIP_REGW; // 12'h344
-    assign CSRArray[9] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIE_REGW; // 12'h304
-    assign CSRArray[10] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MISA_REGW; // 12'h301
-    assign CSRArray[11] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MENVCFG_REGW; // 12'h30A
-    assign CSRArray[12] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MHARTID_REGW; // 12'hF14
-    assign CSRArray[13] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MSCRATCH_REGW; // 12'h340
-    assign CSRArray[14] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MCAUSE_REGW; // 12'h342
-    assign CSRArray[15] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MTVAL_REGW; // 12'h343
-    assign CSRArray[16] = 0; // 12'hF11
-    assign CSRArray[17] = 0; // 12'hF12
-    assign CSRArray[18] = {{P.XLEN-12{1'b0}}, 12'h100}; // 12'hF13
-    assign CSRArray[19] = 0; // 12'hF15
-    assign CSRArray[20] = 0; // 12'h34A
-    // supervisor CSRs
-    assign CSRArray[21] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SSTATUS_REGW; // 12'h100
-    assign CSRArray[22] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIE_REGW & 12'h222; // 12'h104
-    assign CSRArray[23] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.STVEC_REGW; // 12'h105
-    assign CSRArray[24] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SEPC_REGW; // 12'h141
-    assign CSRArray[25] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SCOUNTEREN_REGW; // 12'h106
-    assign CSRArray[26] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SENVCFG_REGW; // 12'h10A
-    assign CSRArray[27] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SATP_REGW; // 12'h180
-    assign CSRArray[28] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SSCRATCH_REGW; // 12'h140
-    assign CSRArray[29] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.STVAL_REGW; // 12'h143
-    assign CSRArray[30] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SCAUSE_REGW; // 12'h142
-    assign CSRArray[31] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIP_REGW & 12'h222 & fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIDELEG_REGW; // 12'h144
-    assign CSRArray[32] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.STIMECMP_REGW; // 12'h14D
-    // user CSRs
-    assign CSRArray[33] = fpgaTop.cpu.wally.core.priv.priv.csr.csru.csru.FFLAGS_REGW; // 12'h001
-    assign CSRArray[34] = fpgaTop.cpu.wally.core.priv.priv.csr.csru.csru.FRM_REGW; // 12'h002
-    assign CSRArray[35] = {fpgaTop.cpu.wally.core.priv.priv.csr.csru.csru.FRM_REGW, fpgaTop.cpu.wally.core.priv.priv.csr.csru.csru.FFLAGS_REGW}; // 12'h003
+//     assign CSRArray[0] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MSTATUS_REGW; // 12'h300
+//     assign CSRArray[1] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MSTATUSH_REGW; // 12'h310
+//     assign CSRArray[2] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MTVEC_REGW; // 12'h305
+//     assign CSRArray[3] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MEPC_REGW; // 12'h341
+//     assign CSRArray[4] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MCOUNTEREN_REGW; // 12'h306
+//     assign CSRArray[5] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MCOUNTINHIBIT_REGW; // 12'h320
+//     assign CSRArray[6] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MEDELEG_REGW; // 12'h302
+//     assign CSRArray[7] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIDELEG_REGW; // 12'h303
+//     assign CSRArray[8] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIP_REGW; // 12'h344
+//     assign CSRArray[9] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIE_REGW; // 12'h304
+//     assign CSRArray[10] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MISA_REGW; // 12'h301
+//     assign CSRArray[11] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MENVCFG_REGW; // 12'h30A
+//     assign CSRArray[12] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MHARTID_REGW; // 12'hF14
+//     assign CSRArray[13] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MSCRATCH_REGW; // 12'h340
+//     assign CSRArray[14] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MCAUSE_REGW; // 12'h342
+//     assign CSRArray[15] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MTVAL_REGW; // 12'h343
+//     assign CSRArray[16] = 0; // 12'hF11
+//     assign CSRArray[17] = 0; // 12'hF12
+//     assign CSRArray[18] = {{P.XLEN-12{1'b0}}, 12'h100}; // 12'hF13
+//     assign CSRArray[19] = 0; // 12'hF15
+//     assign CSRArray[20] = 0; // 12'h34A
+//     // supervisor CSRs
+//     assign CSRArray[21] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SSTATUS_REGW; // 12'h100
+//     assign CSRArray[22] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIE_REGW & 12'h222; // 12'h104
+//     assign CSRArray[23] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.STVEC_REGW; // 12'h105
+//     assign CSRArray[24] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SEPC_REGW; // 12'h141
+//     assign CSRArray[25] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SCOUNTEREN_REGW; // 12'h106
+//     assign CSRArray[26] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SENVCFG_REGW; // 12'h10A
+//     assign CSRArray[27] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SATP_REGW; // 12'h180
+//     assign CSRArray[28] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SSCRATCH_REGW; // 12'h140
+//     assign CSRArray[29] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.STVAL_REGW; // 12'h143
+//     assign CSRArray[30] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.SCAUSE_REGW; // 12'h142
+//     assign CSRArray[31] = fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIP_REGW & 12'h222 & fpgaTop.cpu.wally.core.priv.priv.csr.csrm.MIDELEG_REGW; // 12'h144
+//     assign CSRArray[32] = fpgaTop.cpu.wally.core.priv.priv.csr.csrs.csrs.STIMECMP_REGW; // 12'h14D
+//     // user CSRs
+//     assign CSRArray[33] = fpgaTop.cpu.wally.core.priv.priv.csr.csru.csru.FFLAGS_REGW; // 12'h001
+//     assign CSRArray[34] = fpgaTop.cpu.wally.core.priv.priv.csr.csru.csru.FRM_REGW; // 12'h002
+//     assign CSRArray[35] = {fpgaTop.cpu.wally.core.priv.priv.csr.csru.csru.FRM_REGW, fpgaTop.cpu.wally.core.priv.priv.csr.csru.csru.FFLAGS_REGW}; // 12'h003
 
-    rvvisynth #(P, MAX_CSRS) rvvisynth(.clk(CPUCLK), .reset(bus_struct_reset), .StallE, .StallM, .StallW, .FlushE, .FlushM, .FlushW,
-      .PCM, .InstrValidM, .InstrRawD, .Mcycle, .Minstret, .TrapM,
-      .PrivilegeModeW, .GPRWen, .FPRWen, .GPRAddr, .FPRAddr, .GPRValue, .FPRValue, .CSRArray,
-      .valid, .rvvi);
+//     rvvisynth #(P, MAX_CSRS) rvvisynth(.clk(CPUCLK), .reset(bus_struct_reset), .StallE, .StallM, .StallW, .FlushE, .FlushM, .FlushW,
+//       .PCM, .InstrValidM, .InstrRawD, .Mcycle, .Minstret, .TrapM,
+//       .PrivilegeModeW, .GPRWen, .FPRWen, .GPRAddr, .FPRAddr, .GPRValue, .FPRValue, .CSRArray,
+//       .valid, .rvvi);
 
-    // axi 4 write data channel
-    logic [31:0]                                      RvviAxiWdata;
-    logic [3:0]                                       RvviAxiWstrb;
-    logic                                             RvviAxiWlast;
-    logic                                             RvviAxiWvalid;
-    logic                                             RvviAxiWready;
+//     // axi 4 write data channel
+//     logic [31:0]                                      RvviAxiWdata;
+//     logic [3:0]                                       RvviAxiWstrb;
+//     logic                                             RvviAxiWlast;
+//     logic                                             RvviAxiWvalid;
+//     logic                                             RvviAxiWready;
 
-    logic [31:0] RvviAxiRdata;
-    logic [3:0]                                       RvviAxiRstrb;
-    logic RvviAxiRlast;
-    logic RvviAxiRvalid;
+//     logic [31:0] RvviAxiRdata;
+//     logic [3:0]                                       RvviAxiRstrb;
+//     logic RvviAxiRlast;
+//     logic RvviAxiRvalid;
 
-    logic                                             tx_error_underflow, tx_fifo_overflow, tx_fifo_bad_frame, tx_fifo_good_frame, rx_error_bad_frame;
-    logic                                             rx_error_bad_fcs, rx_fifo_overflow, rx_fifo_bad_frame, rx_fifo_good_frame;
+//     logic                                             tx_error_underflow, tx_fifo_overflow, tx_fifo_bad_frame, tx_fifo_good_frame, rx_error_bad_frame;
+//     logic                                             rx_error_bad_fcs, rx_fifo_overflow, rx_fifo_bad_frame, rx_fifo_good_frame;
 
-    packetizer #(P, MAX_CSRS, RVVI_INIT_TIME_OUT, RVVI_PACKET_DELAY) packetizer(.rvvi, .valid, .m_axi_aclk(CPUCLK), .m_axi_aresetn(~bus_struct_reset), .RVVIStall,
-      .RvviAxiWdata, .RvviAxiWstrb, .RvviAxiWlast, .RvviAxiWvalid, .RvviAxiWready);
+//     packetizer #(P, MAX_CSRS, RVVI_INIT_TIME_OUT, RVVI_PACKET_DELAY) packetizer(.rvvi, .valid, .m_axi_aclk(CPUCLK), .m_axi_aresetn(~bus_struct_reset), .RVVIStall,
+//       .RvviAxiWdata, .RvviAxiWstrb, .RvviAxiWlast, .RvviAxiWvalid, .RvviAxiWready);
 
-    eth_mac_mii_fifo #(.TARGET("XILINX"), .CLOCK_INPUT_STYLE("BUFG"), .AXIS_DATA_WIDTH(32), .TX_FIFO_DEPTH(1024)) ethernet(.rst(bus_struct_reset), .logic_clk(CPUCLK), .logic_rst(bus_struct_reset),
-      .tx_axis_tdata(RvviAxiWdata), .tx_axis_tkeep(RvviAxiWstrb), .tx_axis_tvalid(RvviAxiWvalid), .tx_axis_tready(RvviAxiWready),
-      .tx_axis_tlast(RvviAxiWlast), .tx_axis_tuser('0), .rx_axis_tdata(RvviAxiRdata),
-      .rx_axis_tkeep(RvviAxiRstrb), .rx_axis_tvalid(RvviAxiRvalid), .rx_axis_tready(1'b1),
-      .rx_axis_tlast(RvviAxiRlast), .rx_axis_tuser(),
+//     eth_mac_mii_fifo #(.TARGET("XILINX"), .CLOCK_INPUT_STYLE("BUFG"), .AXIS_DATA_WIDTH(32), .TX_FIFO_DEPTH(1024)) ethernet(.rst(bus_struct_reset), .logic_clk(CPUCLK), .logic_rst(bus_struct_reset),
+//       .tx_axis_tdata(RvviAxiWdata), .tx_axis_tkeep(RvviAxiWstrb), .tx_axis_tvalid(RvviAxiWvalid), .tx_axis_tready(RvviAxiWready),
+//       .tx_axis_tlast(RvviAxiWlast), .tx_axis_tuser('0), .rx_axis_tdata(RvviAxiRdata),
+//       .rx_axis_tkeep(RvviAxiRstrb), .rx_axis_tvalid(RvviAxiRvalid), .rx_axis_tready(1'b1),
+//       .rx_axis_tlast(RvviAxiRlast), .rx_axis_tuser(),
 
-      .mii_rx_clk(phy_rx_clk),
-      .mii_rxd(phy_rxd),
-      .mii_rx_dv(phy_rx_dv),
-      .mii_rx_er(phy_rx_er),
-      .mii_tx_clk(phy_tx_clk),
-      .mii_txd(phy_txd),
-      .mii_tx_en(phy_tx_en),
-      .mii_tx_er(),
+//       .mii_rx_clk(phy_rx_clk),
+//       .mii_rxd(phy_rxd),
+//       .mii_rx_dv(phy_rx_dv),
+//       .mii_rx_er(phy_rx_er),
+//       .mii_tx_clk(phy_tx_clk),
+//       .mii_txd(phy_txd),
+//       .mii_tx_en(phy_tx_en),
+//       .mii_tx_er(),
 
-      // status
-      .tx_error_underflow, .tx_fifo_overflow, .tx_fifo_bad_frame, .tx_fifo_good_frame, .rx_error_bad_frame,
-      .rx_error_bad_fcs, .rx_fifo_overflow, .rx_fifo_bad_frame, .rx_fifo_good_frame,
-      .cfg_ifg(8'd12), .cfg_tx_enable(1'b1), .cfg_rx_enable(1'b1)
-      );
+//       // status
+//       .tx_error_underflow, .tx_fifo_overflow, .tx_fifo_bad_frame, .tx_fifo_good_frame, .rx_error_bad_frame,
+//       .rx_error_bad_fcs, .rx_fifo_overflow, .rx_fifo_bad_frame, .rx_fifo_good_frame,
+//       .cfg_ifg(8'd12), .cfg_tx_enable(1'b1), .cfg_rx_enable(1'b1)
+//       );
 
-    triggergen triggergen(.clk(CPUCLK), .reset(bus_struct_reset), .RvviAxiRdata,
-      .RvviAxiRstrb, .RvviAxiRlast, .RvviAxiRvalid, .IlaTrigger);
-  end else begin // if (P.RVVI_SYNTH_SUPPORTED)
-    assign IlaTrigger = '0;
-    assign RVVIStall = '0;
-  end
+//     triggergen triggergen(.clk(CPUCLK), .reset(bus_struct_reset), .RvviAxiRdata,
+//       .RvviAxiRstrb, .RvviAxiRlast, .RvviAxiRvalid, .IlaTrigger);
+//   end else begin // if (P.RVVI_SYNTH_SUPPORTED)
+//     assign IlaTrigger = '0;
+//     assign RVVIStall = '0;
+//   end
 
-`ifdef P_WISHBONE_ETH_SUPPORTED
-  //assign phy_reset_n = ~bus_struct_reset;
-  assign phy_reset_n = ~1'b0;
-`endif
+// `ifdef P_WISHBONE_ETH_SUPPORTED
+//   //assign phy_reset_n = ~bus_struct_reset;
+//   assign phy_reset_n = ~1'b0;
+// `endif
 
 endmodule

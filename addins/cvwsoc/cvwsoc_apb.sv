@@ -41,19 +41,36 @@ module cvwsoc_apb import cvw::*; #(parameter cvw_t P) (
   logic [31:0]                 PADDR;
   logic [P.AHBW-1:0]           PWDATA;
   logic [P.AHBW/8-1:0]         PSTRB;
+  logic [P.AHBW-1:0]           PWDATA_raw;
+  logic [P.AHBW/8-1:0]         PSTRB_raw;
   logic [4:0]                  PREADY;
   logic [4:0][P.AHBW-1:0]      PRDATA;
   logic                        UARTIntr, GPIOIntr, SPIIntr, SDCIntr;
+  localparam int unsigned APB_LANE_BITS = $clog2(P.AHBW / 8);
+  logic [APB_LANE_BITS-1:0]    apb_byte_lane;
 
   ahbapbbridge #(P, 5) bridge (
     .HCLK, .HRESETn, .HSEL, .HADDR, .HWDATA, .HWSTRB, .HWRITE, .HTRANS, .HREADY,
     .HRDATA, .HRESP, .HREADYOUT,
 
     .PCLK, .PRESETn, .PSEL, .PWRITE, .PENABLE,
-    .PADDR, .PWDATA, .PSTRB, .PREADY, .PRDATA
+    .PADDR, .PWDATA(PWDATA_raw), .PSTRB(PSTRB_raw), .PREADY, .PRDATA
   );
 
-  assign MTIME_CLINT = '0;
+  // This is a fix specific for Wally APB peripherals and where data is assumed
+  // for subword reads and writes.
+  // Wally APB peripherals consume subword data in byte lane zero.  For
+  // RV32/AHBW64 the bridge already selects PADDR[2]'s 32-bit half; normalize
+  // only the remaining byte lane.
+  if ((P.XLEN == 32) && (P.AHBW == 64)) begin : gen_rv32_w64_lanes
+    assign apb_byte_lane = PADDR[1:0];
+    assign PWDATA = PWDATA_raw >> (apb_byte_lane * 8);
+    assign PSTRB  = PSTRB_raw  >> apb_byte_lane;
+  end else begin : gen_normalize_cva6_lanes
+    assign apb_byte_lane = PADDR[APB_LANE_BITS-1:0];
+    assign PWDATA = PWDATA_raw >> (apb_byte_lane * 8);
+    assign PSTRB  = PSTRB_raw  >> apb_byte_lane;
+  end
 
   if (P.PLIC_SUPPORTED) begin : plic
     plic_apb #(P) plic (
