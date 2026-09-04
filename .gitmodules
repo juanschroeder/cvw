@@ -103,21 +103,17 @@
 [submodule "digilent-i2s2"]
   path = addins/digilent-i2s2
   url = https://github.com/Digilent/Pmod-I2S2.git
-[submodule "fpnew"]
-	path = addins/pulp/fpnew
-	url = https://github.com/pulp-platform/cvfpu.git
-	branch = refs/tags/pulp-v0.2.3
 [submodule "fpu_div_sqrt_mvp"]
 	path = addins/pulp/fpu_div_sqrt_mvp
 	url = https://github.com/pulp-platform/fpu_div_sqrt_mvp.git
 [submodule "pulp-cva6"]
 	path = addins/pulp/cva6
-	url = https://github.com/pulp-platform/cva6.git
-	branch = refs/tags/pulp-v2.0.0
+	url = https://github.com/juanschroeder/cva6.git
+	branch = refs/tags/cvwsoc_dev
 [submodule "cvfpu"]
 	path = addins/pulp/cvfpu
-	url = https://github.com/pulp-platform/cvfpu.git
-	branch = pulp-v0.2.3
+	url = https://github.com/openhwgroup/cvfpu.git
+	branch = develop
 [submodule "unbent"]
 	path = addins/pulp/unbent
 	url = https://github.com/pulp-platform/unbent.git

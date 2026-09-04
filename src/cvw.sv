@@ -197,6 +197,7 @@ typedef struct packed {
   logic         AXIS_I2S_SUPPORTED;
   logic         CPU_CVA6_ENABLED;
   logic         CPU_VEXRISCV_ENABLED;
+  logic         CPU_CVA6SP_ENABLED;
 
 // Test modes
 

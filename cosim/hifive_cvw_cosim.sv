@@ -30,10 +30,29 @@ module hifive_cvw_cosim;
   endfunction
 
   localparam cvw_t P_COSIM = make_cosim_p(P);
+  localparam cvwsoc_cpu_type_t CpuType = cvwsoc_cpu_from_wally_cfg(P_COSIM);
+  localparam cvwsoc_bus_config_t BusCfg = '{
+    AtopsEnabled: cvwsoc_cpu_uses_atops(CpuType),
+    xbar: '{
+            MaxMstTrans: 16,
+            MaxSlvTrans: 16,
+            FallThrough: 1'b0,
+            LatencyMode: axi_pkg::CUT_ALL_AX,
+            PipelineStages: 0
+        },
+    ddr_atomics: '{
+            MaxReadTxns: 16,
+            MaxWriteTxns: 8,
+            NumCuts: 1,
+            FullBandwidth: 1'b1,
+            CutOupPopInpGnt: 1'b1
+        }
+  };
+
   localparam cvwsoc_cfg_t C = '{
     wally: P_COSIM,
-    cpu:      CVWSOC_CPU_WALLY, // irrelevant
-    bus: '{ AtopsEnabled: P.CPU_CVA6_ENABLED ? 1'b1 : 1'b0 }, 
+    cpu:      CpuType,
+    bus:      BusCfg,
     mem_type: CVWSOC_MEM_XILINX_DDR2, // semantic only; cvwsoc_ram is absent
     idma_config: '{AxisDescReqCut: 1'b1},
     vga_config:     '{
@@ -41,7 +60,10 @@ module hifive_cvw_cosim;
                         BufferDepth: 4,
                         MaxReadTxns: 4
                     },
-    sdhci_config:'{InsertRegClkBuf: 1'b0}
+    sdhci_config:'{
+                    InsertRegClkBuf: 1'b0,
+                    CutDataRegPath: 1'b0
+                }
   };
 
   localparam xbar_out_t XBAR_OUT = gen_xbar_out(P_COSIM);
@@ -75,7 +97,6 @@ module hifive_cvw_cosim;
   logic [3:0] cpu_axi_irq;
   logic resetn;
 
-  //logic clk_sdhci;
   logic clk_200M = 1'b0; // needs initialization
   logic clk_audio = 1'b0; // needs initialization
   logic clk_48M = 1'b0; // needs initialization

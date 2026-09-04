@@ -17,11 +17,45 @@ package cvwsoc_pkg;
   typedef enum logic [1:0] {
     CVWSOC_CPU_WALLY,
     CVWSOC_CPU_CVA6,
-    CVWSOC_CPU_VEXRISCV
+    CVWSOC_CPU_VEXRISCV,
+    CVWSOC_CPU_CVA6SP
   } cvwsoc_cpu_type_t;
 
+  function automatic cvwsoc_cpu_type_t cvwsoc_cpu_from_wally_cfg(input cvw_t cfg);
+    if (cfg.CPU_VEXRISCV_ENABLED) return CVWSOC_CPU_VEXRISCV;
+    if (cfg.CPU_CVA6SP_ENABLED)   return CVWSOC_CPU_CVA6SP;
+    if (cfg.CPU_CVA6_ENABLED)     return CVWSOC_CPU_CVA6;
+    return CVWSOC_CPU_WALLY;
+  endfunction
+
+  function automatic bit cvwsoc_cpu_uses_atops(input cvwsoc_cpu_type_t cpu);
+    return (cpu == CVWSOC_CPU_CVA6) || (cpu == CVWSOC_CPU_CVA6SP);
+  endfunction
+
+  // FPGA implementation policy for the AXI fabric.  These settings belong to
+  // the board integration, rather than Wally's architectural configuration.
   typedef struct packed {
-    bit             AtopsEnabled; // cut req critical path
+    int unsigned    MaxMstTrans;
+    int unsigned    MaxSlvTrans;
+    bit             FallThrough;
+    bit [9:0]       LatencyMode;
+    int unsigned    PipelineStages;
+  } cvwsoc_xbar_config_t;
+
+  typedef struct packed {
+    int unsigned    MaxReadTxns;
+    int unsigned    MaxWriteTxns;
+    int unsigned    NumCuts;
+    bit             FullBandwidth;
+    bit             CutOupPopInpGnt;
+  } cvwsoc_ddr_atomics_config_t;
+
+  typedef struct packed {
+    // Derived from CPU type so an ATOP-capable CPU cannot accidentally be
+    // connected to an interconnect that drops atomic transactions.
+    bit                         AtopsEnabled;
+    cvwsoc_xbar_config_t        xbar;
+    cvwsoc_ddr_atomics_config_t ddr_atomics;
   } cvwsoc_bus_config_t;
 
   typedef struct packed {
@@ -36,6 +70,9 @@ package cvwsoc_pkg;
 
   typedef struct packed {
     bit             InsertRegClkBuf; // Xilinx 7-series SDHCI clock-mux hop
+    // Register block-size configuration before the SDHCI data path. This
+    // breaks the reg-logic -> data-buffer -> reg-logic timing feedback path.
+    bit             CutDataRegPath;
   } cvwsoc_sdhci_config_t;
 
   typedef struct packed {

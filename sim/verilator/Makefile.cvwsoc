@@ -42,11 +42,24 @@ BOOL_TRUE := 1 yes YES true TRUE
 RV32 ?= 0
 CVWSOC_RV32 := $(filter $(BOOL_TRUE),$(RV32))
 CVA6 ?= 0
+CVA6SP ?= 0
+CVWSOC_CVA6SP := $(filter $(BOOL_TRUE),$(CVA6SP))
+CVWSOC_CVA6 := $(filter $(BOOL_TRUE),$(CVA6) $(CVA6SP))
+ifneq ($(filter $(BOOL_TRUE),$(CVA6)),)
+ifneq ($(CVWSOC_CVA6SP),)
+$(error CVA6=1 and CVA6SP=1 select only one CVA6 configuration)
+endif
+endif
+ifneq ($(CVWSOC_CVA6SP),)
+ifneq ($(CVWSOC_RV32),)
+# $(error CVA6SP=1 supports RV64 only)
+endif
+endif
 VEX ?= 0
 CVWSOC_VEXRISCV := $(filter $(BOOL_TRUE),$(VEX))
 ifneq ($(CVWSOC_VEXRISCV),)
-ifneq ($(filter 1,$(CVA6)),)
-$(error VEX=1 and CVA6=1 select different CPU implementations)
+ifneq ($(CVWSOC_CVA6),)
+$(error VEX=1 and CVA6/CVA6SP=1 select different CPU implementations)
 endif
 endif
 SDHCI ?= 0
@@ -63,7 +76,7 @@ CVWSOC_SIM_WISHBONE := $(filter $(BOOL_TRUE),$(WISHBONE))
 CVWSOC_LINUX_PRELOAD_SKIP_INITRD := $(if $(CVWSOC_SIM_SDHCI),1,0)
 WALLYCONF ?= fpgagenesys2soc
 # CVA6 and Vexriscv require the RV32 system's 64-bit AXI data bus.
-CONFIG ?= $(if $(CVWSOC_VEXRISCV),fpgagenesys2vexsoc,$(if $(filter 1,$(CVA6)),$(if $(CVWSOC_RV32),fpgagenesys2cva6rv32w64soc,fpgagenesys2cva6soc),$(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF))))
+CONFIG ?= $(if $(CVWSOC_VEXRISCV),fpgagenesys2vexsoc,$(if $(CVWSOC_CVA6SP),$(if $(CVWSOC_RV32),fpgagenesys2cva6sprv32w64soc,fpgagenesys2cva6spsoc),$(if $(CVWSOC_CVA6),$(if $(CVWSOC_RV32),fpgagenesys2cva6rv32w64soc,fpgagenesys2cva6soc),$(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF)))))
 CVWSOC_SIM_AXI_RAM ?= $(if $(CVWSOC_SIM_SDHCI),0,1)
 CVWSOC_CONFIG_RV32 := $(findstring rv32,$(CONFIG))
 CVWSOC_CONFIG_RV32W64 := $(findstring rv32w64,$(CONFIG))
@@ -82,7 +95,7 @@ SDHCI_ROOT := $(COPIED_ROOT)/sdhci/hw
 IDMA_ROOT := $(PULP_ROOT)/idma
 
 CVWSOC_DEPLOY_ROOT ?= /yocto/fpga/kas-cvwsoc/build/tmp/deploy/images
-CVWSOC_MACHINE ?= $(if $(CVWSOC_VEXRISCV),vexriscvsoc-virt32,$(if $(filter 1,$(CVA6)),$(if $(filter 32,$(CVWSOC_XLEN)),cva6soc-virt32,cva6soc-virt),$(if $(filter 32,$(CVWSOC_XLEN)),cvwsoc-virt32,cvwsoc-virt)))
+CVWSOC_MACHINE ?= $(if $(CVWSOC_VEXRISCV),vexriscvsoc-virt32,$(if $(CVWSOC_CVA6),$(if $(filter 32,$(CVWSOC_XLEN)),cva6soc-virt32,cva6soc-virt),$(if $(filter 32,$(CVWSOC_XLEN)),cvwsoc-virt32,cvwsoc-virt)))
 CVWSOC_DEPLOY_DIR ?= $(CVWSOC_DEPLOY_ROOT)/$(CVWSOC_MACHINE)
 CVWSOC_PRELOAD_ROOT ?= $(VERILATOR_DIR)/preload/cvwsoc
 # The VexRiscv core is RV32 on a 64-bit memory bus.
@@ -90,10 +103,14 @@ CVWSOC_PRELOAD_MACHINE ?= $(if $(CVWSOC_VEXRISCV),vexriscv-virt32,$(CVWSOC_MACHI
 CVWSOC_PRELOAD_DIR ?= $(CVWSOC_PRELOAD_ROOT)/$(CVWSOC_PRELOAD_MACHINE)
 CVWSOC_DEFAULT_DTS_SRC := $(WALLY)/linux/devicetree/$(if $(filter 32,$(CVWSOC_XLEN)),wally-virt32soc.dts,wally-virtsoc.dts)
 CVWSOC_CVA6_DTS_SRC := $(CVWSOC_PRELOAD_DIR)/wally-virtsoc-cva6.dts
-CVWSOC_CVA6_ISA_EXTENSIONS := "i", "m", "a", "f", "d", "c", "zba", "zbb", "zbc", "zbs", "zca", "zcb", "zcd", "zicntr", "zicond", "zicsr", "zifencei", "zihpm"
+# CV32A6S+ is IMAC: do not advertise unsupported F/D in its Linux DTB.
+CVWSOC_CVA6_RV32_ISA_EXTENSIONS := "i", "m", "a", "c", "zba", "zbb", "zbc", "zbs", "zcb", "zicond", "zicntr", "zicsr", "zifencei", "zihpm", "zicbom", "zkn"
+CVWSOC_CVA6_RV64_ISA_EXTENSIONS := "i", "m", "a", "f", "d", "c", "zba", "zbb", "zbc", "zbs", "zca", "zcb", "zcd", "zicntr", "zicond", "zicsr", "zifencei", "zihpm", "zicbom", "zkn"
+CVWSOC_CVA6_ISA_EXTENSIONS := $(if $(filter 32,$(CVWSOC_XLEN)),$(CVWSOC_CVA6_RV32_ISA_EXTENSIONS),$(CVWSOC_CVA6_RV64_ISA_EXTENSIONS))
+CVWSOC_CVA6_ISA := $(if $(filter 32,$(CVWSOC_XLEN)),rv32imac_zicbom_zicboz_zicbop_zicsr_zifencei,rv64imafdc_zicbom_zicboz_zicbop_zicsr_zifencei)
 CVWSOC_VEXRISCV_DTS_SRC := $(CVWSOC_PRELOAD_DIR)/wally-virtsoc-vexriscv.dts
 CVWSOC_VEXRISCV_ISA_EXTENSIONS := "i", "m", "a", "f", "d", "c", "zicsr", "zifencei"
-CVWSOC_DTS_SRC ?= $(if $(CVWSOC_VEXRISCV),$(CVWSOC_VEXRISCV_DTS_SRC),$(if $(filter 1,$(CVA6)),$(CVWSOC_CVA6_DTS_SRC),$(CVWSOC_DEFAULT_DTS_SRC)))
+CVWSOC_DTS_SRC ?= $(if $(CVWSOC_VEXRISCV),$(CVWSOC_VEXRISCV_DTS_SRC),$(if $(CVWSOC_CVA6),$(CVWSOC_CVA6_DTS_SRC),$(CVWSOC_DEFAULT_DTS_SRC)))
 CVWSOC_ORIG_DTB ?= $(CVWSOC_DEPLOY_DIR)/$(if $(filter 32,$(CVWSOC_XLEN)),wally-virt32soc.dtb,wally-virtsoc.dtb)
 CVWSOC_FW_JUMP_BIN ?= $(CVWSOC_DEPLOY_DIR)/fw_jump.bin
 CVWSOC_UBOOT_BIN ?= $(CVWSOC_DEPLOY_DIR)/u-boot.bin
@@ -465,6 +482,9 @@ CVA6_ROOT := $(COPIED_ROOT)/pulp/cva6
 CVA6_HPDCACHE_SOURCES := \
     $(WALLY)/addins/hpdcache/rtl/src/hpdcache_pkg.sv \
     $(WALLY)/addins/hpdcache/rtl/src/hwpf_stride/hwpf_stride_pkg.sv \
+    $(WALLY)/addins/hpdcache/rtl/src/hwpf_stride/hwpf_stride_wrapper.sv \
+    $(WALLY)/addins/hpdcache/rtl/src/hwpf_stride/hwpf_stride_arb.sv \
+    $(WALLY)/addins/hpdcache/rtl/src/hwpf_stride/hwpf_stride.sv \
     $(WALLY)/addins/hpdcache/rtl/src/*.sv \
     $(WALLY)/addins/hpdcache/rtl/src/common/*.sv \
     $(WALLY)/addins/hpdcache/rtl/src/utils/*.sv
@@ -474,8 +494,10 @@ CVA6_HPDCACHE_SOURCES := \
 
 # we use the copied folder because it's patched for 'lzc' module collision
 CVA6_FPU_SOURCES := \
-    $(COPIED_ROOT)/pulp/fpnew/src/fpnew_pkg.sv \
-    $(COPIED_ROOT)/pulp/fpnew/src/*.sv
+    $(COPIED_ROOT)/pulp/cvfpu/src/fpnew_pkg.sv \
+    $(COPIED_ROOT)/pulp/cvfpu/src/*.sv \
+    $(COPIED_ROOT)/pulp/cvfpu/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/*.v \
+    $(COPIED_ROOT)/pulp/cvfpu/vendor/openc910/C910_RTL_FACTORY/gen_rtl/clk/rtl/gated_clk_cell.v
 
 # newer fpnew?
 #    $(COPIED_ROOT)/pulp/fpnew/src/mxdotp/fpnew_mxdotp_multi_pkg.sv
@@ -557,14 +579,18 @@ CVA6_PULP_AXI_LLC_INCLUDE := \
 CVA6_OTHER_SOURCES := \
     $(COPIED_ROOT)/pulp/cva6/corev_apu/tb/ariane_axi_pkg.sv
 
-# Keep the CVA6 architectural base configuration aligned with the selected
-# CVWSoC XLEN.  The IMAC variant is kept here for the planned follow-on RV32
-# configuration change.
-CVA6_RV32_CONFIG_PKG := cv32a6_imafc_sv32_config_pkg.sv
-CVA6_RV64_CONFIG_PKG := cv64a6_imafdchsclic_sv39_wb_config_pkg.sv
+#CVA6_RV32_CONFIG_PKG := deprecated_packages/cv32a6_imafc_sv32_config_pkg.sv
+CVA6_RV32_CONFIG_PKG := $(if $(CVWSOC_CVA6SP),cv32a6_splus_imac_sv32_config_hpdcache_wt_pkg.sv,cv32a6_imac_sv32_config_pkg.sv)
+#CVA6_RV64_CONFIG_PKG := $(if $(CVWSOC_CVA6SP),cv64a6_splus_config_pkg.sv,cv64a6_imafdchsclic_sv39_wb_config_pkg.sv)
+CVA6_RV64_CONFIG_PKG := $(if $(CVWSOC_CVA6SP),cv64a6_splus_config_pkg.sv,cv64a6_imafdchsclic_sv39_hpdcache_wb_config_pkg.sv)
 CVA6_CONFIG_PKG := $(if $(CVWSOC_RV32),$(CVA6_RV32_CONFIG_PKG),$(CVA6_RV64_CONFIG_PKG))
+CVA6_CONFIG_PKG_SOURCE := $(if $(and $(CVWSOC_CVA6SP),$(CVWSOC_RV32)),\
+    $(WALLY)/addins/cvwsoc/cpu/$(CVA6_CONFIG_PKG),\
+    $(CVA6_ROOT)/core/include/$(CVA6_CONFIG_PKG))
 
 CVWSOC_CVA6_CORE_SOURCES := \
+    $(CVA6_ROOT)/core/include/dummy_l15_pkg.sv \
+    $(CVA6_ROOT)/core/cache_subsystem/cva6_hpdcache_wrapper.sv \
     $(CVA6_HPDCACHE_SOURCES) \
     $(CVA6_FPU_SOURCES) \
     $(CVA6_OLDFPU_SOURCES) \
@@ -587,7 +613,7 @@ CVWSOC_CVA6_CORE_SOURCES := \
 CVWSOC_CVA6_SOURCES := \
     $(WALLY)/addins/cvwsoc/cpu/cvwsoc_cva6_pkg.sv \
     $(CVA6_ROOT)/core/include/config_pkg.sv \
-    $(CVA6_ROOT)/core/include/$(CVA6_CONFIG_PKG) \
+    $(CVA6_CONFIG_PKG_SOURCE) \
     $(WALLY)/addins/cvwsoc/cpu/cvwsoc_cpu_cva6.sv \
     $(CVWSOC_CVA6_CORE_SOURCES)
 
@@ -662,7 +688,8 @@ $(COPIED_ROOT)/config/config.vh: $(CONFIG_VH) FORCE
 
 $(CVWSOC_CVA6_DTS_SRC): $(CVWSOC_DEFAULT_DTS_SRC) | $(CVWSOC_PRELOAD_DIR)
 	@tmp="$@.tmp"; \
-	sed -e '/^[[:space:]]*riscv,isa-extensions[[:space:]]*=/c\      riscv,isa-extensions = $(CVWSOC_CVA6_ISA_EXTENSIONS);' \
+	sed -e '/^[[:space:]]*riscv,isa[[:space:]]*=/c\      riscv,isa = "$(CVWSOC_CVA6_ISA)";' \
+		-e '/^[[:space:]]*riscv,isa-extensions[[:space:]]*=/c\      riscv,isa-extensions = $(CVWSOC_CVA6_ISA_EXTENSIONS);' \
 		"$<" > "$$tmp"; \
 	if ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
 

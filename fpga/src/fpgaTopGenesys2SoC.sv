@@ -142,11 +142,29 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     return CVWSOC_MEM_XILINX_DDR3;
   endfunction
 
+  localparam cvwsoc_cpu_type_t CpuType = cvwsoc_cpu_from_wally_cfg(P);
+  localparam cvwsoc_bus_config_t BusCfg = '{
+    AtopsEnabled: cvwsoc_cpu_uses_atops(CpuType),
+    xbar: '{
+            MaxMstTrans: 16,
+            MaxSlvTrans: 16,
+            FallThrough: 1'b0,
+            LatencyMode: axi_pkg::CUT_ALL_AX,
+            PipelineStages: 0
+        },
+    ddr_atomics: '{
+            MaxReadTxns: 16,
+            MaxWriteTxns: 8,
+            NumCuts: 1,
+            FullBandwidth: 1'b1,
+            CutOupPopInpGnt: 1'b1
+        }
+  };
+
   localparam cvwsoc_cfg_t C = '{
     wally:    P,
-    cpu:      (P.CPU_VEXRISCV_ENABLED ? CVWSOC_CPU_VEXRISCV :
-                (P.CPU_CVA6_ENABLED ? CVWSOC_CPU_CVA6 : CVWSOC_CPU_WALLY)),
-    bus: '{ AtopsEnabled: P.CPU_CVA6_ENABLED ? 1'b1 : 1'b0 }, 
+    cpu:      CpuType,
+    bus:      BusCfg,
     mem_type: cvwsoc_mem_type_from_wally(P),
     idma_config:    '{
                         AxisDescReqCut: 1'b0
@@ -157,7 +175,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
                         MaxReadTxns: 4
                     },
     sdhci_config:   '{
-                        InsertRegClkBuf: 1'b0
+                        InsertRegClkBuf: 1'b0,
+                        //CutDataRegPath: 1'b1 // Doesn't seem to be helping SDHCI timing
+                        CutDataRegPath: 1'b0
                     }
   };
 
