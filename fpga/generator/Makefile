@@ -155,7 +155,7 @@ genesys2cva6sprv32w64soc: FPGA_GENESYS2RV32SOC
 # VEX: use genesys2 setup but genesys2vex boardconfig
 genesys2vexsoc: export board := genesys2rv32w64soc
 genesys2vexsoc: export boardconfig := genesys2vexsoc
-genesys2vexsoc: export SYSTEMCLOCK := 125000000
+genesys2vexsoc: export SYSTEMCLOCK := 110000000
 genesys2vexsoc: export MEM_WIDTH  :=  64
 genesys2vexsoc: FPGA_GENESYS2RV32SOC
 
