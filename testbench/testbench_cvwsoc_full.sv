@@ -33,7 +33,6 @@ module testbench_cvwsoc_full #(
     c.LITEDRAM_SUPPORTED = 1'b0;
     c.UBERDDR3_SUPPORTED = 1'b0;
     c.AXI_DUMMY_SUPPORTED = 1'b0;
-    // Keep loading under runtime control, matching testbench_cvwsoc.
     c.BOOTROM_PRELOAD = 1'b0;
     c.UNCORE_RAM_PRELOAD = 1'b0;
     // boot.mem does not fit in the default FPGA boot-ROM allocation.
@@ -46,15 +45,39 @@ module testbench_cvwsoc_full #(
     return c;
   endfunction
   localparam cvw_t SP = sim_cfg(P);
+  localparam cvwsoc_cpu_type_t CpuType = cvwsoc_cpu_from_wally_cfg(SP);
+  // Simulation uses the higher-throughput Genesys 2 config by default.
+  localparam cvwsoc_bus_config_t BusCfg = '{
+    AtopsEnabled: cvwsoc_cpu_uses_atops(CpuType),
+    xbar: '{
+            MaxMstTrans: 16, 
+            MaxSlvTrans: 16, 
+            FallThrough: 1'b0,
+            LatencyMode: axi_pkg::CUT_ALL_AX, PipelineStages: 0 
+        },
+    ddr_atomics: '{
+            MaxReadTxns: 16, 
+            MaxWriteTxns: 8, 
+            NumCuts: 1,
+            FullBandwidth: 1'b1, 
+            CutOupPopInpGnt: 1'b1
+        }
+  };
+
   localparam cvwsoc_cfg_t C = '{
     wally: SP,
-    cpu:      SP.CPU_VEXRISCV_ENABLED ? CVWSOC_CPU_VEXRISCV :
-              (SP.CPU_CVA6_ENABLED ? CVWSOC_CPU_CVA6 : CVWSOC_CPU_WALLY),
-    bus: '{ AtopsEnabled: P.CPU_CVA6_ENABLED ? 1'b1 : 1'b0 }, 
+    cpu:      CpuType,
+    bus:      BusCfg,
     mem_type: CVWSOC_MEM_XILINX_DDR3,
     idma_config: '{AxisDescReqCut: 0},
-    vga_config: '{CutSplitterPath: 0, BufferDepth: 32, MaxReadTxns: 4},
-    sdhci_config: '{InsertRegClkBuf: 0}
+    vga_config: '{  CutSplitterPath: 0, 
+                    BufferDepth: 32, 
+                    MaxReadTxns: 4
+                },
+    sdhci_config: '{
+                InsertRegClkBuf: 0, 
+                CutDataRegPath: 0
+            }
   };
   localparam int ID_W = 2;
   localparam int NS = gen_xbar_out(SP).n_slv;
@@ -413,6 +436,95 @@ module testbench_cvwsoc_full #(
     .external_stall_i(1'b0),
     .axi_req_o(cpu_req),
     .axi_resp_i(cpu_resp));
+
+  // CANARY_WATCH: simulation-only CVA6 stack-canary diagnostics.
+`ifdef CANARY_WATCH
+  localparam logic [31:0] CANARY_TARGET_PADDR = 32'h81c2de4c;
+  localparam logic [31:0] CANARY_SAVED_LOAD_PC = 32'hc01ffe6e;
+  localparam logic [31:0] CANARY_GUARD_LOAD_PC = 32'hc01ffe70;
+  localparam logic [31:0] CANARY_FAIL_PC = 32'hc01fff92;
+  localparam int unsigned CANARY_ENQ_HISTORY = 128;
+  localparam int unsigned CANARY_GNT_HISTORY = 64;
+
+  wire canary_commit_valid = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.commit_i;
+  wire [31:0] canary_commit_addr = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.speculative_queue_q[cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.speculative_read_pointer_q].address[31:0];
+  wire [31:0] canary_commit_data = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.speculative_queue_q[cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.speculative_read_pointer_q].data;
+  wire [3:0] canary_commit_be = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.speculative_queue_q[cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.speculative_read_pointer_q].be;
+  wire [31:0] canary_commit_pc = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.commit_stage_i.commit_instr_i[0].pc[31:0];
+  wire canary_gnt_fire = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.req_port_o.data_req && cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.req_port_i.data_gnt;
+  wire [31:0] canary_gnt_addr = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.commit_queue_q[cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.commit_read_pointer_q].address[31:0];
+  wire [31:0] canary_gnt_data = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.req_port_o.data_wdata;
+  wire [3:0] canary_gnt_be = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.ex_stage_i.lsu_i.i_store_unit.store_buffer_i.req_port_o.data_be;
+  wire canary_fail_retire = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.commit_stage_i.commit_ack_o[0] && canary_commit_pc == CANARY_FAIL_PC;
+  wire canary_saved_load_retire = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.commit_stage_i.commit_ack_o[0] && canary_commit_pc == CANARY_SAVED_LOAD_PC;
+  wire canary_guard_load_retire = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.commit_stage_i.commit_ack_o[0] && canary_commit_pc == CANARY_GUARD_LOAD_PC;
+  wire [31:0] canary_commit_result = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.commit_stage_i.commit_instr_i[0].result[31:0];
+  // These are the actual CVA6 GPRs; the Wally debug GPRs are zero here.
+  wire [31:0] canary_gpr_ra = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.issue_stage_i.i_issue_read_operands.gen_asic_regfile.i_ariane_regfile.mem[1];
+  wire [31:0] canary_gpr_sp = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.issue_stage_i.i_issue_read_operands.gen_asic_regfile.i_ariane_regfile.mem[2];
+  wire [31:0] canary_gpr_tp = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.issue_stage_i.i_issue_read_operands.gen_asic_regfile.i_ariane_regfile.mem[4];
+  wire [31:0] canary_gpr_a2 = cpu.gen_cpu_cva6.wally.gen_cva6_cores[0].i_core_cva6.issue_stage_i.i_issue_read_operands.gen_asic_regfile.i_ariane_regfile.mem[12];
+
+  longint unsigned canary_enq_cycle [0:CANARY_ENQ_HISTORY-1];
+  logic [31:0] canary_enq_addr [0:CANARY_ENQ_HISTORY-1], canary_enq_data [0:CANARY_ENQ_HISTORY-1], canary_enq_pc [0:CANARY_ENQ_HISTORY-1], canary_enq_ra [0:CANARY_ENQ_HISTORY-1], canary_enq_sp [0:CANARY_ENQ_HISTORY-1], canary_enq_tp [0:CANARY_ENQ_HISTORY-1], canary_enq_a2 [0:CANARY_ENQ_HISTORY-1];
+  logic [3:0] canary_enq_be [0:CANARY_ENQ_HISTORY-1];
+  longint unsigned canary_gnt_cycle [0:CANARY_GNT_HISTORY-1];
+  logic [31:0] canary_gnt_addr_hist [0:CANARY_GNT_HISTORY-1], canary_gnt_data_hist [0:CANARY_GNT_HISTORY-1];
+  logic [3:0] canary_gnt_be_hist [0:CANARY_GNT_HISTORY-1];
+  integer canary_enq_head = 0, canary_enq_count = 0, canary_gnt_head = 0, canary_gnt_count = 0;
+  longint unsigned canary_saved_load_cycle = 0, canary_guard_load_cycle = 0;
+  logic [31:0] canary_saved_load_value = '0, canary_guard_load_value = '0;
+  integer canary_i, canary_idx;
+
+  always @(negedge clk) begin
+    if (!rst_n) begin
+      canary_enq_head = 0; canary_enq_count = 0; canary_gnt_head = 0; canary_gnt_count = 0;
+      canary_saved_load_cycle = 0; canary_guard_load_cycle = 0;
+      canary_saved_load_value = '0; canary_guard_load_value = '0;
+    end else begin
+      if (canary_commit_valid && canary_commit_addr <= CANARY_TARGET_PADDR + 3 && canary_commit_addr + 3 >= CANARY_TARGET_PADDR) begin
+        canary_enq_cycle[canary_enq_head] = cycle_count;
+        canary_enq_addr[canary_enq_head] = canary_commit_addr;
+        canary_enq_data[canary_enq_head] = canary_commit_data;
+        canary_enq_be[canary_enq_head] = canary_commit_be;
+        canary_enq_pc[canary_enq_head] = canary_commit_pc;
+        canary_enq_ra[canary_enq_head] = canary_gpr_ra;
+        canary_enq_sp[canary_enq_head] = canary_gpr_sp;
+        canary_enq_tp[canary_enq_head] = canary_gpr_tp;
+        canary_enq_a2[canary_enq_head] = canary_gpr_a2;
+        canary_enq_head = (canary_enq_head + 1) % CANARY_ENQ_HISTORY;
+        if (canary_enq_count < CANARY_ENQ_HISTORY) canary_enq_count++;
+      end
+      if (canary_gnt_fire && canary_gnt_addr <= CANARY_TARGET_PADDR + 3 && canary_gnt_addr + 3 >= CANARY_TARGET_PADDR) begin
+        canary_gnt_cycle[canary_gnt_head] = cycle_count;
+        canary_gnt_addr_hist[canary_gnt_head] = canary_gnt_addr;
+        canary_gnt_data_hist[canary_gnt_head] = canary_gnt_data;
+        canary_gnt_be_hist[canary_gnt_head] = canary_gnt_be;
+        canary_gnt_head = (canary_gnt_head + 1) % CANARY_GNT_HISTORY;
+        if (canary_gnt_count < CANARY_GNT_HISTORY) canary_gnt_count++;
+      end
+      if (canary_saved_load_retire) begin canary_saved_load_cycle = cycle_count; canary_saved_load_value = canary_commit_result; end
+      if (canary_guard_load_retire) begin canary_guard_load_cycle = cycle_count; canary_guard_load_value = canary_commit_result; end
+      if (canary_fail_retire) begin
+        $display("[canary-watch] STACK-CHECK-FAIL cycle=%0d pc=%08h", cycle_count, CANARY_FAIL_PC);
+        $display("[canary-watch] FAIL-GPRS ra=%08h sp=%08h tp=%08h a2=%08h", canary_gpr_ra, canary_gpr_sp, canary_gpr_tp, canary_gpr_a2);
+        $display("[canary-watch] SAVED-LOAD cycle=%0d pc=%08h value=%08h", canary_saved_load_cycle, CANARY_SAVED_LOAD_PC, canary_saved_load_value);
+        $display("[canary-watch] GUARD-LOAD cycle=%0d pc=%08h value=%08h", canary_guard_load_cycle, CANARY_GUARD_LOAD_PC, canary_guard_load_value);
+        $display("[canary-watch] Last %0d target STORE-COMMIT records (source PC is exact):", canary_enq_count);
+        for (canary_i = 0; canary_i < canary_enq_count; canary_i++) begin
+          canary_idx = (canary_enq_head - canary_enq_count + canary_i + CANARY_ENQ_HISTORY) % CANARY_ENQ_HISTORY;
+          $display("[canary-watch] COMMIT cycle=%0d paddr=%08h data=%08h be=%01h pc=%08h ra=%08h sp=%08h tp=%08h a2=%08h", canary_enq_cycle[canary_idx], canary_enq_addr[canary_idx], canary_enq_data[canary_idx], canary_enq_be[canary_idx], canary_enq_pc[canary_idx], canary_enq_ra[canary_idx], canary_enq_sp[canary_idx], canary_enq_tp[canary_idx], canary_enq_a2[canary_idx]);
+        end
+        $display("[canary-watch] Last %0d target D-CACHE-GRANT records:", canary_gnt_count);
+        for (canary_i = 0; canary_i < canary_gnt_count; canary_i++) begin
+          canary_idx = (canary_gnt_head - canary_gnt_count + canary_i + CANARY_GNT_HISTORY) % CANARY_GNT_HISTORY;
+          $display("[canary-watch] GNT cycle=%0d paddr=%08h data=%08h be=%01h", canary_gnt_cycle[canary_idx], canary_gnt_addr_hist[canary_idx], canary_gnt_data_hist[canary_idx], canary_gnt_be_hist[canary_idx]);
+        end
+        $finish;
+      end
+    end
+  end
+`endif
 
   cvwsoc_axi #(
     .C(C),

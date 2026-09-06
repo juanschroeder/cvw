@@ -49,7 +49,7 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
 
 # read in ip
 import_ip IP/sysrst.srcs/sources_1/ip/sysrst/sysrst.xci
-if {! ($board == "nexysa7rv32w64soc"  || $board == "genesys2soc" || $board == "genesys2rv32soc" || $board=="genesys2rv32w64soc")} {
+if {! ($board == "nexysa7soc"  || $board == "nexysa7rv32w64soc"  || $board == "genesys2soc" || $board == "genesys2rv32soc" || $board=="genesys2rv32w64soc")} {
 import_ip IP/ahbaxibridge.srcs/sources_1/ip/ahbaxibridge/ahbaxibridge.xci
 import_ip IP/clkconverter.srcs/sources_1/ip/clkconverter/clkconverter.xci
 }
@@ -158,9 +158,15 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
 if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
 
     # CVA6 config
-    set cva6_config_pkg "cv64a6_imafdchsclic_sv39_wb_config_pkg.sv"
-    if {[info exists ::env(boardconfig)] && [string match "*cva6rv32w64soc" $::env(boardconfig)]} {
-        set cva6_config_pkg "cv32a6_imafc_sv32_config_pkg.sv"
+    # RV32 still on its non-HPDcache configuration.
+    set cva6_config_pkg "../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/cv64a6_imafdchsclic_sv39_hpdcache_wb_config_pkg.sv"
+    if {[info exists ::env(boardconfig)] && [string match "*cva6sprv32w64soc" $::env(boardconfig)]} {
+        set cva6_config_pkg "../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/cv32a6_splus_imac_sv32_config_hpdcache_wt_pkg.sv"
+    } elseif {[info exists ::env(boardconfig)] && [string match "*cva6spsoc" $::env(boardconfig)]} {
+        set cva6_config_pkg "../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/cv64a6_splus_config_pkg.sv"
+    } elseif {[info exists ::env(boardconfig)] && [string match "*cva6rv32w64soc" $::env(boardconfig)]} {
+        #set cva6_config_pkg "deprecated_packages/cv32a6_imafc_sv32_config_pkg.sv"
+        set cva6_config_pkg "../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/cv32a6_imac_sv32_config_pkg.sv"
     }
 
     set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared \
@@ -172,6 +178,7 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
         ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/pmp/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/common/local/util \
         ../../addins/hpdcache/rtl/include \
+        ../src/CopiedFiles_do_not_add_to_repo/pulp/axi_llc/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/register_interface/include \
         ../src/CopiedFiles_do_not_add_to_repo/pulp/axi/include \
         ../../addins/pulp/axi_stream/include \
@@ -234,11 +241,19 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/idma/target/rtl/idma_reg64_1d_top.sv]
 
     # non-Wally CPUs stuff
-    # Pulp files. CVA6 uses fpnew; do not also compile the duplicate cvfpu copy.
     set pulp_srcs [glob -type f ../src/CopiedFiles_do_not_add_to_repo/pulp/*/src/*.sv]
     set pulp_srcs [lsearch -all -inline -not -glob $pulp_srcs "*/cvfpu/*"]
     add_files $pulp_srcs
-    add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/*.sv \
+
+    add_files ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/dummy_l15_pkg.sv
+    add_files ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/cache_subsystem/cva6_hpdcache_wrapper.sv
+    add_files ../src/CopiedFiles_do_not_add_to_repo/pulp/cvfpu/src/fpnew_pkg.sv
+    set cvfpu_srcs [glob -type f ../src/CopiedFiles_do_not_add_to_repo/pulp/cvfpu/src/*.sv]
+    set cvfpu_srcs [lsearch -all -inline -not -glob $cvfpu_srcs "*/fpnew_pkg.sv"]
+    add_files $cvfpu_srcs
+    add_files [glob -type f ../src/CopiedFiles_do_not_add_to_repo/pulp/cvfpu/vendor/openc910/C910_RTL_FACTORY/gen_rtl/vfdsu/rtl/*.v \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cvfpu/vendor/openc910/C910_RTL_FACTORY/gen_rtl/clk/rtl/gated_clk_cell.v]
+    set cva6_core_srcs [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/*.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/cache_subsystem/*.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/frontend/*.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/cva6_mmu/*.sv \
@@ -246,18 +261,27 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/cvxif_example/*.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/pmp/src/*.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/config_pkg.sv \
-                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/$cva6_config_pkg \
+                             $cva6_config_pkg \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/aes_pkg.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/std_cache_pkg.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/wt_cache_pkg.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/build_config_pkg.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/riscv_pkg.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/ariane_pkg.sv \
+                             ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/triggers_pkg.sv \
                              ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/common/local/util/*.sv]
-    add_files [glob -type f  ../../addins/hpdcache/rtl/src/*.sv \
+    set cva6_core_srcs [lsearch -all -inline -not -glob $cva6_core_srcs "*/cva6_hpdcache_wrapper.sv"]
+    add_files $cva6_core_srcs
+    add_files ../../addins/hpdcache/rtl/src/hpdcache_pkg.sv
+    add_files ../../addins/hpdcache/rtl/src/hwpf_stride/hwpf_stride_pkg.sv
+    add_files ../../addins/hpdcache/rtl/src/hwpf_stride/hwpf_stride_wrapper.sv
+    add_files ../../addins/hpdcache/rtl/src/hwpf_stride/hwpf_stride_arb.sv
+    add_files ../../addins/hpdcache/rtl/src/hwpf_stride/hwpf_stride.sv
+    set hpdcache_srcs [glob -type f ../../addins/hpdcache/rtl/src/*.sv \
                              ../../addins/hpdcache/rtl/src/common/*.sv \
-                             ../../addins/hpdcache/rtl/src/utils/*.sv \
-                             ../../addins/hpdcache/rtl/src/hwpf_stride/*.sv]
+                             ../../addins/hpdcache/rtl/src/utils/*.sv]
+    set hpdcache_srcs [lsearch -all -inline -not -glob $hpdcache_srcs "*/hpdcache_pkg.sv"]
+    add_files $hpdcache_srcs
     add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/pulp/fpu_div_sqrt_mvp/hdl/*.sv]
     add_files ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/corev_apu/tb/ariane_axi_pkg.sv
 

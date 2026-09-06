@@ -19,7 +19,9 @@ module axi_sdhci_wrap #(
   parameter int unsigned AXI_DATA_W  = 64,
   parameter int unsigned AXI_ID_W    = 4,
   parameter int unsigned AXI_USER_W  = 1,
-  parameter bit          InsertRegClkBuf = 1'b0
+  parameter bit          InsertRegClkBuf = 1'b0,
+  // Optional timing cut for the SDHCI register-to-data-path feedback path.
+  parameter bit          CutDataRegPath = 1'b0
 ) (
   input  logic        aclk,
   input  logic        aresetn,
@@ -393,6 +395,7 @@ module axi_sdhci_wrap #(
         // Pre-divider to be < 63 MHz in all cases
         .ClkPreDiv(4),
         .InsertRegClkBuf(InsertRegClkBuf),
+        .CutDataRegPath(CutDataRegPath),
         .TimeoutDivider(1),
         // Keep the existing debounce setting for now; this only affects
         // card-detect stabilization, not the command/data engine.

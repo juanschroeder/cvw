@@ -324,22 +324,17 @@ module cvwsoc_axi #(
         .AxiIdWidth       ( MST_ID_W     ),
         .AxiUserWidth     ( 1            ),
 
-        .AxiMaxReadTxns   ( 16           ),
-        // .AxiMaxWriteTxns  ( 16           ), // Cheshire LLC value
-        // Check: meet timing for this axi_riscv_atomics_structs at 100 MHz bus (Cheshire is 50 MHz)
-        .AxiMaxWriteTxns  ( 8           ),
+        .AxiMaxReadTxns   ( C.bus.ddr_atomics.MaxReadTxns  ),
+        .AxiMaxWriteTxns  ( C.bus.ddr_atomics.MaxWriteTxns ),
 
         .AxiUserAsId      ( 1'b1         ),
         .AxiUserIdMsb     ( 0            ),
         .AxiUserIdLsb     ( 0            ),
 
         .RiscvWordWidth   ( P.XLEN       ),
-        // FIXME: This should be probably configurable. 
-        // Original tested value
-        //.NAxiCuts         ( 0            ),
-        // Using Cheshire value for LLC (otherwise it doesn't meet timing for CV64A6)
-        .NAxiCuts         ( 1            ),
-        .CutOupPopInpGnt  (1'b1),
+        .NAxiCuts         ( C.bus.ddr_atomics.NumCuts ),
+        .FullBandwidth    ( C.bus.ddr_atomics.FullBandwidth ),
+        .CutOupPopInpGnt  ( C.bus.ddr_atomics.CutOupPopInpGnt ),
 
         .axi_req_t        ( mst_req_t    ),
         .axi_rsp_t        ( mst_resp_t   )
@@ -794,15 +789,11 @@ module cvwsoc_axi #(
     localparam axi_pkg::xbar_cfg_t XBAR_CFG = '{
         NoSlvPorts:         N_SLV,
         NoMstPorts:         N_MST,
-        MaxMstTrans:        16,
-        MaxSlvTrans:        16,
-        FallThrough:        1'b0,
-        //LatencyMode:        axi_pkg::CUT_ALL_AX,
-        // Cheshire uses CUT_ALL_PORTS
-        LatencyMode:        axi_pkg::CUT_ALL_PORTS,
-
-        // Newer cfg field: number of axi_multicut stages in the xbar datapaths
-        PipelineStages:     0,
+        MaxMstTrans:        C.bus.xbar.MaxMstTrans,
+        MaxSlvTrans:        C.bus.xbar.MaxSlvTrans,
+        FallThrough:        C.bus.xbar.FallThrough,
+        LatencyMode:        C.bus.xbar.LatencyMode,
+        PipelineStages:     C.bus.xbar.PipelineStages,
 
         AxiIdWidthSlvPorts: SLV_ID_W,
         AxiIdUsedSlvPorts:  SLV_ID_W,
@@ -1475,7 +1466,8 @@ module cvwsoc_axi #(
       .AXI_DATA_W ( DATA_W   ),
       .AXI_ID_W   ( MST_ID_W ),
       .AXI_USER_W ( 1        ),
-      .InsertRegClkBuf ( C.sdhci_config.InsertRegClkBuf )
+      .InsertRegClkBuf ( C.sdhci_config.InsertRegClkBuf ),
+      .CutDataRegPath ( C.sdhci_config.CutDataRegPath )
     ) sdhci_i (
       .aclk    (BUSCLK),
       .aresetn (BUSRSTn),

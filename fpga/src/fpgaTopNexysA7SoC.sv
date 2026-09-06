@@ -62,15 +62,42 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0) (
     return CVWSOC_MEM_XILINX_DDR2;
   endfunction
 
+  // Keep CPU selection in sync with the shared CVWSoC configuration.  In
+  // particular, CPU_CVA6SP_ENABLED is distinct from CPU_CVA6_ENABLED.
+  localparam cvwsoc_cpu_type_t CpuType = cvwsoc_cpu_from_wally_cfg(P);
+  localparam cvwsoc_bus_config_t BusCfg = '{
+    AtopsEnabled: cvwsoc_cpu_uses_atops(CpuType),
+    xbar: '{    MaxMstTrans: 8, 
+                MaxSlvTrans: 8, 
+                FallThrough: 1'b0,
+                LatencyMode: axi_pkg::CUT_ALL_AX, 
+                //PipelineStages: 0 
+                PipelineStages: 1 
+            },
+    // Atomics applies only to CVA*. Values changed to meet timing
+    ddr_atomics: '{ MaxReadTxns: 8, 
+                    // Increasing this value makes timing worse for CVA6S+
+                    MaxWriteTxns: 2,
+                    //MaxWriteTxns: 1,
+                    NumCuts: 1,
+                    FullBandwidth: 1'b0, 
+                    CutOupPopInpGnt: 1'b1 }
+  };
   localparam cvwsoc_cfg_t C = '{
     wally: P,
-    cpu: (P.CPU_VEXRISCV_ENABLED ? CVWSOC_CPU_VEXRISCV : 
-            (P.CPU_CVA6_ENABLED ? CVWSOC_CPU_CVA6 : CVWSOC_CPU_WALLY)),
-    bus: '{ AtopsEnabled: P.CPU_CVA6_ENABLED ? 1'b1 : 1'b0 }, 
+    cpu: CpuType,
+    bus: BusCfg,
     mem_type: cvwsoc_mem_type_from_wally(P),
-    idma_config: '{AxisDescReqCut: 1'b0},
-    vga_config: '{CutSplitterPath: 1'b1, BufferDepth: 16, MaxReadTxns: 4},
-    sdhci_config: '{InsertRegClkBuf: 1'b1}
+    //idma_config: '{AxisDescReqCut: 1'b0},
+    idma_config: '{ AxisDescReqCut: 1'b1    },
+    vga_config: '{  CutSplitterPath: 1'b1, 
+                    BufferDepth: 16, 
+                    MaxReadTxns: 4
+                },
+    sdhci_config: '{
+                    InsertRegClkBuf: 1'b1, 
+                    CutDataRegPath: 1'b0
+                }
   };
 
   typedef logic [31:0] cpu_axi_addr_t;

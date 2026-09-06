@@ -42,14 +42,14 @@ nexysa7: FPGA_NEXYSA7
 boardconfig = $(board)
 litedramconfig = genesys2soc
 
-NEXYSA7_SOC_TARGETS := nexysa7soc nexysa7rv32w64soc nexysa7cva6rv32w64soc nexysa7vexsoc
+NEXYSA7_SOC_TARGETS := nexysa7soc nexysa7rv32w64soc nexysa7cva6rv32w64soc nexysa7cva6sprv32w64soc nexysa7vexsoc
 $(NEXYSA7_SOC_TARGETS): export XILINX_PART := xc7a100tcsg324-1
 $(NEXYSA7_SOC_TARGETS): export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
 $(NEXYSA7_SOC_TARGETS): export MAXSDCCLOCK := 10000000
 $(NEXYSA7_SOC_TARGETS): export MIG_ADDR_WIDTH := 27
 $(NEXYSA7_SOC_TARGETS): export BUSCLOCK := 60000000
 
-GENESYS2_SOC_TARGETS := genesys2soc genesys2cva6soc genesys2cva6rv32w64soc \
+GENESYS2_SOC_TARGETS := genesys2soc genesys2cva6soc genesys2cva6spsoc genesys2cva6sprv32w64soc genesys2cva6rv32w64soc \
 	genesys2socxlnx genesys2rv32soc genesys2rv32minsoc genesys2rv32w64soc genesys2vexsoc
 $(GENESYS2_SOC_TARGETS): export XILINX_PART := xc7k325tffg900-2
 $(GENESYS2_SOC_TARGETS): export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
@@ -69,13 +69,23 @@ nexysa7rv32w64soc: FPGA_NEXYSA7RV32W64SOC
 nexysa7rv32w64soc: export litedramconfig := nexysa7soc
 nexysa7rv32w64soc: export MEM_WIDTH  :=  64
 
+# CVA6
 nexysa7cva6rv32w64soc: export board := nexysa7rv32w64soc
 nexysa7cva6rv32w64soc: export boardconfig := nexysa7cva6rv32w64soc
-nexysa7cva6rv32w64soc: export SYSTEMCLOCK := 25000000
+nexysa7cva6rv32w64soc: export SYSTEMCLOCK := 40000000
 nexysa7cva6rv32w64soc: FPGA_NEXYSA7RV32W64SOC
 nexysa7cva6rv32w64soc: export litedramconfig := nexysa7soc
 nexysa7cva6rv32w64soc: export MEM_WIDTH  :=  64
 
+# CVA6S+
+nexysa7cva6sprv32w64soc: export board := nexysa7rv32w64soc
+nexysa7cva6sprv32w64soc: export boardconfig := nexysa7cva6sprv32w64soc
+nexysa7cva6sprv32w64soc: export SYSTEMCLOCK := 40000000
+nexysa7cva6sprv32w64soc: FPGA_NEXYSA7RV32W64SOC
+nexysa7cva6sprv32w64soc: export litedramconfig := nexysa7soc
+nexysa7cva6sprv32w64soc: export MEM_WIDTH  :=  64
+
+# VEXRISCV
 nexysa7vexsoc: export board := nexysa7rv32w64soc
 nexysa7vexsoc: export boardconfig := nexysa7vexsoc
 nexysa7vexsoc: export SYSTEMCLOCK := 60000000
@@ -116,20 +126,36 @@ genesys2rv32w64soc: FPGA_GENESYS2RV32SOC
 # CVA6: use genesys2 setup but genesys2cva6 boardconfig
 genesys2cva6soc: export board := genesys2soc
 genesys2cva6soc: export boardconfig := genesys2cva6soc
-genesys2cva6soc: export SYSTEMCLOCK := 55000000
+genesys2cva6soc: export SYSTEMCLOCK := 60000000
 genesys2cva6soc: export MEM_WIDTH  :=  64
 genesys2cva6soc: FPGA_GENESYS2SOC
 
 genesys2cva6rv32w64soc: export board := genesys2rv32w64soc
 genesys2cva6rv32w64soc: export boardconfig := genesys2cva6rv32w64soc
-genesys2cva6rv32w64soc: export SYSTEMCLOCK := 60000000
+genesys2cva6rv32w64soc: export SYSTEMCLOCK := 75000000
 genesys2cva6rv32w64soc: export MEM_WIDTH  :=  64
 genesys2cva6rv32w64soc: FPGA_GENESYS2RV32SOC
+
+# CVA6S+
+genesys2cva6spsoc: export board := genesys2soc
+genesys2cva6spsoc: export boardconfig := genesys2cva6spsoc
+# 60 MHz has bad timing for SDHCI (???) and 65 MHz has better one?
+#genesys2cva6spsoc: export SYSTEMCLOCK := 60000000
+genesys2cva6spsoc: export SYSTEMCLOCK := 65000000
+genesys2cva6spsoc: export MEM_WIDTH  :=  64
+genesys2cva6spsoc: FPGA_GENESYS2SOC
+
+# CVA6S+ RV32
+genesys2cva6sprv32w64soc: export board := genesys2rv32w64soc
+genesys2cva6sprv32w64soc: export boardconfig := genesys2cva6sprv32w64soc
+genesys2cva6sprv32w64soc: export SYSTEMCLOCK := 75000000
+genesys2cva6sprv32w64soc: export MEM_WIDTH  :=  64
+genesys2cva6sprv32w64soc: FPGA_GENESYS2RV32SOC
 
 # VEX: use genesys2 setup but genesys2vex boardconfig
 genesys2vexsoc: export board := genesys2rv32w64soc
 genesys2vexsoc: export boardconfig := genesys2vexsoc
-genesys2vexsoc: export SYSTEMCLOCK := 125000000
+genesys2vexsoc: export SYSTEMCLOCK := 110000000
 genesys2vexsoc: export MEM_WIDTH  :=  64
 genesys2vexsoc: FPGA_GENESYS2RV32SOC
 
@@ -149,9 +175,9 @@ UNCORE_RAM_RANGE = $(shell grep 'UNCORE_RAM_RANGE' $(CONFIG_VH) | sed 's/.*=.*h\
 _UBERDDR3_SUPPORTED = $(shell grep 'UBERDDR3_SUPPORTED' $(CONFIG_VH) | sed -n 's/.*=[[:space:]]*\([[:alnum:]_]*\);/\1/p')
 
 SOC_CONFIG_TARGETS := \
-	genesys2soc genesys2cva6soc genesys2cva6rv32w64soc \
+	genesys2soc genesys2cva6soc genesys2cva6spsoc genesys2cva6sprv32w64soc genesys2cva6rv32w64soc \
 	genesys2rv32soc genesys2rv32minsoc genesys2rv32w64soc genesys2vexsoc \
-	nexysa7soc nexysa7rv32w64soc nexysa7cva6rv32w64soc nexysa7vexsoc
+	nexysa7soc nexysa7rv32w64soc nexysa7cva6rv32w64soc nexysa7cva6sprv32w64soc nexysa7vexsoc
 $(SOC_CONFIG_TARGETS): export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
 $(SOC_CONFIG_TARGETS): export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
 $(SOC_CONFIG_TARGETS): export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)

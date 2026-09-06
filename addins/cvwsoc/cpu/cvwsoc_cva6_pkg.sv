@@ -558,14 +558,18 @@ package cvwsoc_cva6_pkg;
   function automatic config_pkg::cva6_cfg_t build_config(config_pkg::cva6_user_cfg_t CVA6Cfg);
     bit IS_XLEN32 = (CVA6Cfg.XLEN == 32) ? 1'b1 : 1'b0;
     bit IS_XLEN64 = (CVA6Cfg.XLEN == 32) ? 1'b0 : 1'b1;
-    bit FpPresent = CVA6Cfg.RVF | CVA6Cfg.RVD | CVA6Cfg.XF16 | CVA6Cfg.XF16ALT | CVA6Cfg.XF8 | CVA6Cfg.XF8ALT;
-    bit NSX = CVA6Cfg.XF16 | CVA6Cfg.XF16ALT | CVA6Cfg.XF8 | CVA6Cfg.XF8ALT | CVA6Cfg.XFVec;  // Are non-standard extensions present?
+    // Orig Cheshire pulp-2.0.0 config below
+    //bit FpPresent = CVA6Cfg.RVF | CVA6Cfg.RVD | CVA6Cfg.XF16 | CVA6Cfg.XF16ALT | CVA6Cfg.XF8 | CVA6Cfg.XF8ALT;
+    // Modified Cheshire config below for pulp-3.0: removed non-standard 8-bits FP extensions XF8ALT
+    bit FpPresent = CVA6Cfg.RVF | CVA6Cfg.RVD | CVA6Cfg.XF16 | CVA6Cfg.XF16ALT | CVA6Cfg.XF8;
+    bit NSX = CVA6Cfg.XF16 | CVA6Cfg.XF16ALT | CVA6Cfg.XF8 | CVA6Cfg.XFVec;  // Are non-standard extensions present?
     int unsigned FLen = CVA6Cfg.RVD ? 64 :  // D ext.
     CVA6Cfg.RVF ? 32 :  // F ext.
     CVA6Cfg.XF16 ? 16 :  // Xf16 ext.
     CVA6Cfg.XF16ALT ? 16 :  // Xf16alt ext.
     CVA6Cfg.XF8 ? 8 :  // Xf8 ext.
-    CVA6Cfg.XF8ALT ? 8 :  // Xf8alt ext.
+    // Removed orig Cheshire XF8ALT not in pulp-3.0
+    //CVA6Cfg.XF8ALT ? 8 :  // Xf8alt ext.
     1;  // Unused in case of no FP
 
     // Transprecision floating-point extensions configuration
@@ -573,7 +577,9 @@ package cvwsoc_cva6_pkg;
     bit XF16Vec    = CVA6Cfg.XF16    & CVA6Cfg.XFVec & FLen>16; // FP16 vectors available if vectors and larger fmt enabled
     bit XF16ALTVec = CVA6Cfg.XF16ALT & CVA6Cfg.XFVec & FLen>16; // FP16ALT vectors available if vectors and larger fmt enabled
     bit XF8Vec     = CVA6Cfg.XF8     & CVA6Cfg.XFVec & FLen>8;  // FP8 vectors available if vectors and larger fmt enabled
-    bit XF8ALTVec  = CVA6Cfg.XF8ALT  & CVA6Cfg.XFVec & FLen>8;  // FP8ALT vectors available if vectors and larger fmt enabled
+    // Removed orig Cheshire XF8ALT
+    //bit XF8ALTVec  = CVA6Cfg.XF8ALT  & CVA6Cfg.XFVec & FLen>8;  // FP8ALT vectors available if vectors and larger fmt enabled
+    bit XF8ALTVec  = CVA6Cfg.XFVec & FLen>8;  // FP8ALT vectors available if vectors and larger fmt enabled
 
     bit EnableAccelerator = CVA6Cfg.RVV;  // Currently only used by V extension (Ara)
     int unsigned NrWbPorts = (CVA6Cfg.CvxifEn || EnableAccelerator) ? 5 : 4;
@@ -620,7 +626,8 @@ package cvwsoc_cva6_pkg;
     cfg.XF16 = CVA6Cfg.XF16;
     cfg.XF16ALT = CVA6Cfg.XF16ALT;
     cfg.XF8 = CVA6Cfg.XF8;
-    cfg.XF8ALT = CVA6Cfg.XF8ALT;
+    // Cheshire orig. Not existing in pulp-v3.0.0 (??)
+    //cfg.XF8ALT = CVA6Cfg.XF8ALT;
     cfg.RVA = CVA6Cfg.RVA;
     cfg.RVB = CVA6Cfg.RVB;
     cfg.ZKN = CVA6Cfg.ZKN;
@@ -648,7 +655,8 @@ package cvwsoc_cva6_pkg;
     cfg.XF16Vec = bit'(XF16Vec);
     cfg.XF16ALTVec = bit'(XF16ALTVec);
     cfg.XF8Vec = bit'(XF8Vec);
-    cfg.XF8ALTVec = bit'(XF8ALTVec);
+    // Cheshire orig. Not existing in pulp-v3.0.0 (??)
+    //cfg.XF8ALTVec = bit'(XF8ALTVec);
     // Can take 2 or 3 in single issue. 4 or 6 in dual issue.
     cfg.NrRgprPorts = unsigned'(CVA6Cfg.SuperscalarEn ? 4 : 2);
     // cfg.NrRgprPorts = unsigned'(CVA6Cfg.SuperscalarEn ? 6 : 3);
@@ -1067,10 +1075,12 @@ package cvwsoc_cva6_pkg;
     ret.RVB      = 1;
     ret.RVZCB    = 1;
     ret.RVZiCond = 1;
-    // CV32A6 officially doesn't support D extension for CV32A6
+    // In pulp v3.0 CV32A6 still officially doesn't support D extension for CV32A6
+    // Linux does not support FPU handling without both F and D
     //cfg.RVD      = 1;
     ret.RVZicntr = 1;
     ret.RVZihpm  = 1;
+    ret.RVZiCbom = 1;
 
     // Default 48 bits not supported in current cvwsoc infrastructure
     ret.AxiAddrWidth = 32;
@@ -1083,14 +1093,17 @@ package cvwsoc_cva6_pkg;
     ret.ExecuteRegionLength   = {cvwsoc_cfg.wally.BOOTROM_RANGE + 64'd1, ExtMemSize};
 
     if (cvwsoc_cfg.wally.UNCACHED_MEM_SUPPORTED) begin
-      ret.NrCachedRegionRules  = 2;
-      ret.CachedRegionAddrBase = {ExtMemBase, CachedHiBase};
-      ret.CachedRegionLength   = {UncachedBase - ExtMemBase,
+      ret.NrCachedRegionRules  = 3;
+      ret.CachedRegionAddrBase = {cvwsoc_cfg.wally.BOOTROM_BASE,
+                                  ExtMemBase, CachedHiBase};
+      ret.CachedRegionLength   = {cvwsoc_cfg.wally.BOOTROM_RANGE + 64'd1,
+                                  UncachedBase - ExtMemBase,
                                   (ExtMemBase + ExtMemSize) - CachedHiBase};
     end else begin
-      ret.NrCachedRegionRules  = 1;
-      ret.CachedRegionAddrBase = {ExtMemBase};
-      ret.CachedRegionLength   = {ExtMemSize};
+      ret.NrCachedRegionRules  = 2;
+      ret.CachedRegionAddrBase = {cvwsoc_cfg.wally.BOOTROM_BASE, ExtMemBase};
+      ret.CachedRegionLength   = {cvwsoc_cfg.wally.BOOTROM_RANGE + 64'd1,
+                                  ExtMemSize};
     end
 
     ret.NrNonIdempotentRules  = 0;
