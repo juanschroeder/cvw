@@ -35,8 +35,9 @@ FW_JUMP_BIN="${FW_JUMP_BIN:-$CVWSOC_DEPLOY_DIR/fw_jump.bin}"
 KERNEL_SRC="${KERNEL_SRC:-}"
 INITRD_SRC="${INITRD_SRC:-}"
 UBOOT_BIN="${UBOOT_BIN:-$CVWSOC_DEPLOY_DIR/u-boot.bin}"
-UBOOT_DTB="${UBOOT_DTB:-$CVWSOC_DEPLOY_DIR/cvwsoc-virt.dtb}"
-DTS_SRC="${DTS_SRC:-$WALLY/linux/devicetree/wally-virtsoc.dts}"
+CVWSOC_DTS_NAME="${CVWSOC_DTS_NAME:-cvwsoc-wally-virt}"
+UBOOT_DTB="${UBOOT_DTB:-$CVWSOC_DEPLOY_DIR/uboot-${CVWSOC_DTS_NAME}.dtb}"
+DTS_SRC="${DTS_SRC:-$CVWSOC_DEPLOY_DIR/dts/${CVWSOC_DTS_NAME}.dts}"
 
 if [[ "${CVWSOC_XLEN}" == "32" ]]; then
   CPU_ARGS="${CPU_ARGS:-rv32,pmp=on,debug=off}"
@@ -208,77 +209,16 @@ PY
 )"
 fi
 
-python3 - <<'PY' "$DTS_SRC" "$GENERATED_DTS" "$INITRD_ADDR" "$INITRD_END_HEX" "$BOOTARGS" "$ROOTFS_MODE" "$ROOTFS_ADDR" "$QEMU_INITRD" "$ROOTFS_COMPATIBLE" "$ROOTFS_BANK_WIDTH" "$ROOTFS_ERASE_SIZE" "$SKIP_INITRD"
-import os
-import pathlib
-import re
-import sys
-
-src = pathlib.Path(sys.argv[1]).read_text()
-dst = pathlib.Path(sys.argv[2])
-initrd_start = sys.argv[3]
-initrd_end = sys.argv[4]
-bootargs = sys.argv[5]
-rootfs_mode = sys.argv[6]
-rootfs_addr = int(sys.argv[7], 16)
-skip_initrd = sys.argv[12] != "0"
-rootfs_compatible = sys.argv[9]
-rootfs_bank_width = sys.argv[10]
-rootfs_erase_size = sys.argv[11]
-rootfs_size = 0
-if not skip_initrd:
-    rootfs_size = os.path.getsize(sys.argv[8])
-
-if skip_initrd:
-    src = re.sub(r'\n\s*linux,initrd-start\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
-    src = re.sub(r'\n\s*linux,initrd-end\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
-elif rootfs_mode == "jffs2":
-    src = re.sub(r'\n\s*linux,initrd-start\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
-    src = re.sub(r'\n\s*linux,initrd-end\s*=\s*<0x[0-9a-fA-F]+>;', '', src)
-    rootfs_node = f'''
-
-  romfs@{rootfs_addr:x} {{
-    compatible = "{rootfs_compatible}";
-    reg = <0x{rootfs_addr >> 32:x} 0x{rootfs_addr & 0xffffffff:08x} 0x0 0x{rootfs_size:x}>;
-    bank-width = <{rootfs_bank_width}>;
-    erase-size = <{rootfs_erase_size}>;
-  }};
-'''
-    rootfs_reserved_node = f'''
-
-    romfs_reserved: rootfs@{rootfs_addr:x} {{
-      reg = <0x{rootfs_addr >> 32:x} 0x{rootfs_addr & 0xffffffff:08x} 0x0 0x{rootfs_size:x}>;
-      no-map;
-    }};
-'''
-    reserved_node = f'''
-
-  reserved-memory {{
-    #address-cells = <2>;
-    #size-cells = <2>;
-    ranges;
-
-    romfs_reserved: rootfs@{rootfs_addr:x} {{
-      reg = <0x{rootfs_addr >> 32:x} 0x{rootfs_addr & 0xffffffff:08x} 0x0 0x{rootfs_size:x}>;
-      no-map;
-    }};
-  }};
-'''
-    if re.search(r'\n\s*(?:romfs|rootfs)@[0-9a-fA-F]+\s*\{.*?\n\s*\};', src, flags=re.S):
-        src = re.sub(r'\n\s*(?:romfs|rootfs)@[0-9a-fA-F]+\s*\{.*?\n\s*\};', rootfs_node.rstrip(), src, flags=re.S)
-    else:
-        src = re.sub(r'\n\s*soc\s*\{', rootfs_node + '\n  soc {', src, count=1)
-    reserved_close_re = r'\n\s*\};(?=\n\s*cpus\s*\{)'
-    if re.search(r'\n\s*reserved-memory\s*\{', src) and re.search(reserved_close_re, src):
-        src = re.sub(reserved_close_re, rootfs_reserved_node.rstrip() + '\n  };', src, count=1)
-    else:
-        src = re.sub(r'\n\s*soc\s*\{', reserved_node + '\n  soc {', src, count=1)
-else:
-    src = re.sub(r'linux,initrd-start\s*=\s*<0x[0-9a-fA-F]+>;', f'linux,initrd-start = <{initrd_start}>;', src)
-    src = re.sub(r'linux,initrd-end\s*=\s*<0x[0-9a-fA-F]+>;', f'linux,initrd-end = <{initrd_end}>;', src)
-src = re.sub(r'bootargs\s*=\s*".*?";', f'bootargs = "{bootargs}";', src)
-dst.write_text(src)
-PY
+DTS_MODE="$ROOTFS_MODE"
+if [[ "$SKIP_INITRD" != "0" ]]; then
+  DTS_MODE=none
+fi
+python3 "$SCRIPT_DIR/genCvwsocDts.py" \
+  --source "$DTS_SRC" --output "$GENERATED_DTS" --bootargs "$BOOTARGS" \
+  --mode "$DTS_MODE" --initrd-start "$INITRD_ADDR" --initrd-end "$INITRD_END_HEX" \
+  --rootfs "$QEMU_INITRD" --rootfs-address "$ROOTFS_ADDR" \
+  --rootfs-compatible "$ROOTFS_COMPATIBLE" --bank-width "$ROOTFS_BANK_WIDTH" \
+  --erase-size "$ROOTFS_ERASE_SIZE"
 
 "$DTC_BIN" -I dts -O dtb "$GENERATED_DTS" -o "$GENERATED_DTB"
 if [[ -n "$EXTERNAL_DTB" ]]; then

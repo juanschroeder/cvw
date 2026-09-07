@@ -28,3 +28,9 @@ Remarks:
 
 # Dependencies:
 - verilator (tested: v5.036)
+
+### Device trees
+
+Simulation uses the selected Yocto deploy directory’s `dts/` sources. `CVWSOC_DTS_CPU` defaults to `wally`, `wallyrv32`, `cva6`, `cva6rv32`, or `vexrv32` from the selected core. `CVWSOC_DTS_NAME` defaults to `cvwsoc-${CVWSOC_DTS_CPU}-virt`; U-Boot uses `uboot-${CVWSOC_DTS_NAME}.dtb`. Override `CVWSOC_DTS_SRC` or `CVWSOC_UBOOT_DTB` for explicit inputs.
+
+`linux/genCvwsocDts.py` writes a local wrapper with boot arguments and initrd, JFFS2, or SDHCI settings. The deployed sources remain untouched; Python 3 and dtc are required. Generated wrappers refer to the deployed source by absolute path. Keep the deploy directory available when recompiling them. `EXTERNAL_DTB` retains its existing final-replacement behavior.
