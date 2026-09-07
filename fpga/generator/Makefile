@@ -139,9 +139,7 @@ genesys2cva6rv32w64soc: FPGA_GENESYS2RV32SOC
 # CVA6S+
 genesys2cva6spsoc: export board := genesys2soc
 genesys2cva6spsoc: export boardconfig := genesys2cva6spsoc
-# 60 MHz has bad timing for SDHCI (???) and 65 MHz has better one?
-#genesys2cva6spsoc: export SYSTEMCLOCK := 60000000
-genesys2cva6spsoc: export SYSTEMCLOCK := 65000000
+genesys2cva6spsoc: export SYSTEMCLOCK := 60000000
 genesys2cva6spsoc: export MEM_WIDTH  :=  64
 genesys2cva6spsoc: FPGA_GENESYS2SOC
 
