@@ -448,11 +448,14 @@ zsblsoc:
 		SDHCI_SUPPORTED=$(SDHCI_SUPPORTED) SDHCI_BASE=$(SDHCI_BASE)                       \
 		SDHCI_SRC_DIR=$(SDHCI_SRC_DIR)                                                    \
 		BOOTROM_BASE=$(BOOTROM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE) \
+                CC=$(ZSBL32SOC_CC) AS=$(ZSBL32SOC_AS) AR=$(ZSBL32SOC_AR) OBJDUMP=$(ZSBL32SOC_OBJDUMP) \
 		LIBS=$(LIBS) INC_DIRS=$(LITEDRAM_INC_DIRS) $(MAKE) -C ../zsbl
 
-ZSBL32SOC_CC      ?= riscv64-unknown-elf-gcc
-ZSBL32SOC_AS      ?= riscv64-unknown-elf-as
-ZSBL32SOC_AR      ?= riscv64-unknown-elf-ar
+CROSS_COMPILE     ?= riscv64-unknown-elf-
+ZSBL32SOC_CC      ?= $(CROSS_COMPILE)gcc
+ZSBL32SOC_AS      ?= $(CROSS_COMPILE)as
+ZSBL32SOC_AR      ?= $(CROSS_COMPILE)ar
+ZSBL32SOC_OBJDUMP ?= $(CROSS_COMPILE)objdump
 ZSBL32SOC_MARCH   ?= -march=rv32imac_zicsr_zifencei
 ZSBL32SOC_MABI    ?= -mabi=ilp32
 ZSBL32SOC_LIBDIR  ?= $(RISCV)/riscv64-unknown-elf/lib/rv32imac/ilp32
@@ -469,7 +472,7 @@ zsbl32soc:
 		SDHCI_SRC_DIR=$(SDHCI_SRC_DIR)                                                  \
 		BOOTROM_BASE=$(BOOTROM_BASE) UNCORE_RAM_BASE=$(UNCORE_RAM_BASE) UNCORE_RAM_RANGE=$(UNCORE_RAM_RANGE) \
 		LIBS=$(LIBS) INC_DIRS=$(LITEDRAM_INC_DIRS)                                       \
-		CC=$(ZSBL32SOC_CC) AS=$(ZSBL32SOC_AS) AR=$(ZSBL32SOC_AR)                         \
+		CC=$(ZSBL32SOC_CC) AS=$(ZSBL32SOC_AS) AR=$(ZSBL32SOC_AR) OBJDUMP=$(ZSBL32SOC_OBJDUMP) \
 		MARCH=$(ZSBL32SOC_MARCH) MABI=$(ZSBL32SOC_MABI) MEM_WIDTH=$(ZSBL32SOC_MEM_WIDTH) \
 		LINKER=linker1000_32.x                                                           \
 		LINK_FLAGS="$(ZSBL32SOC_MARCH) $(ZSBL32SOC_MABI) -nostartfiles -L $(ZSBL32SOC_LIBDIR) -L $(ZSBL32SOC_SYSROOT)/lib"
@@ -478,14 +481,14 @@ LIBLITEDRAM_DIRECTORY = $(LIBLITEDRAM_SRC_DIR)
 liblitedram:
 	$(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk clean
 	$(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk EXT_MEM_BASE=$(EXT_MEM_BASE) LITEDRAM_BASE=$(LITEDRAM_BASE) \
-		LIBLITEDRAM_DIRECTORY=$(LIBLITEDRAM_DIRECTORY) LITEDRAM_CONFIG=$(litedramconfig)
+		LIBLITEDRAM_DIRECTORY=$(LIBLITEDRAM_DIRECTORY) LITEDRAM_CONFIG=$(litedramconfig) AS=$(ZSBL32SOC_AS) AR=$(ZSBL32SOC_AR) CC=$(ZSBL32SOC_CC)
 
 
 liblitedram32:
 	$(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk clean
 	$(MAKE) -C ../../addins/cvwsoc/litedram -f liblitedram.mk EXT_MEM_BASE=$(EXT_MEM_BASE) LITEDRAM_BASE=$(LITEDRAM_BASE) \
 		LIBLITEDRAM_DIRECTORY=$(LIBLITEDRAM_DIRECTORY) LITEDRAM_CONFIG=$(litedramconfig) \
-		MARCH=$(ZSBL32SOC_MARCH) MABI=$(ZSBL32SOC_MABI)
+		MARCH=$(ZSBL32SOC_MARCH) MABI=$(ZSBL32SOC_MABI) AS=$(ZSBL32SOC_AS) AR=$(ZSBL32SOC_AR) CC=$(ZSBL32SOC_CC)
 
 # Generate Individual IP Blocks
 $(dst)/%.log: %.tcl

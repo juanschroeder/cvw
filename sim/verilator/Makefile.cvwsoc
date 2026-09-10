@@ -109,8 +109,9 @@ CVWSOC_DTS_DEPS = $(CVWSOC_DTS_SRC) $(wildcard $(CVWSOC_DTS_DIR)/*.dtsi) $(wildc
 CVWSOC_FW_JUMP_BIN ?= $(CVWSOC_DEPLOY_DIR)/fw_jump.bin
 CVWSOC_UBOOT_BIN ?= $(CVWSOC_DEPLOY_DIR)/u-boot.bin
 CVWSOC_UBOOT_DTB ?= $(CVWSOC_DEPLOY_DIR)/uboot-$(CVWSOC_DTS_NAME).dtb
-RISCV_GCC_BIN ?= riscv64-unknown-elf-gcc
-RISCV_OBJCOPY_BIN ?= riscv64-unknown-elf-objcopy
+CROSS_COMPILE ?= riscv64-unknown-elf-
+RISCV_GCC_BIN ?= $(CROSS_COMPILE)gcc
+RISCV_OBJCOPY_BIN ?= $(CROSS_COMPILE)objcopy
 CVWSOC_STUB_MARCH ?= $(if $(filter 32,$(CVWSOC_XLEN)),rv32imac,rv64imac)
 CVWSOC_STUB_MABI ?= $(if $(filter 32,$(CVWSOC_XLEN)),ilp32,lp64)
 CVWSOC_UBOOT_STUB_ELF ?= $(CVWSOC_PRELOAD_DIR)/uboot-replacement-stub-rv$(CVWSOC_XLEN).elf
@@ -204,7 +205,7 @@ QEMU_RAM_MB ?= 1024
 CPU_ARGS_RV32 ?= rv32,pmp=on,debug=off
 CPU_ARGS_RV64 ?= rva22s64,zicond=true,zfa=true,zfh=true,zcb=true,zbc=true,zkn=true,sstc=true,svadu=true,svnapot=true,pmp=on,debug=off
 CPU_ARGS ?= $(if $(filter 32,$(CVWSOC_XLEN)),$(CPU_ARGS_RV32),$(CPU_ARGS_RV64))
-GDB_BIN ?= riscv64-unknown-elf-gdb
+GDB_BIN ?= $(CROSS_COMPILE)gdb
 OBJCOPY_BIN ?= objcopy
 DTC_BIN ?= dtc
 UNLZ4_BIN ?= unlz4

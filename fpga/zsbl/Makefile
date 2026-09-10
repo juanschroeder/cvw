@@ -60,6 +60,7 @@ override CFLAGS +=$(MARCH) $(MABI) -mcmodel=medany -O2 -g  -DSYSTEMCLOCK=${SYSTE
 AS=riscv64-unknown-elf-as
 CC=riscv64-unknown-elf-gcc
 AR=riscv64-unknown-elf-ar
+OBJDUMP=riscv64-unknown-elf-objdump
 
 
 #Default Make
@@ -141,7 +142,7 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(CPPEXT)
 # convert to hex
 $(TARGET).memfile: $(TARGET)
 	@echo 'Making object dump file.'
-	riscv64-unknown-elf-objdump -DS $< > $<.objdump
+	$(OBJDUMP) -DS $< > $<.objdump
 	@echo 'Making memory file'
 	riscv64-unknown-elf-elf2hex --bit-width $(MEM_WIDTH) --input $^ --output $@
 	extractFunctionRadix.sh $<.objdump
