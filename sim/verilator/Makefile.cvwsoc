@@ -28,7 +28,6 @@ ifeq ($(RV32),0)
 $(error sim-fast and sim-fast-uboot require RV32=1)
 endif
 RV32 ?= 1
-CONFIG ?= fpgagenesys2rv32w64soc
 CPUSETTINGS ?= taskset -c $(PERF_CPU)
 endif
 
@@ -75,6 +74,12 @@ CVWSOC_SIM_I2S := $(filter $(BOOL_TRUE),$(I2S))
 CVWSOC_SIM_WISHBONE := $(filter $(BOOL_TRUE),$(WISHBONE))
 CVWSOC_LINUX_PRELOAD_SKIP_INITRD := $(if $(CVWSOC_SIM_SDHCI),1,0)
 WALLYCONF ?= fpgagenesys2soc
+# No CPU override
+ifneq ($(filter sim-fast sim-fast-uboot,$(MAKECMDGOALS)),)
+ifeq ($(strip $(CVWSOC_CVA6) $(CVWSOC_VEXRISCV)),)
+CONFIG ?= fpgagenesys2rv32w64soc
+endif
+endif
 # CVA6 and Vexriscv require the RV32 system's 64-bit AXI data bus.
 CONFIG ?= $(if $(CVWSOC_VEXRISCV),fpgagenesys2vexsoc,$(if $(CVWSOC_CVA6SP),$(if $(CVWSOC_RV32),fpgagenesys2cva6sprv32w64soc,fpgagenesys2cva6spsoc),$(if $(CVWSOC_CVA6),$(if $(CVWSOC_RV32),fpgagenesys2cva6rv32w64soc,fpgagenesys2cva6soc),$(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF)))))
 CVWSOC_SIM_AXI_RAM ?= $(if $(CVWSOC_SIM_SDHCI),0,1)
@@ -1185,11 +1190,11 @@ run-cvwsoc-linux-fast: $(CVWSOC_LINUX_FAST_RUN_DEPS) $(WORKDIR)/V$(TESTBENCH) $(
 
 # Fastest road to Linux shell prompt
 sim-fast:
-	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) RV32=$(RV32) CONFIG=$(CONFIG) CPUSETTINGS="$(CPUSETTINGS)" run-cvwsoc-linux-fast -j$$(nproc)
+	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) RV32=$(RV32) CVA6=$(CVA6) CVA6SP=$(CVA6SP) VEX=$(VEX) CONFIG=$(CONFIG) CPUSETTINGS="$(CPUSETTINGS)" run-cvwsoc-linux-fast -j$$(nproc)
 
 # Fastest road to U-Boot prompt
 sim-fast-uboot:
-	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) RV32=$(RV32) CONFIG=$(CONFIG) CPUSETTINGS="$(CPUSETTINGS)" run-cvwsoc-uboot -j$$(nproc)
+	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) RV32=$(RV32) CVA6=$(CVA6) CVA6SP=$(CVA6SP) VEX=$(VEX) CONFIG=$(CONFIG) CPUSETTINGS="$(CPUSETTINGS)" run-cvwsoc-uboot -j$$(nproc)
 
 run-cvwsoc-uboot: BOOTROM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_UBOOT_BOOTROM_BIN))
 run-cvwsoc-uboot: EXT_RAM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_UBOOT_RUN_EXT_RAM_BIN))
