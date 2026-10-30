@@ -139,6 +139,7 @@ COSIM_RTL_SRCS := \
   $(CVWSOC_AXI_SRC) \
   $(WALLY)/addins/cvwsoc/audio/i2s_sine_source.sv \
   $(OTHER_CVWSOC_SOURCES) \
+  $(WALLY)/addins/cvwsoc/cvwsoc_sim_models.sv \
   $(COSIM_WRAPPER)
 
 COSIM_INCLUDES := \

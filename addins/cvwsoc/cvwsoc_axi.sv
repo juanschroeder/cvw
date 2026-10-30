@@ -1449,24 +1449,9 @@ module cvwsoc_axi #(
     assign SD_CMD   = sd_cmd_en ? sd_cmd_o : 1'bz;
     assign SD_DAT   = sd_dat_en ? sd_dat_o : 4'bzzzz;
 
-   // SD CARD SIMULATION
-`ifdef SIM_AXI_SDHCI
-    sd_card i_sd_card (
-      .sd_clk_i ( sd_clk_o  ),
-      .cmd_en_i ( sd_cmd_en ),
-      .cmd_i    ( sd_cmd_o  ),
-      .cmd_o    ( sd_cmd_i  ),
-      .dat_en_i ( sd_dat_en ),
-      .dat_i    ( sd_dat_o  ),
-      .dat_o    ( sd_dat_i  )
-    );
-
-    assign sd_cd_ni = 1'b0;
-`else
     assign sd_cmd_i = SD_CMD;
     assign sd_dat_i = SD_DAT;
     assign sd_cd_ni = SD_CD_N;
-`endif
 
     axi_sdhci_wrap #(
       .AXI_ADDR_W ( ADDR_W   ),

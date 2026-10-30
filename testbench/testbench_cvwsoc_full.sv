@@ -21,14 +21,14 @@ module testbench_cvwsoc_full #(
     cvw_t c;
 
     c = in;
-    c.XILINX_AXI_DMA_SUPPORTED = ENABLE_DMA;
+    c.XILINX_AXI_DMA_SUPPORTED = 1'b0;
     c.AXI_VGA_SUPPORTED = 1'b0;
     c.AXI_USB_SUPPORTED = 1'b0;
     c.AXI_ETH_SUPPORTED = 1'b0;
     c.AXI_SDHCI_SUPPORTED = ENABLE_SDHCI;
-    c.AXI_IDMA_SUPPORTED = 1'b0;
-    c.AXI_IDMA_REG64_SUPPORTED = 1'b0;
-    c.AXIS_IDMA_SUPPORTED = 1'b0;
+    c.AXI_IDMA_SUPPORTED = ENABLE_DMA;
+    c.AXI_IDMA_REG64_SUPPORTED = ENABLE_DMA;
+    c.AXIS_IDMA_SUPPORTED = ENABLE_DMA;
     c.AXIS_I2S_SUPPORTED = ENABLE_I2S;
     c.LITEDRAM_SUPPORTED = 1'b0;
     c.UBERDDR3_SUPPORTED = 1'b0;
@@ -337,6 +337,15 @@ module testbench_cvwsoc_full #(
   wire usb1dm;
   wire sdcmd;
   wire [3:0] sddat;
+  wire sdclk, sd_cd_n;
+  wire i2s_rx_sclk, i2s_rx_lrck, i2s_rx_sdin;
+
+  cvwsoc_sim_models #(.C(C)) sim_models (
+    .rst_ni(rst_n),
+    .SD_CLK(sdclk), .SD_CD_N(sd_cd_n), .SD_CMD(sdcmd), .SD_DAT(sddat),
+    .i2s_rx_sclk(i2s_rx_sclk), .i2s_rx_lrck(i2s_rx_lrck),
+    .i2s_rx_sdin(i2s_rx_sdin)
+  );
 
   // Focused trace aliases.  Runtime SIGUSR1 tracing records testbench scope
   // (depth 1), so keep the useful CPU and AHB-island state at this level.
@@ -576,8 +585,8 @@ module testbench_cvwsoc_full #(
     .usb0_dm(usb0dm),
     .usb1_dp(usb1dp),
     .usb1_dm(usb1dm),
-    .SD_CLK(),
-    .SD_CD_N(1'b1),
+    .SD_CLK(sdclk),
+    .SD_CD_N(sd_cd_n),
     .SD_CMD(sdcmd),
     .SD_DAT(sddat),
     .i2s_tx_mclk(),

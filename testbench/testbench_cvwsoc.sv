@@ -923,14 +923,20 @@ module testbench_cvwsoc #(
   logic i2s_rx_lrck;
   logic i2s_rx_sclk;
 
-  // 100 MHz simulation clock divided by four for the initial I2S model.
-  always_ff @(posedge clk or posedge reset_ext) begin
-    if (reset_ext)
-      audio_clk_div_q <= '0;
-    else
-      audio_clk_div_q <= audio_clk_div_q + 1'b1;
-  end
-  assign audio_clk = audio_clk_div_q[1];
+  wire sd_model_clk, sd_model_cd_n;
+  wire sd_model_cmd;
+  wire [3:0] sd_model_dat;
+  localparam cvwsoc_cfg_t SimModelsCfg = '{wally: SOC_P, default: '0};
+
+  cvwsoc_sim_models #(.C(SimModelsCfg)) sim_models (
+    .rst_ni(~reset_ext),
+    .SD_CLK(sd_model_clk), .SD_CD_N(sd_model_cd_n),
+    .SD_CMD(sd_model_cmd), .SD_DAT(sd_model_dat),
+    .i2s_rx_sclk(i2s_rx_sclk), .i2s_rx_lrck(i2s_rx_lrck),
+    .i2s_rx_sdin(i2s_rx_sdin)
+  );
+
+  // assign audio_clk = audio_clk_div_q[1];
   if (SOC_P.AXIS_I2S_SUPPORTED) begin : gen_audio_clock
     always #22.1443ns audio_clk = ~audio_clk;
   end
@@ -2075,21 +2081,25 @@ module testbench_cvwsoc #(
   //  SD card model //
   ////////////////////
 
-  sd_card i_sd_card (
-    .sd_clk_i ( sd_clk_o  ),
-    .cmd_en_i ( sd_cmd_en ),
-    .cmd_i    ( sd_cmd_o  ),
-    .cmd_o    ( sd_cmd_i  ),
-    .dat_en_i ( sd_dat_en ),
-    .dat_i    ( sd_dat_o  ),
-    .dat_o    ( sd_dat_i  )
-  );
-
-  assign sd_cd_ni = '0;
+  // Retain the legacy split-I/O adapter's 3 ns board delays.
+  wire delayed_cmd_en, delayed_cmd;
+  wire delayed_dat_en;
+  wire [3:0] delayed_dat;
+  assign #(3ns) delayed_cmd_en = sd_cmd_en;
+  assign #(3ns) delayed_cmd = sd_cmd_o;
+  assign sd_model_cmd = delayed_cmd_en ? delayed_cmd : 1'bz;
+  assign #(3ns) sd_cmd_i = sd_model_cmd;
+  assign #(3ns) delayed_dat_en = sd_dat_en;
+  assign #(3ns) delayed_dat = sd_dat_o;
+  assign sd_model_dat = delayed_dat_en ? delayed_dat : 4'bz;
+  assign #(3ns) sd_dat_i = sd_model_dat;
+  assign sd_model_clk = sd_clk_o;
+  assign sd_cd_ni = sd_model_cd_n;
   assign mst_resp[CB_M_SDHCI].b.user = '0;
   assign mst_resp[CB_M_SDHCI].r.user = '0;
 
 `else
+  assign sd_model_clk = 1'b0;
   assign AXI_DummyIntr = 1'b0;
 `endif
 

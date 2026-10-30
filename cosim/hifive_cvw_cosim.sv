@@ -290,11 +290,19 @@ module hifive_cvw_cosim;
   logic i2s_rx_sclk, i2s_rx_lrck, i2s_rx_sdin;
   wire usb0_dp, usb0_dm, usb1_dp, usb1_dm;
   wire sd_clk;
-  // Match testbench_cvwsoc's sd_card wrapper: an SD bus has pull-ups on CMD
-  // and DAT lines whenever neither host nor card is actively driving them.
-  tri1 sd_cmd;
-  tri1 [3:0] sd_dat;
+  wire sd_cd_n, sd_cmd;
+  wire [3:0] sd_dat;
   wire rgmii_mdio;
+
+  cvwsoc_sim_models #(.C(C)) sim_models (
+    .rst_ni(resetn),
+    .SD_CLK(sd_clk),
+    .SD_CD_N(sd_cd_n),
+    .SD_CMD(sd_cmd),
+    .SD_DAT(sd_dat),
+    .i2s_rx_sclk(i2s_rx_sclk), .i2s_rx_lrck(i2s_rx_lrck),
+    .i2s_rx_sdin(i2s_rx_sdin)
+  );
 
   cvwsoc_axi #(
     .C(C),
@@ -327,7 +335,7 @@ module hifive_cvw_cosim;
     .vga_hsync(), .vga_vsync(), .vga_r_5(), .vga_g_6(), .vga_b_5(),
     .usb0_dp(usb0_dp), .usb0_dm(usb0_dm),
     .usb1_dp(usb1_dp), .usb1_dm(usb1_dm),
-    .SD_CLK(sd_clk), .SD_CD_N(1'b0), .SD_CMD(sd_cmd), .SD_DAT(sd_dat),
+    .SD_CLK(sd_clk), .SD_CD_N(sd_cd_n), .SD_CMD(sd_cmd), .SD_DAT(sd_dat),
     .i2s_tx_mclk(), .i2s_tx_lrck(), .i2s_tx_sclk(), .i2s_tx_sdout(),
     .i2s_rx_mclk(), .i2s_rx_lrck(i2s_rx_lrck), .i2s_rx_sclk(i2s_rx_sclk),
     .i2s_rx_sdin(i2s_rx_sdin),
@@ -339,20 +347,6 @@ module hifive_cvw_cosim;
     .BUSCLK_i(clk), .BUSCORERSTn_i(resetn), .BUSRSTn_i(resetn),
     .cpu_axi_irq_o(cpu_axi_irq)
   );
-
-  // cvwsoc_axi already resolves the host's output-enable signals onto these
-  // board-level bidirectional pins. Attach the card model directly; the
-  // sd_card wrapper used by testbench_cvwsoc is only needed for its separate
-  // host input/output signal pairs.
-  generate
-    if (P_COSIM.AXI_SDHCI_SUPPORTED) begin : gen_sd_card
-      sdModel i_sd_card (
-        .sdClk (sd_clk),
-        .cmd   (sd_cmd),
-        .dat   (sd_dat)
-      );
-    end
-  endgenerate
 
   initial begin
     assert (AXI_DATA_WIDTH == 64)
