@@ -898,6 +898,8 @@ module testbench_cvwsoc #(
   slv_resp_t [1:0] idma_fe_resp;
   axis_req_t idma_axis_req;
   axis_rsp_t idma_axis_rsp;
+  axis_req_t idma_axis_rd_req;
+  axis_rsp_t idma_axis_rd_rsp;
   logic idma_axis_irq;
   logic [31:0] axis_stall_period;
   logic [31:0] axis_stall_cycles;
@@ -906,13 +908,13 @@ module testbench_cvwsoc #(
   logic axis_tkeep_error;
   logic axis_tlast_error;
   logic axis_stability_error;
-  logic [1:0] audio_clk_div_q;
-  logic audio_clk;
+  logic audio_clk = 1'b0;
   logic [31:0] i2s_axis_tdata;
   logic [3:0] i2s_axis_tkeep;
   logic i2s_axis_tvalid;
   logic i2s_axis_tready;
   logic i2s_axis_tlast;
+  wire  i2s_rx_sdin;
   logic i2s_tx_mclk;
   logic i2s_tx_lrck;
   logic i2s_tx_sclk;
@@ -921,14 +923,23 @@ module testbench_cvwsoc #(
   logic i2s_rx_lrck;
   logic i2s_rx_sclk;
 
-  // 100 MHz simulation clock divided by four for the initial I2S model.
-  always_ff @(posedge clk or posedge reset_ext) begin
-    if (reset_ext)
-      audio_clk_div_q <= '0;
-    else
-      audio_clk_div_q <= audio_clk_div_q + 1'b1;
+  wire sd_model_clk, sd_model_cd_n;
+  wire sd_model_cmd;
+  wire [3:0] sd_model_dat;
+  localparam cvwsoc_cfg_t SimModelsCfg = '{wally: SOC_P, default: '0};
+
+  cvwsoc_sim_models #(.C(SimModelsCfg)) sim_models (
+    .rst_ni(~reset_ext),
+    .SD_CLK(sd_model_clk), .SD_CD_N(sd_model_cd_n),
+    .SD_CMD(sd_model_cmd), .SD_DAT(sd_model_dat),
+    .i2s_rx_sclk(i2s_rx_sclk), .i2s_rx_lrck(i2s_rx_lrck),
+    .i2s_rx_sdin(i2s_rx_sdin)
+  );
+
+  // assign audio_clk = audio_clk_div_q[1];
+  if (SOC_P.AXIS_I2S_SUPPORTED) begin : gen_audio_clock
+    always #22.1443ns audio_clk = ~audio_clk;
   end
-  assign audio_clk = audio_clk_div_q[1];
 
   initial begin
     axis_stall_period = '0;
@@ -978,6 +989,8 @@ module testbench_cvwsoc #(
       .axi_slv_rsp_o     ( idma_slv_resp ),
       .axis_write_req_o  ( idma_axis_req ),
       .axis_write_rsp_i  ( idma_axis_rsp ),
+      .axis_read_req_i   ( idma_axis_rd_req ),
+      .axis_read_rsp_o   ( idma_axis_rd_rsp ),
       .axis_fifo_occupancy_i ( audio_fifo_depth ),
       .irq_o             ( AXI_IDMAIntr  ),
       .axis_irq_o        ( idma_axis_irq )
@@ -1079,6 +1092,9 @@ module testbench_cvwsoc #(
 
         assign i2s_axis_tkeep = fifo_axis_tkeep;
 
+        logic [31:0] audio_rx_data;
+        logic audio_rx_valid, audio_rx_ready, audio_rx_last;
+
         axis_i2s2 i2s_i (
         .axis_clk        ( audio_clk       ),
         .axis_resetn     ( ~reset_ext      ),
@@ -1086,10 +1102,10 @@ module testbench_cvwsoc #(
         .tx_axis_s_valid ( i2s_axis_tvalid ),
         .tx_axis_s_ready ( i2s_axis_tready ),
         .tx_axis_s_last  ( i2s_axis_tlast  ),
-        .rx_axis_m_data  (                 ),
-        .rx_axis_m_valid (                 ),
-        .rx_axis_m_ready ( 1'b1            ),
-        .rx_axis_m_last  (                 ),
+        .rx_axis_m_data  ( audio_rx_data   ),
+        .rx_axis_m_valid ( audio_rx_valid  ),
+        .rx_axis_m_ready ( audio_rx_ready  ),
+        .rx_axis_m_last  ( audio_rx_last   ),
         .tx_mclk         ( i2s_tx_mclk     ),
         .tx_lrck         ( i2s_tx_lrck     ),
         .tx_sclk         ( i2s_tx_sclk     ),
@@ -1097,7 +1113,7 @@ module testbench_cvwsoc #(
         .rx_mclk         ( i2s_rx_mclk     ),
         .rx_lrck         ( i2s_rx_lrck     ),
         .rx_sclk         ( i2s_rx_sclk     ),
-        .rx_sdin         ( 1'b0            )
+        .rx_sdin         ( i2s_rx_sdin     )
         );
 
         assign axis_accepted_bytes = '0;
@@ -1105,7 +1121,62 @@ module testbench_cvwsoc #(
         assign axis_tkeep_error = 1'b0;
         assign axis_tlast_error = 1'b0;
         assign axis_stability_error = 1'b0;
+      // RX (read)
+      axis_async_fifo_adapter #(
+        .DEPTH          ( AudioFifoDepth ),
+        .S_DATA_WIDTH   ( 32   ),
+        .S_KEEP_ENABLE  ( 1        ),
+        .S_KEEP_WIDTH   ( 4        ),
+        .M_DATA_WIDTH   ( BUSW   ),
+        .M_KEEP_ENABLE  ( 1        ),
+        .M_KEEP_WIDTH   ( (BUSW/8)   ),
+        .ID_ENABLE      ( 0        ),
+        .ID_WIDTH       ( AXI_MST_ID_WIDTH ),
+        .DEST_ENABLE    ( 0        ),
+        .DEST_WIDTH     ( AXI_MST_ID_WIDTH ),
+        .USER_ENABLE    ( 0        ),
+        .USER_WIDTH     ( 1        ),
+        .PAUSE_ENABLE   ( 0        )
+      ) axis_audio_fifo_i2 (
+        .s_clk                  ( audio_clk              ),
+        .s_rst                  ( reset_ext          ),
+        .s_axis_tdata           ( audio_rx_data   ),
+        .s_axis_tkeep           ( 4'b1111  ),
+        .s_axis_tvalid          ( audio_rx_valid   ),
+        .s_axis_tready          ( audio_rx_ready   ),
+        .s_axis_tlast           ( audio_rx_last       ),
+
+        .m_clk                  ( bus_clk                 ),
+        .m_rst                  ( bus_reset           ),
+        .m_axis_tdata           ( idma_axis_rd_req.t.data),
+        .m_axis_tkeep           ( idma_axis_rd_req.t.keep),
+        .m_axis_tvalid          ( idma_axis_rd_req.tvalid ),
+        .m_axis_tready          ( idma_axis_rd_rsp.tready ),
+        .m_axis_tlast           ( idma_axis_rd_req.t.last ),
+        .m_axis_tid             ( idma_axis_rd_req.t.id ),
+        .m_axis_tdest           ( idma_axis_rd_req.t.dest ),
+        .m_axis_tuser           ( idma_axis_rd_req.t.user ),
+        .s_pause_req            ( 1'b0                   ),
+        .s_pause_ack            (                        ),
+        .m_pause_req            ( 1'b0                   ),
+        .m_pause_ack            (                        ),
+        .s_status_depth         (     ),
+        .s_status_depth_commit  (                        ),
+        .s_status_overflow      (                        ),
+        .s_status_bad_frame     (                        ),
+        .s_status_good_frame    (                        ),
+        .m_status_depth         (                        ),
+        .m_status_depth_commit  (                        ),
+        .m_status_overflow      (                        ),
+        .m_status_bad_frame     (                        ),
+        .m_status_good_frame    (                        )
+      );
+
+
+      assign idma_axis_rd_req.t.strb = idma_axis_rd_req.t.keep;
+
     end else begin
+        assign idma_axis_rd_req = '0;
         axis_test_sink #(
         .DataWidth ( BUSW          ),
         .axis_req_t ( axis_req_t   ),
@@ -1504,6 +1575,8 @@ module testbench_cvwsoc #(
     assign i2s_tx_lrck = 1'b0;
     assign i2s_tx_sclk = 1'b0;
     assign i2s_tx_sdout = 1'b0;
+    assign idma_axis_rd_req = '0;
+    assign idma_axis_rd_rsp = '0;
     assign i2s_rx_mclk = 1'b0;
     assign i2s_rx_lrck = 1'b0;
     assign i2s_rx_sclk = 1'b0;
@@ -2008,21 +2081,25 @@ module testbench_cvwsoc #(
   //  SD card model //
   ////////////////////
 
-  sd_card i_sd_card (
-    .sd_clk_i ( sd_clk_o  ),
-    .cmd_en_i ( sd_cmd_en ),
-    .cmd_i    ( sd_cmd_o  ),
-    .cmd_o    ( sd_cmd_i  ),
-    .dat_en_i ( sd_dat_en ),
-    .dat_i    ( sd_dat_o  ),
-    .dat_o    ( sd_dat_i  )
-  );
-
-  assign sd_cd_ni = '0;
+  // Retain the legacy split-I/O adapter's 3 ns board delays.
+  wire delayed_cmd_en, delayed_cmd;
+  wire delayed_dat_en;
+  wire [3:0] delayed_dat;
+  assign #(3ns) delayed_cmd_en = sd_cmd_en;
+  assign #(3ns) delayed_cmd = sd_cmd_o;
+  assign sd_model_cmd = delayed_cmd_en ? delayed_cmd : 1'bz;
+  assign #(3ns) sd_cmd_i = sd_model_cmd;
+  assign #(3ns) delayed_dat_en = sd_dat_en;
+  assign #(3ns) delayed_dat = sd_dat_o;
+  assign sd_model_dat = delayed_dat_en ? delayed_dat : 4'bz;
+  assign #(3ns) sd_dat_i = sd_model_dat;
+  assign sd_model_clk = sd_clk_o;
+  assign sd_cd_ni = sd_model_cd_n;
   assign mst_resp[CB_M_SDHCI].b.user = '0;
   assign mst_resp[CB_M_SDHCI].r.user = '0;
 
 `else
+  assign sd_model_clk = 1'b0;
   assign AXI_DummyIntr = 1'b0;
 `endif
 

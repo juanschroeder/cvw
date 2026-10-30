@@ -43,6 +43,8 @@ module idma_axi_axis_wrap #(
   output axi_slv_rsp_t [2:0]     axi_slv_rsp_o,
   output axis_req_t              axis_write_req_o,
   input  axis_rsp_t              axis_write_rsp_i,
+  input axis_req_t               axis_read_req_i,
+  output  axis_rsp_t             axis_read_rsp_o,
   input  logic [$clog2(AxisFifoCapacityBytes):0] axis_fifo_occupancy_i,
   output logic                   irq_o,
   output logic                   axis_irq_o
@@ -390,6 +392,8 @@ module idma_axi_axis_wrap #(
     logic [AxisOutstandingWidth-1:0] axis_outstanding_q;
     logic axis_stream_in_flight_q;
     logic axis_desc_is_stream;
+    logic axis_desc_src_stream;
+    logic axis_desc_dst_stream;
     logic axis_desc_admissible;
     logic axis_desc_accept;
     logic axis_desc_reject;
@@ -594,22 +598,16 @@ module idma_axi_axis_wrap #(
     assign axis_stop_draining = axis_stop_draining_q;
     assign axis_irq_o = axis_irq_pending && axis_irq_enable;
 
-    // This is now coming in the request descriptor
-    // always_comb begin
-    //   axis_desc_req = axis_desc_req_raw;
-    //   axis_desc_req.opt.src_protocol = idma_pkg::AXI;
-    //   axis_desc_req.opt.dst_protocol = idma_pkg::AXI_STREAM;
-    // end
-
-
-    assign axis_desc_is_stream = axis_desc_req.opt.dst_protocol == idma_pkg::AXI_STREAM;
+    assign axis_desc_dst_stream = axis_desc_req.opt.dst_protocol == idma_pkg::AXI_STREAM;
+    assign axis_desc_src_stream = axis_desc_req.opt.src_protocol == idma_pkg::AXI_STREAM;
+    assign axis_desc_is_stream = axis_desc_dst_stream || axis_desc_src_stream;
     assign axis_desc_rounded_bytes =
         (({1'b0, axis_desc_req.length} + AxisBeatBytes - 1) / AxisBeatBytes) * AxisBeatBytes;
     assign axis_desc_required_bytes = axis_desc_rounded_bytes + AxisFifoSafetyMarginBytes;
     assign axis_fifo_free_bytes = AxisFifoCapacityBytes - axis_fifo_occupancy_i;
-    assign axis_desc_reject = EnableAxisFifoAdmission && axis_desc_is_stream &&
+    assign axis_desc_reject = EnableAxisFifoAdmission && axis_desc_dst_stream &&
         (axis_desc_required_bytes > AxisFifoCapacityBytes);
-    assign axis_desc_admissible = !EnableAxisFifoAdmission || !axis_desc_is_stream ||
+    assign axis_desc_admissible = !EnableAxisFifoAdmission || !axis_desc_dst_stream ||
         ((axis_outstanding_q == '0) && !axis_stream_in_flight_q &&
          (axis_desc_required_bytes <= AxisFifoCapacityBytes) &&
          (axis_desc_required_bytes <= axis_fifo_free_bytes));
@@ -964,8 +962,8 @@ module idma_axi_axis_wrap #(
     .eh_req_ready_o  (                ),
     .axi_read_req_o  ( axi_read_req   ),
     .axi_read_rsp_i  ( axi_read_rsp   ),
-    .axis_read_req_i ( '0             ),
-    .axis_read_rsp_o (                ), // Not used for now
+    .axis_read_req_i ( axis_read_req  ),
+    .axis_read_rsp_o ( axis_read_rsp ),
     .axi_write_req_o ( axi_write_req  ),
     .axi_write_rsp_i ( axi_write_rsp  ),
     .axis_write_req_o ( axis_write_req   ),
@@ -993,61 +991,14 @@ module idma_axi_axis_wrap #(
     axis_write_req_o.t.last = 1'b0;
   end
 
-  //--------------------------------------------------------------
-  //--------------------------------------------------------------
-  //--------------------------------------------------------------
-  //--------------------------------------------------------------
-    /*
-    * Debug only: count sustained stalls at the three boundaries relevant
-    * to AXI-memory -> AXI-Stream playback.
-    *
-    * These counters do not feed any functional signal.
-    */
-    // always_ff @(posedge clk_i or negedge rst_ni) begin
-    //     if (!rst_ni) begin
-    //         dbg_axis_stall_cycles   <= '0;
-    //         dbg_axi_ar_stall_cycles <= '0;
-    //         dbg_axi_r_stall_cycles  <= '0;
-    //     end else begin
-    //         /*
-    //         * iDMA has a stream word available, but the I2S/AXIS path will not
-    //         * accept it.
-    //         */
-    //         if (axis_write_req_o.valid && !axis_write_rsp_i.ready) begin
-    //             if (!(&dbg_axis_stall_cycles))
-    //             dbg_axis_stall_cycles <= dbg_axis_stall_cycles + 1'b1;
-    //         end else begin
-    //             dbg_axis_stall_cycles <= '0;
-    //         end
+  // RX (reads)
+  always_comb begin
+    axis_read_rsp_o = axis_read_rsp;
+  end
 
-    //         /*
-    //         * iDMA wants to issue an AXI memory read, but the DDR/interconnect
-    //         * side will not accept its address request.
-    //         */
-    //         if (axi_mst_be_req_o.ar_valid && !axi_mst_be_rsp_i.ar_ready) begin
-    //             if (!(&dbg_axi_ar_stall_cycles))
-    //             dbg_axi_ar_stall_cycles <= dbg_axi_ar_stall_cycles + 1'b1;
-    //         end else begin
-    //             dbg_axi_ar_stall_cycles <= '0;
-    //         end
-
-    //         /*
-    //         * DDR presents read data, but the iDMA backend cannot accept it.
-    //         * This is the signature expected if AXIS backpressure propagates
-    //         * backwards into the AXI read-data channel.
-    //         */
-    //         if (axi_mst_be_rsp_i.r_valid && !axi_mst_be_req_o.r_ready) begin
-    //             if (!(&dbg_axi_r_stall_cycles))
-    //             dbg_axi_r_stall_cycles <= dbg_axi_r_stall_cycles + 1'b1;
-    //         end else begin
-    //             dbg_axi_r_stall_cycles <= '0;
-    //         end
-    //     end
-    // end
-
-  //--------------------------------------------------------------
-  //--------------------------------------------------------------
-  //--------------------------------------------------------------
+  always_comb begin
+    axis_read_req = axis_read_req_i;
+  end
 
   assign me_busy = 1'b0;
 

@@ -213,7 +213,10 @@ DTS_MODE="$ROOTFS_MODE"
 if [[ "$SKIP_INITRD" != "0" ]]; then
   DTS_MODE=none
 fi
-python3 "$SCRIPT_DIR/genCvwsocDts.py" \
+PERIPHERAL_DTS_ARGS=()
+if [[ "${DMA_ENABLED:-0}" == "1" ]]; then PERIPHERAL_DTS_ARGS+=(--dma); fi
+if [[ "${I2S_ENABLED:-0}" == "1" ]]; then PERIPHERAL_DTS_ARGS+=(--i2s); fi
+python3 "$SCRIPT_DIR/genCvwsocDts.py" "${PERIPHERAL_DTS_ARGS[@]}" \
   --source "$DTS_SRC" --output "$GENERATED_DTS" --bootargs "$BOOTARGS" \
   --mode "$DTS_MODE" --initrd-start "$INITRD_ADDR" --initrd-end "$INITRD_END_HEX" \
   --rootfs "$QEMU_INITRD" --rootfs-address "$ROOTFS_ADDR" \

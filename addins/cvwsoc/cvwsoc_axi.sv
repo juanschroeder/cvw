@@ -85,6 +85,11 @@ module cvwsoc_axi #(
     output logic      i2s_tx_lrck,
     output logic      i2s_tx_sclk,
     output logic      i2s_tx_sdout,
+    // Pmod I2S2 RX mclk/lrck/sclk are shared with TX in axis_i2s2
+    output logic      i2s_rx_mclk,
+    output logic      i2s_rx_lrck,
+    output logic      i2s_rx_sclk,
+    input logic       i2s_rx_sdin,
 
     // CPU/bridge-side AXI master port.
     input  cpu_axi_req_t  cpu_axi_req_i,
@@ -290,6 +295,8 @@ module cvwsoc_axi #(
   slv_resp_t cpu_bus_rsp;
   axis_req_t idma_axis_req;
   axis_rsp_t idma_axis_rsp;
+  axis_req_t idma_axis_rd_req;
+  axis_rsp_t idma_axis_rd_rsp;
 
   // PULP-facing peripheral interfaces.
   mst_req_t  vga_reg_req;
@@ -1442,24 +1449,9 @@ module cvwsoc_axi #(
     assign SD_CMD   = sd_cmd_en ? sd_cmd_o : 1'bz;
     assign SD_DAT   = sd_dat_en ? sd_dat_o : 4'bzzzz;
 
-   // SD CARD SIMULATION
-`ifdef SIM_AXI_SDHCI
-    sd_card i_sd_card (
-      .sd_clk_i ( sd_clk_o  ),
-      .cmd_en_i ( sd_cmd_en ),
-      .cmd_i    ( sd_cmd_o  ),
-      .cmd_o    ( sd_cmd_i  ),
-      .dat_en_i ( sd_dat_en ),
-      .dat_i    ( sd_dat_o  ),
-      .dat_o    ( sd_dat_i  )
-    );
-
-    assign sd_cd_ni = 1'b0;
-`else
     assign sd_cmd_i = SD_CMD;
     assign sd_dat_i = SD_DAT;
     assign sd_cd_ni = SD_CD_N;
-`endif
 
     axi_sdhci_wrap #(
       .AXI_ADDR_W ( ADDR_W   ),
@@ -1781,6 +1773,11 @@ module cvwsoc_axi #(
 
 
   if (P.XILINX_AXI_DMA_SUPPORTED) begin : gen_axicdma
+    assign idma_axis_rd_req = '0;
+    assign idma_axis_rd_rsp = '0;
+    assign i2s_rx_mclk = 1'b0;
+    assign i2s_rx_lrck = 1'b0;
+    assign i2s_rx_sclk = 1'b0;
     logic reg_awready, reg_wready, reg_arready;
     logic reg_bvalid, reg_rvalid, reg_rlast;
     logic [1:0] reg_bresp, reg_rresp;
@@ -1969,6 +1966,7 @@ module cvwsoc_axi #(
 
     localparam int unsigned AudioFifoDepth = 16384;
     logic [$clog2(AudioFifoDepth):0] audio_fifo_depth;
+    logic [$clog2(AudioFifoDepth):0] audio_rx_fifo_depth;
 
     idma_axi_axis_wrap #(
       .AxiAddrWidth      ( ADDR_W               ),
@@ -2008,6 +2006,8 @@ module cvwsoc_axi #(
       .axi_slv_rsp_o     ( idma_xbar_slv_rsp    ),
       .axis_write_req_o  ( idma_axis_req        ),
       .axis_write_rsp_i  ( idma_axis_rsp        ),
+      .axis_read_req_i   ( idma_axis_rd_req        ),
+      .axis_read_rsp_o   ( idma_axis_rd_rsp        ),
       .axis_fifo_occupancy_i ( audio_fifo_depth ),
       .axis_irq_o        ( dma_irq_raw )
     );
@@ -2016,11 +2016,19 @@ module cvwsoc_axi #(
       logic [31:0] audio_fifo_tdata;
       logic audio_fifo_tvalid;
       logic audio_fifo_tready;
+      logic [31:0] audio_fifo_rx_tdata;
+      logic audio_fifo_rx_tvalid;
+      logic audio_fifo_rx_tready;
       logic [31:0] audio_axis_tdata;
       logic audio_axis_tvalid;
       logic audio_axis_tready;
       logic audio_axis_tlast;
+      logic [31:0] audio_axis_rdata;
+      logic audio_axis_rvalid;
+      logic audio_axis_rready;
+      logic audio_axis_rlast;
 
+      // TX (write)
       axis_async_fifo_adapter #(
         .DEPTH          ( AudioFifoDepth ),
         .S_DATA_WIDTH   ( DATA_W   ),
@@ -2092,20 +2100,79 @@ module cvwsoc_axi #(
         .tx_axis_s_valid ( audio_axis_tvalid ),
         .tx_axis_s_ready ( audio_axis_tready ),
         .tx_axis_s_last  ( audio_axis_tlast  ),
-        .rx_axis_m_data  (                   ),
-        .rx_axis_m_valid (                   ),
-        .rx_axis_m_ready ( 1'b1              ),
-        .rx_axis_m_last  (                   ),
+        .rx_axis_m_data  ( audio_axis_rdata  ),
+        .rx_axis_m_valid ( audio_axis_rvalid ),
+        .rx_axis_m_ready ( audio_axis_rready ),
+        .rx_axis_m_last  ( audio_axis_rlast  ),
         .tx_mclk         ( i2s_tx_mclk       ),
         .tx_lrck         ( i2s_tx_lrck       ),
         .tx_sclk         ( i2s_tx_sclk       ),
         .tx_sdout        ( i2s_tx_sdout      ),
-        .rx_mclk         (                   ),
-        .rx_lrck         (                   ),
-        .rx_sclk         (                   ),
-        .rx_sdin         ( 1'b0              )
+        .rx_mclk         ( i2s_rx_mclk       ),
+        .rx_lrck         ( i2s_rx_lrck       ),
+        .rx_sclk         ( i2s_rx_sclk       ),
+        .rx_sdin         ( i2s_rx_sdin       )
       );
+
+      // RX (read)
+      axis_async_fifo_adapter #(
+        .DEPTH          ( AudioFifoDepth ),
+        .S_DATA_WIDTH   ( 32   ),
+        .S_KEEP_ENABLE  ( 1        ),
+        .S_KEEP_WIDTH   ( 4        ),
+        .M_DATA_WIDTH   ( DATA_W   ),
+        .M_KEEP_ENABLE  ( 1        ),
+        .M_KEEP_WIDTH   ( STRB_W   ),
+        .ID_ENABLE      ( 0        ),
+        .ID_WIDTH       ( SLV_ID_W ),
+        .DEST_ENABLE    ( 0        ),
+        .DEST_WIDTH     ( SLV_ID_W ),
+        .USER_ENABLE    ( 0        ),
+        .USER_WIDTH     ( 1        ),
+        .PAUSE_ENABLE   ( 0        )
+      ) axis_audio_fifo_i2 (
+        .s_clk                  ( audio_clk              ),
+        .s_rst                  ( ~audio_resetn          ),
+        .s_axis_tdata           ( audio_axis_rdata   ),
+        .s_axis_tkeep           ( 4'b1111  ),
+        .s_axis_tvalid          ( audio_axis_rvalid   ),
+        .s_axis_tready          ( audio_axis_rready   ),
+        .s_axis_tlast           ( audio_axis_rlast       ),
+
+        .m_clk                  ( BUSCLK                 ),
+        .m_rst                  ( ~BUSCORERSTn           ),
+        .m_axis_tdata           ( idma_axis_rd_req.t.data),
+        .m_axis_tkeep           ( idma_axis_rd_req.t.keep),
+        .m_axis_tvalid          ( idma_axis_rd_req.tvalid ),
+        .m_axis_tready          ( idma_axis_rd_rsp.tready ),
+        .m_axis_tlast           ( idma_axis_rd_req.t.last ),
+        .m_axis_tid             ( idma_axis_rd_req.t.id ),
+        .m_axis_tdest           ( idma_axis_rd_req.t.dest ),
+        .m_axis_tuser           ( idma_axis_rd_req.t.user ),
+        .s_pause_req            ( 1'b0                   ),
+        .s_pause_ack            (                        ),
+        .m_pause_req            ( 1'b0                   ),
+        .m_pause_ack            (                        ),
+        .s_status_depth         ( audio_rx_fifo_depth    ),
+        .s_status_depth_commit  (                        ),
+        .s_status_overflow      (                        ),
+        .s_status_bad_frame     (                        ),
+        .s_status_good_frame    (                        ),
+        .m_status_depth         (                        ),
+        .m_status_depth_commit  (                        ),
+        .m_status_overflow      (                        ),
+        .m_status_bad_frame     (                        ),
+        .m_status_good_frame    (                        )
+      );
+
+
+      assign idma_axis_rd_req.t.strb = idma_axis_rd_req.t.keep;
+
     end else begin : gen_no_idma_audio
+      assign idma_axis_rd_req = '0;
+      assign i2s_rx_mclk = 1'b0;
+      assign i2s_rx_lrck = 1'b0;
+      assign i2s_rx_sclk = 1'b0;
       assign idma_axis_rsp.tready = 1'b1;
       assign i2s_tx_mclk = 1'b0;
       assign i2s_tx_lrck = 1'b0;
@@ -2113,6 +2180,11 @@ module cvwsoc_axi #(
       assign i2s_tx_sdout = 1'b0;
     end
   end else begin : gen_no_dma
+    assign idma_axis_rd_req = '0;
+    assign idma_axis_rd_rsp = '0;
+    assign i2s_rx_mclk = 1'b0;
+    assign i2s_rx_lrck = 1'b0;
+    assign i2s_rx_sclk = 1'b0;
     assign i2s_tx_mclk = 1'b0;
     assign i2s_tx_lrck = 1'b0;
     assign i2s_tx_sclk = 1'b0;

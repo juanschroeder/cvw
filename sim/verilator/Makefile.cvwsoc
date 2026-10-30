@@ -405,6 +405,7 @@ IDMA_SOURCES := \
 
 
 I2S_SOURCES := $(if $(CVWSOC_SIM_I2S), \
+	$(WALLY)/addins/cvwsoc/audio/i2s_sine_source.sv \
 	$(WALLY)/addins/verilog-axis/rtl/axis_adapter.v \
 	$(WALLY)/addins/verilog-axis/rtl/axis_async_fifo.v \
 	$(WALLY)/addins/verilog-axis/rtl/axis_async_fifo_adapter.v \
@@ -461,6 +462,7 @@ WISHBONE_SOURCES := \
 # CVWSoC refactoring modules live with the other CVWSoC addins.  Keep these
 # explicit because CORE_SOURCES intentionally excludes the cvwsoc directory.
 CVWSOC_REFACTOR_SOURCES := \
+	$(WALLY)/addins/cvwsoc/cvwsoc_sim_models.sv \
 	$(WALLY)/addins/cvwsoc/cvwsoc_axi.sv \
 	$(WALLY)/addins/cvwsoc/cvwsoc_ahb.sv \
 	$(WALLY)/addins/cvwsoc/cvwsoc_cpu.sv \
@@ -719,6 +721,8 @@ FW_JUMP_BIN=$(CVWSOC_FW_JUMP_BIN) \
 KERNEL_SRC=$(CVWSOC_LINUX_KERNEL_SRC) \
 INITRD_SRC=$(CVWSOC_LINUX_INITRD_SRC) \
 DTS_SRC=$(CVWSOC_DTS_SRC) \
+DMA_ENABLED=$(if $(CVWSOC_SIM_DMA),1,0) \
+I2S_ENABLED=$(if $(CVWSOC_SIM_I2S),1,0) \
 BOOTARGS='$(CVWSOC_LINUX_BOOTARGS)' \
 QEMU_BIN=$(QEMU_BIN) \
 QEMU_RAM_MB=$(QEMU_RAM_MB) \
@@ -763,7 +767,7 @@ $(CVWSOC_UBOOT_STUB_BIN): $(CVWSOC_UBOOT_STUB_ELF)
 	$(RISCV_OBJCOPY_BIN) -O binary $< $@
 
 $(CVWSOC_VERILATOR_SDHCI_DTS): $(CVWSOC_DTS_DEPS) FORCE | $(CVWSOC_PRELOAD_DIR)
-	python3 $(WALLY)/linux/genCvwsocDts.py --source "$(CVWSOC_DTS_SRC)" --output "$@" --bootargs '$(CVWSOC_LINUX_BOOTARGS_SDHCI)' --mode sdhci
+	python3 $(WALLY)/linux/genCvwsocDts.py --source "$(CVWSOC_DTS_SRC)" --output "$@" --bootargs '$(CVWSOC_LINUX_BOOTARGS_SDHCI)' --mode sdhci $(if $(CVWSOC_SIM_DMA),--dma,) $(if $(CVWSOC_SIM_I2S),--i2s,)
 
 $(CVWSOC_VERILATOR_SDHCI_DTB): $(CVWSOC_VERILATOR_SDHCI_DTS) $(CVWSOC_DTS_DEPS)
 	$(DTC_BIN) -I dts -O dtb $< -o $@
@@ -847,6 +851,8 @@ CVWSOC_CFG_FW_JUMP_BIN = $(CVWSOC_FW_JUMP_BIN)
 CVWSOC_CFG_KERNEL_SRC = $(CVWSOC_LINUX_KERNEL_SRC)
 CVWSOC_CFG_INITRD_SRC = $(CVWSOC_LINUX_INITRD_SRC)
 CVWSOC_CFG_DTS_SRC = $(CVWSOC_DTS_SRC)
+CVWSOC_CFG_DMA_ENABLED = $(if $(CVWSOC_SIM_DMA),1,0)
+CVWSOC_CFG_I2S_ENABLED = $(if $(CVWSOC_SIM_I2S),1,0)
 CVWSOC_CFG_BOOTARGS = $(CVWSOC_LINUX_BOOTARGS)
 CVWSOC_CFG_QEMU_BIN = $(QEMU_BIN)
 CVWSOC_CFG_QEMU_RAM_MB = $(QEMU_RAM_MB)
@@ -871,7 +877,7 @@ CVWSOC_CFG_EXTERNAL_DTB = $(CVWSOC_VERILATOR_DTB)
 define WRITE_CVWSOC_CFG
 	@tmp="$@.tmp"; \
 	{ \
-		$(foreach key,$(CVWSOC_CFG_KEYS),printf '%s=%s\n' '$(key)' '$(CVWSOC_CFG_$(key))';) \
+		$(foreach key,$(CVWSOC_CFG_KEYS) DMA_ENABLED I2S_ENABLED,printf '%s=%s\n' '$(key)' '$(CVWSOC_CFG_$(key))';) \
 	} > "$$tmp"; \
 	if ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
 endef

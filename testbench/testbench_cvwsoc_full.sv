@@ -21,14 +21,14 @@ module testbench_cvwsoc_full #(
     cvw_t c;
 
     c = in;
-    c.XILINX_AXI_DMA_SUPPORTED = ENABLE_DMA;
+    c.XILINX_AXI_DMA_SUPPORTED = 1'b0;
     c.AXI_VGA_SUPPORTED = 1'b0;
     c.AXI_USB_SUPPORTED = 1'b0;
     c.AXI_ETH_SUPPORTED = 1'b0;
     c.AXI_SDHCI_SUPPORTED = ENABLE_SDHCI;
-    c.AXI_IDMA_SUPPORTED = 1'b0;
-    c.AXI_IDMA_REG64_SUPPORTED = 1'b0;
-    c.AXIS_IDMA_SUPPORTED = 1'b0;
+    c.AXI_IDMA_SUPPORTED = ENABLE_DMA;
+    c.AXI_IDMA_REG64_SUPPORTED = ENABLE_DMA;
+    c.AXIS_IDMA_SUPPORTED = ENABLE_DMA;
     c.AXIS_I2S_SUPPORTED = ENABLE_I2S;
     c.LITEDRAM_SUPPORTED = 1'b0;
     c.UBERDDR3_SUPPORTED = 1'b0;
@@ -108,6 +108,7 @@ module testbench_cvwsoc_full #(
   localparam realtime BUS_HALF_PERIOD_NS = BUS_CLK_PERIOD_NS / 2.0;
   logic clk = 1'b0;
   logic bus_clk = 1'b0;
+  logic audio_clk = 1'b0;
   logic reset_ext = 1'b1;
   logic bus_reset = 1'b1;
   logic reset;
@@ -138,6 +139,12 @@ module testbench_cvwsoc_full #(
   string trace_file_prefix="dump", trace_file_name="";
   always #(HALF_PERIOD_NS) clk = ~clk;
   always #(BUS_HALF_PERIOD_NS) bus_clk = ~bus_clk;
+
+  if (ENABLE_I2S) begin : gen_audio_clock
+    always #22.1443ns audio_clk = ~audio_clk;
+    initial assert (ENABLE_DMA)
+      else $fatal(1, "ENABLE_I2S requires ENABLE_DMA");
+  end
 
   assign reset = reset_ext | bus_reset;
   assign rst_n = ~reset;
@@ -330,6 +337,15 @@ module testbench_cvwsoc_full #(
   wire usb1dm;
   wire sdcmd;
   wire [3:0] sddat;
+  wire sdclk, sd_cd_n;
+  wire i2s_rx_sclk, i2s_rx_lrck, i2s_rx_sdin;
+
+  cvwsoc_sim_models #(.C(C)) sim_models (
+    .rst_ni(rst_n),
+    .SD_CLK(sdclk), .SD_CD_N(sd_cd_n), .SD_CMD(sdcmd), .SD_DAT(sddat),
+    .i2s_rx_sclk(i2s_rx_sclk), .i2s_rx_lrck(i2s_rx_lrck),
+    .i2s_rx_sdin(i2s_rx_sdin)
+  );
 
   // Focused trace aliases.  Runtime SIGUSR1 tracing records testbench scope
   // (depth 1), so keep the useful CPU and AHB-island state at this level.
@@ -544,7 +560,7 @@ module testbench_cvwsoc_full #(
     .clk167_i(bus_clk),
     .clk200_i(bus_clk),
     .clk48MHz_raw_i(bus_clk),
-    .audio_clk_i(bus_clk),
+    .audio_clk_i(audio_clk),
     .cpu_clk_locked_i(1'b1),
     .peripheral_reset_i(reset_ext),
     .peripheral_aresetn_i(~reset_ext),
@@ -569,14 +585,18 @@ module testbench_cvwsoc_full #(
     .usb0_dm(usb0dm),
     .usb1_dp(usb1dp),
     .usb1_dm(usb1dm),
-    .SD_CLK(),
-    .SD_CD_N(1'b1),
+    .SD_CLK(sdclk),
+    .SD_CD_N(sd_cd_n),
     .SD_CMD(sdcmd),
     .SD_DAT(sddat),
     .i2s_tx_mclk(),
     .i2s_tx_lrck(),
     .i2s_tx_sclk(),
     .i2s_tx_sdout(),
+    .i2s_rx_mclk(),
+    .i2s_rx_lrck(i2s_rx_lrck),
+    .i2s_rx_sclk(i2s_rx_sclk),
+    .i2s_rx_sdin(i2s_rx_sdin),
     .cpu_axi_req_i(cpu_req),
     .cpu_axi_resp_o(cpu_resp),
     .ddr_axi_req_o(ddr_req),

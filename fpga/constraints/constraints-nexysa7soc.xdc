@@ -406,11 +406,14 @@ set_property PULLDOWN true [get_ports {usb0_dp usb0_dm usb1_dp usb1_dm}]
 # 2:    JB2 => F16 => BCK (bit clock, 2.824 Mhz)
 # 3:    JB3 => G16 => DIN (data)
 # 4:    JB4 => H14 => MCLK (22.59 MHz) => SHOULD NOT be connected in Dollatek board
+# 9:    JB9 => G13 => SDIN (RX data)
 set_property -dict { PACKAGE_PIN D14 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_lrck}]
 set_property -dict { PACKAGE_PIN F16 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_sclk}]
 set_property -dict { PACKAGE_PIN G16 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_sdout}]
 # For the DAC tested this signal is not connected (derived), but it needed XMT=3.3V
 set_property -dict { PACKAGE_PIN H14 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_mclk}]
+# RX uses the shared TX clocks
+set_property -dict { PACKAGE_PIN G13 IOSTANDARD LVCMOS33 } [get_ports {i2s_rx_sdin}]
 
 
 # SDHCI

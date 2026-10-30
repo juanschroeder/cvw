@@ -617,9 +617,9 @@
 			compatible = "eth,idma-engine";
 			reg = <0x00 0x10082000 0x00 0x1000>;
 			//interrupt-parent = <0x0b>;
-            interrupt-parent = <&plic>;
+			interrupt-parent = <&plic>;
 			interrupts = <0x0d>;
-			eth,input-slots = <0x01>;
+			eth,input-slots = <0x02>;
 			eth,pending-slots = <0x08>;
 			#dma-cells = <0x01>;
 			dma-channels = <0x20>;
@@ -686,12 +686,12 @@
         };
 
 
-        i2s_tx: audio-dai {
+        i2s_audio: audio-dai {
                 compatible = "cvwsoc,i2s";
                 #sound-dai-cells = <0>;
 
-                dmas = <&idma 0>;
-                dma-names = "tx";
+                dmas = <&idma 0>, <&idma 1>;
+                dma-names = "tx", "rx";
 
                 status = "okay";
         };
