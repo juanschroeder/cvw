@@ -51,7 +51,8 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0) (
   inout wire [3:0] SD_DAT,
   output logic SD_RESET, 
   // I2S
-  output logic i2s_tx_mclk, i2s_tx_lrck, i2s_tx_sclk, i2s_tx_sdout
+  output logic i2s_tx_mclk, i2s_tx_lrck, i2s_tx_sclk, i2s_tx_sdout,
+  input logic i2s_rx_sdin
 );
 
   localparam int unsigned STRB_W = P.AHBW / 8;
@@ -317,6 +318,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0) (
     .usb0_dp, .usb0_dm, .usb1_dp, .usb1_dm,
     .SD_CLK, .SD_CD_N, .SD_CMD, .SD_DAT,
     .i2s_tx_mclk, .i2s_tx_lrck, .i2s_tx_sclk, .i2s_tx_sdout,
+    // RX uses the shared TX clocks.
+    .i2s_rx_mclk(), .i2s_rx_lrck(), .i2s_rx_sclk(),
+    .i2s_rx_sdin,
     .cpu_axi_req_i(bridge_axi_req),
     .cpu_axi_resp_o(bridge_axi_resp),
     .ddr_axi_req_o(ddr_axi_req),

@@ -175,17 +175,17 @@ cvwsoc_false_path_to "AXI VGA register reset synchronizer" \
 # ----------------------------------------------------------------
 # I2S IDMA audio FIFO
 
-set cvwsoc_audio_fifo_sync [cvwsoc_pins {.*axis_audio_fifo_i/fifo_inst/(wr|rd)_ptr_gray_sync[12]_reg_reg\[[0-9]+\]/D$}]
+set cvwsoc_audio_fifo_sync [cvwsoc_pins {.*axis_audio_fifo_i2?/fifo_inst/(wr|rd)_ptr_gray_sync[12]_reg_reg\[[0-9]+\]/D$}]
 if {[llength $cvwsoc_audio_fifo_sync]} {
   set_property ASYNC_REG TRUE [get_cells -of_objects $cvwsoc_audio_fifo_sync]
   cvwsoc_false_path_to "I2S audio FIFO Gray-pointer stage 1" \
-    {.*axis_audio_fifo_i/fifo_inst/(wr|rd)_ptr_gray_sync1_reg_reg\[[0-9]+\]/D$}
-  set cvwsoc_audio_reset_pins [cvwsoc_pins {.*axis_audio_fifo_i/fifo_inst/[sm]_rst_sync[123]_reg_reg/D$}]
+    {.*axis_audio_fifo_i2?/fifo_inst/(wr|rd)_ptr_gray_sync1_reg_reg\[[0-9]+\]/D$}
+  set cvwsoc_audio_reset_pins [cvwsoc_pins {.*axis_audio_fifo_i2?/fifo_inst/[sm]_rst_sync[123]_reg_reg/D$}]
   if {[llength $cvwsoc_audio_reset_pins]} {
     set_property ASYNC_REG TRUE [get_cells -of_objects $cvwsoc_audio_reset_pins]
   }
   cvwsoc_false_path_to "I2S audio FIFO reset stage 2" \
-    {.*axis_audio_fifo_i/fifo_inst/[sm]_rst_sync2_reg_reg/D$}
+    {.*axis_audio_fifo_i2?/fifo_inst/[sm]_rst_sync2_reg_reg/D$}
 } else {
   puts "INFO: CVWSoC timing: I2S audio FIFO not present; skipping"
 }

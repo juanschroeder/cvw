@@ -164,12 +164,11 @@ module hifive_cvw_cosim;
 //        always #2.5ns clk_200M = ~clk_200M;     // 200 MHz
 //    end
 //   endgenerate  
-  // Disabled for performance reasons
-//   generate
-//     if (P_COSIM.AXIS_I2S_SUPPORTED) begin : gen_audio_clock
-//         always #22.1443ns clk_audio = ~clk_audio; // 22.5792 MHz  
-//     end
-//   endgenerate  
+  generate
+    if (P_COSIM.AXIS_I2S_SUPPORTED) begin : gen_audio_clock
+      always #22.1443ns clk_audio = ~clk_audio; // approximately 22.5792 MHz
+    end
+  endgenerate
   // 48 MHz clk disabled: disabled for performance reasons
 //   generate
 //     if (P_COSIM.AXI_USB_SUPPORTED) begin : gen_usb_clock
@@ -288,6 +287,7 @@ module hifive_cvw_cosim;
   // LiteDRAM CSR is disabled in P_COSIM.
   assign ddr_csr_axi_resp = '0;
 
+  logic i2s_rx_sclk, i2s_rx_lrck, i2s_rx_sdin;
   wire usb0_dp, usb0_dm, usb1_dp, usb1_dm;
   wire sd_clk;
   // Match testbench_cvwsoc's sd_card wrapper: an SD bus has pull-ups on CMD
@@ -313,8 +313,7 @@ module hifive_cvw_cosim;
     //.clk48MHz_raw_i(clk_48M), 
     .clk48MHz_raw_i(clk), 
 
-    //.audio_clk_i(clk_audio), // disabled for performance reasons
-    .audio_clk_i(clk),
+    .audio_clk_i(clk_audio),
     .cpu_clk_locked_i(resetn),
     .peripheral_reset_i(~resetn),
     .peripheral_aresetn_i(resetn),
@@ -330,6 +329,8 @@ module hifive_cvw_cosim;
     .usb1_dp(usb1_dp), .usb1_dm(usb1_dm),
     .SD_CLK(sd_clk), .SD_CD_N(1'b0), .SD_CMD(sd_cmd), .SD_DAT(sd_dat),
     .i2s_tx_mclk(), .i2s_tx_lrck(), .i2s_tx_sclk(), .i2s_tx_sdout(),
+    .i2s_rx_mclk(), .i2s_rx_lrck(i2s_rx_lrck), .i2s_rx_sclk(i2s_rx_sclk),
+    .i2s_rx_sdin(i2s_rx_sdin),
 
     .cpu_axi_req_i(cpu_axi_req), .cpu_axi_resp_o(cpu_axi_resp),
     .ddr_axi_req_o(ddr_axi_req), .ddr_axi_resp_i(ddr_axi_resp),

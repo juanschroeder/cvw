@@ -44,7 +44,6 @@ COSIM_CONTEXT := +RENODE_RECEIVER_PORT={0} +RENODE_SENDER_PORT={1} +RENODE_ADDRE
 # Boot binaries
 COSIM_IMAGE_DEPLOY_ROOT ?= /yocto/fpga/kas-cvwsoc/build/tmp/deploy/images
 COSIM_MACHINE ?= cvwsoc-renode-u540
-COSIM_IMAGE_NAME ?= minimal-initramfs
 COSIM_IMAGE_DEPLOY_DIR ?= $(COSIM_IMAGE_DEPLOY_ROOT)/$(COSIM_MACHINE)
 COSIM_OPENSBI_FW_PAYLOAD ?= $(COSIM_IMAGE_DEPLOY_DIR)/fw_payload.elf
 COSIM_VMLINUX ?= $(COSIM_IMAGE_DEPLOY_DIR)/vmlinux
@@ -138,6 +137,7 @@ COSIM_RTL_SRCS := \
   $(ETH_SOURCES) \
   $(USB_SOURCES) \
   $(CVWSOC_AXI_SRC) \
+  $(WALLY)/addins/cvwsoc/audio/i2s_sine_source.sv \
   $(OTHER_CVWSOC_SOURCES) \
   $(COSIM_WRAPPER)
 

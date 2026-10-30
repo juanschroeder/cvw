@@ -108,6 +108,7 @@ module testbench_cvwsoc_full #(
   localparam realtime BUS_HALF_PERIOD_NS = BUS_CLK_PERIOD_NS / 2.0;
   logic clk = 1'b0;
   logic bus_clk = 1'b0;
+  logic audio_clk = 1'b0;
   logic reset_ext = 1'b1;
   logic bus_reset = 1'b1;
   logic reset;
@@ -138,6 +139,12 @@ module testbench_cvwsoc_full #(
   string trace_file_prefix="dump", trace_file_name="";
   always #(HALF_PERIOD_NS) clk = ~clk;
   always #(BUS_HALF_PERIOD_NS) bus_clk = ~bus_clk;
+
+  if (ENABLE_I2S) begin : gen_audio_clock
+    always #22.1443ns audio_clk = ~audio_clk;
+    initial assert (ENABLE_DMA)
+      else $fatal(1, "ENABLE_I2S requires ENABLE_DMA");
+  end
 
   assign reset = reset_ext | bus_reset;
   assign rst_n = ~reset;
@@ -544,7 +551,7 @@ module testbench_cvwsoc_full #(
     .clk167_i(bus_clk),
     .clk200_i(bus_clk),
     .clk48MHz_raw_i(bus_clk),
-    .audio_clk_i(bus_clk),
+    .audio_clk_i(audio_clk),
     .cpu_clk_locked_i(1'b1),
     .peripheral_reset_i(reset_ext),
     .peripheral_aresetn_i(~reset_ext),
@@ -577,6 +584,10 @@ module testbench_cvwsoc_full #(
     .i2s_tx_lrck(),
     .i2s_tx_sclk(),
     .i2s_tx_sdout(),
+    .i2s_rx_mclk(),
+    .i2s_rx_lrck(i2s_rx_lrck),
+    .i2s_rx_sclk(i2s_rx_sclk),
+    .i2s_rx_sdin(i2s_rx_sdin),
     .cpu_axi_req_i(cpu_req),
     .cpu_axi_resp_o(cpu_resp),
     .ddr_axi_req_o(ddr_req),

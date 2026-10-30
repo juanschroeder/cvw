@@ -9,6 +9,8 @@ parser.add_argument("--source", required=True, type=Path)
 parser.add_argument("--output", required=True, type=Path)
 parser.add_argument("--bootargs", required=True)
 parser.add_argument("--mode", choices=("initrd", "none", "jffs2", "sdhci"), default="initrd")
+parser.add_argument("--dma", action="store_true")
+parser.add_argument("--i2s", action="store_true")
 parser.add_argument("--initrd-start", type=lambda s: int(s, 0), default=0)
 parser.add_argument("--initrd-end", type=lambda s: int(s, 0), default=0)
 parser.add_argument("--rootfs", type=Path)
@@ -59,6 +61,16 @@ if args.mode == "jffs2":
 text += '};\n'
 if args.mode == "sdhci":
     text += '\n&{/soc/mmc@10090000} { status = "okay"; };\n'
+if args.dma:
+    text += '\n&idma { status = "okay"; };\n'
+if args.i2s:
+    text += '''
+&i2s_tx {
+    status = "okay";
+    dmas = <&idma 0>, <&idma 1>;
+    dma-names = "tx", "rx";
+};
+'''
 args.output.parent.mkdir(parents=True, exist_ok=True)
 if not args.output.exists() or args.output.read_text() != text:
     args.output.write_text(text)

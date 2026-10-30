@@ -130,6 +130,7 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     , output logic      i2s_tx_lrck
     , output logic      i2s_tx_sclk
     , output logic      i2s_tx_sdout
+    , input  logic      i2s_rx_sdin
    );
 
   localparam int unsigned STRB_W = P.AHBW/8;
@@ -493,6 +494,9 @@ module fpgaTop #(parameter logic RVVI_SYNTH_SUPPORTED = 0)
     .i2s_tx_lrck,
     .i2s_tx_sclk,
     .i2s_tx_sdout,
+    // RX uses the shared TX clocks.
+    .i2s_rx_mclk(), .i2s_rx_lrck(), .i2s_rx_sclk(),
+    .i2s_rx_sdin,
 
     .cpu_axi_req_i(bridge_axi_req),
     .cpu_axi_resp_o(bridge_axi_resp),

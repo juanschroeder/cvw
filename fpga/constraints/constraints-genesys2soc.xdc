@@ -404,8 +404,12 @@ set_property IODELAY_GROUP DDR3_IO [get_cells -hier -regexp {^u_cvwsoc_axi.gen_a
 # 2:    JA1_N => U28 => BCK (bit clock, 2.824 Mhz)
 # 3:    JA2_P => T26 => DIN (data)
 # 4:    JA2_N => T27 => MCLK (22.59 MHz) => SHOULD NOT be connected in Dollatek board
+# 9:    JA4_P => T20 => SDIN (RX data)
 set_property -dict { PACKAGE_PIN U27 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_lrck}]
 set_property -dict { PACKAGE_PIN U28 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_sclk}]
 set_property -dict { PACKAGE_PIN T26 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_sdout}]
 # For the DAC tested this signal is not connected (derived), but it needed XMT=3.3V
 set_property -dict { PACKAGE_PIN T27 IOSTANDARD LVCMOS33 } [get_ports {i2s_tx_mclk}]
+# RX mclk, lrck, sclk: shared with TX by default
+# RX data in: for testing sdout can be wired to sdin
+set_property -dict { PACKAGE_PIN T20 IOSTANDARD LVCMOS33 } [get_ports {i2s_rx_sdin}]
