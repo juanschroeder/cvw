@@ -1,0 +1,99 @@
+threads=2
+affinity=taskset -c 4,6
+dirty_state_begin
+M  sim/verilator/Makefile.cvwsoc
+AM sim/verilator/gen_cvwsoc_profile.sh
+AM sim/verilator/profiles/profile-cva6-rv32.vlt
+AM sim/verilator/profiles/profile-cva6-rv32.vlt.meta
+A  sim/verilator/profiles/profile-cva6-rv64.vlt
+A  sim/verilator/profiles/profile-cva6-rv64.vlt.meta
+AM sim/verilator/profiles/profile-cva6sp-rv32.vlt
+AM sim/verilator/profiles/profile-cva6sp-rv32.vlt.meta
+AM sim/verilator/profiles/profile-cva6sp-rv64.vlt
+AM sim/verilator/profiles/profile-cva6sp-rv64.vlt.meta
+A  sim/verilator/profiles/profile-vex-rv32.vlt
+A  sim/verilator/profiles/profile-vex-rv32.vlt.meta
+AM sim/verilator/profiles/profile-wally-rv32.vlt
+AM sim/verilator/profiles/profile-wally-rv32.vlt.meta
+?? .vscode-ctags
+?? 20260904_1211_kernel_stack_protector_corrupted.txt
+?? 20260904_1302_kernel_stack_protector_corrupted.txt
+?? 20260904_1340_kernel_stack_protector_corrupted.txt
+?? 20260904_1535_kernel_stack_protector_corrupted.txt
+?? 2060904_1545_simulation_build_log.txt
+?? addins/cvwsoc/axi_mmio_to_axilite32_v4.sv.DELETED
+?? addins/cvwsoc/cpu/VexRiscv_Linux.v.DELETED
+?? analyze.sh
+?? cosim/backup/
+?? cosim/renode/hifive-cvw-freedom-u540-upstream.dts.DELETE
+?? cosim/renode/hifive-unleashed--devicetree.dtb-s_10532-70cd4fc9f3b4df929eba6e6f22d02e6ce4c17bd1.dts.DELETE
+?? cosim_fast/
+?? cva6_dbg_capture_1_time_1698793670000.fst.tgz
+?? cva6_dbg_capture_1_time_515389310000.fst.tgz
+?? dump_capture_1_cycle_0.fst.gz
+?? dump_capture_1_cycle_83800001.fst.gz
+?? dump_capture_1_time_612738270000.fst.gz
+?? dump_capture_2_time_1224390875000.fst.tgz
+?? dump_capture_3_time_1249717990000.fst.gz
+?? fpga/generator/20260803_1125_wishbone_uart_hangiladata.ila.renamed
+?? fpga/generatorxc7/Makefile.DELETE2
+?? fpga/generatorxc7/Makefile_yosys_0.67_nextpnr_0.9.3_plus_latest_20260909
+?? fpga/generatorxc7/_tmp_yosys-abc-EJam5S/
+?? fpga/generatorxc7/_tmp_yosys-abc-F4D6k8/
+?? fpga/generatorxc7/_tmp_yosys-abc-IGxBoL/
+?? fpga/generatorxc7/_tmp_yosys-abc-bZiVgL/
+?? fpga/generatorxc7/_tmp_yosys-abc-raQIPa/
+?? fpga/generatorxc7/_tmp_yosys-abc-xA5nGT/
+?? fpga/generatorxc7/abc9-live.sh
+?? fpga/generatorxc7/build/
+?? fpga/generatorxc7/debug/manta/manta_capture_v3.py.DELETE2
+?? fpga/generatorxc7/nextpnr.log.gz
+?? fpga/generatorxc7/nextpnr2.log.gz
+?? fpga/generatorxc7/nextpnr2.log.tgz
+?? fpga/generatorxc7/nextpnr3.log.tgz
+?? fpga/generatorxc7_nix/
+?? kernel-crash-window.dasm
+?? ldsem_down_write.dasm
+?? ldsem_failure_window.dasm
+?? linux/devicetree/cvwsoc-board-genesys2.dtsi
+?? linux/devicetree/cvwsoc-board-nexysa7.dtsi
+?? linux/devicetree/cvwsoc-cpu-cva6.dtsi
+?? linux/devicetree/cvwsoc-cpu-cva6rv32.dtsi
+?? linux/devicetree/cvwsoc-cpu-vexrv32.dtsi
+?? linux/devicetree/cvwsoc-cpu-wally.dtsi
+?? linux/devicetree/cvwsoc-cpu-wallyrv32.dtsi
+?? linux/devicetree/cvwsoc-cva6-genesys2.dts
+?? linux/devicetree/cvwsoc-cva6-nexysa7.dts
+?? linux/devicetree/cvwsoc-cva6rv32-genesys2.dts
+?? linux/devicetree/cvwsoc-cva6rv32-nexysa7.dts
+?? linux/devicetree/cvwsoc-cva6sp-genesys2.dts
+?? linux/devicetree/cvwsoc-cva6sprv32-genesys2.dts
+?? linux/devicetree/cvwsoc-cva6sprv32-nexysa7.dts
+?? linux/devicetree/cvwsoc-pmods.dtsi
+?? linux/devicetree/cvwsoc-vexrv32-genesys2.dts
+?? linux/devicetree/cvwsoc-vexrv32-nexysa7.dts
+?? linux/devicetree/cvwsoc-wally-genesys2.dts
+?? linux/devicetree/cvwsoc-wally-nexysa7.dts
+?? linux/devicetree/cvwsoc-wallyrv32-genesys2.dts
+?? linux/devicetree/cvwsoc-wallyrv32-nexysa7.dts
+?? linux/devicetree/cvwsoc.dtsi
+?? research/
+?? sim/verilator/Makefile.cvwsoc.TEMPCOPY
+?? sim/verilator/PERF_EXPERIMENTS_LOCAL.md
+?? sim/verilator/gen_cvwsoc_profile_fixed.sh
+?? sim/verilator/perf-cleanup-backup-20261031.tar.gz
+?? sim/verilator/perf-exec-captures-backup-20261031.tar.gz
+?? sim/verilator/perf-local/
+?? sim/verilator/profile-results/
+?? sim/verilator/profiles/profile-wally-rv64.vlt
+?? sim/verilator/profiles/profile-wally-rv64.vlt.meta
+?? sim/verilator/test_cvwsoc_profile.sh
+?? trace_hart_0.dasm
+dirty_state_end
+target=cva6-rv32
+flags=CVA6=1 RV32=1
+git_commit=b098f63fee11dc66e7ac60d8396d766016fb13b1
+verilator=Verilator 5.049 devel rev v5.048-282-g4c5e10482
+generated=2026-11-01T19:52:45+01:00
+profile_sha256=3875403ed11c45b7a6c410b9db624d921b80102a9c64252dea14803957e9471f
+tracked_diff_sha256=552ed6b1e73b78b9f754a866bc459c2f4102aae6603d4834b9feeb377576d73b
