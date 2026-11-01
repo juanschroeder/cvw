@@ -10,6 +10,7 @@ SHELL := /bin/bash
 	qemu-linux-fast qemu-linux-fast-preload qemu-preload-linux-fast \
 	run-cvwsoc-linux run-cvwsoc-uboot runcmd-cvwsoc-linux runcmd-cvwsoc-uboot \
 	run-cvwsoc-linux-fast sim-fast sim-fast-uboot \
+	run-cvwsoc-linux-faster run-cvwsoc-uboot-faster \
 	FORCE
 .DELETE_ON_ERROR:
 
@@ -23,7 +24,7 @@ endif
 
 
 ifneq ($(filter sim-fast sim-fast-uboot,$(MAKECMDGOALS)),)
-PERF_CPU ?= 6
+PERF_CPU ?= 4
 ifeq ($(RV32),0)
 $(error sim-fast and sim-fast-uboot require RV32=1)
 endif
@@ -1193,6 +1194,35 @@ run-cvwsoc-linux-fast: EXT_RAM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_LINUX_FAS
 run-cvwsoc-linux-fast: UART_LOG := $(VERILATOR_DIR)/logs/testbench_cvwsoc_linux_fast_uart.out
 run-cvwsoc-linux-fast: $(CVWSOC_LINUX_FAST_RUN_DEPS) $(WORKDIR)/V$(TESTBENCH) $(CVWSOC_SD_IMAGE_DEPS)
 	$(RUN_VERILATOR)
+
+# Optimized Verilator simulation: 2 threads + Thread-PGO.
+# Seems to give improvements only for RV64 builds
+PERF_CPUS ?= 4,6
+PERF_JOBS ?= 6
+
+PERF_PGO_KEY_RAW = $(if $(CVWSOC_VEXRISCV),vex-rv32,\
+               $(if $(CVWSOC_CVA6SP),cva6sp-$(if $(CVWSOC_RV32),rv32,rv64),\
+               $(if $(CVWSOC_CVA6),cva6-$(if $(CVWSOC_RV32),rv32,rv64),\
+               wally-$(if $(CVWSOC_RV32),rv32,rv64))))
+PERF_PGO_KEY = $(strip $(PERF_PGO_KEY_RAW))
+PERF_PGO_FILE = $(VERILATOR_DIR)/profiles/profile-$(PERF_PGO_KEY).vlt
+PERF_PGO_WORKDIR ?= $(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc_pgo2
+
+run-cvwsoc-linux-faster run-cvwsoc-uboot-faster:
+	@if [ ! -s "$(PERF_PGO_FILE)" ]; then \
+		echo "Generating Thread-PGO profile: $(PERF_PGO_KEY)"; \
+		THREADS=2 CPUSETTINGS="taskset -c $(PERF_CPUS)" \
+		CROSS_COMPILE="$(CROSS_COMPILE)" \
+		"$(VERILATOR_DIR)/gen_cvwsoc_profile.sh" "$(PERF_PGO_KEY)" || exit $$?; \
+	fi
+	+$(MAKE) -j$(PERF_JOBS) -f $(VERILATOR_DIR)/Makefile.cvwsoc \
+		$(if $(filter run-cvwsoc-linux-faster,$@),run-cvwsoc-linux-fast,run-cvwsoc-uboot) \
+		CVA6=$(CVA6) CVA6SP=$(CVA6SP) VEX=$(VEX) RV32=$(RV32) CONFIG=$(CONFIG) \
+		CROSS_COMPILE="$(CROSS_COMPILE)" \
+		THREADS=2 CPUSETTINGS="taskset -c $(PERF_CPUS)" \
+		WORKDIR="$(PERF_PGO_WORKDIR)" \
+		PARAMS="--trace-depth $(TRACE_DEPTH) --threads 2 -Werror-PROFOUTOFDATE $(PERF_PGO_FILE)" 
+
 
 # Fastest road to Linux shell prompt
 sim-fast:

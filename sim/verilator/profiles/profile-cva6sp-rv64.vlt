@@ -1,0 +1,24 @@
+// Verilated model profile-guided optimization data dump file
+`verilator_config
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "hfcea4976" -cost 64'd7540327032
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "hbe971a28" -cost 64'd36770285462
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "hc34d1e99" -cost 64'd6730482828
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h562ecb85" -cost 64'd24985712226
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h4ff5443e" -cost 64'd20084076082
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h71f7cf2c" -cost 64'd8363083826
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h3da28218" -cost 64'd31614845632
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h5c427642" -cost 64'd9455521854
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h653dfcd5" -cost 64'd22418836498
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h9a98079d" -cost 64'd30919400822
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h17812fdb" -cost 64'd26164084494
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h69b0efa0" -cost 64'd31806395204
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "hcabb8114" -cost 64'd17397160144
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "hd203ce1a" -cost 64'd28879513838
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h5a458151" -cost 64'd26553609272
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h88678f6d" -cost 64'd15273641416
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h34b7d19c" -cost 64'd38819687340
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h3b86391f" -cost 64'd19900929922
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h1d8a67be" -cost 64'd26507797288
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h3b209e35" -cost 64'd26609137886
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h867b7f5e" -cost 64'd22077965022
+profile_data -model "Vtestbench_cvwsoc_full" -mtask "h3685d932" -cost 64'd30863922964
