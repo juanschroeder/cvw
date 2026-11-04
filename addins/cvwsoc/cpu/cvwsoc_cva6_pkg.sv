@@ -1057,15 +1057,34 @@ package cvwsoc_cva6_pkg;
     UncachedSize = cvwsoc_cfg.wally.UNCACHED_MEM_RANGE + 64'd1;
     CachedHiBase = UncachedBase + UncachedSize;
 
-    // Remark: Default CVA6 16-byte cache line is too small for our setup
-    // Map Wally's cache geometry to the equivalent CVA6 user configuration.
-    // Wally specifies capacity per way; CVA6 specifies total cache capacity.
-    ret.IcacheByteSize  = unsigned'(cvwsoc_cfg.wally.ICACHE_NUMWAYS * cvwsoc_cfg.wally.ICACHE_WAYSIZEINBYTES);
-    ret.IcacheSetAssoc  = unsigned'(cvwsoc_cfg.wally.ICACHE_NUMWAYS);
-    ret.IcacheLineWidth = unsigned'(cvwsoc_cfg.wally.ICACHE_LINELENINBITS);
-    ret.DcacheByteSize  = unsigned'(cvwsoc_cfg.wally.DCACHE_NUMWAYS * cvwsoc_cfg.wally.DCACHE_WAYSIZEINBYTES);
-    ret.DcacheSetAssoc  = unsigned'(cvwsoc_cfg.wally.DCACHE_NUMWAYS);
-    ret.DcacheLineWidth = unsigned'(cvwsoc_cfg.wally.DCACHE_LINELENINBITS);
+    // WORKAROUND: HPDcache + LLC 'deadlock' issue
+    // 64-byte lines need eight 64-bit AXI beats. The seven-beat
+    // flush FIFO cannot buffer a whole line. LLC backpressure exposed a
+    // circular flush/refill dependency.
+    // Using upstream Cheshire 16-byte L1 configuration for HPDcache
+    // when LLC is enabled.
+    if (cvwsoc_cfg.wally.LLC_SUPPORTED &&
+        ((ret.DCacheType == config_pkg::HPDCACHE_WT) ||
+         (ret.DCacheType == config_pkg::HPDCACHE_WB) ||
+         (ret.DCacheType == config_pkg::HPDCACHE_WT_WB))) begin
+      ret.IcacheByteSize  = 16384;
+      ret.IcacheSetAssoc  = 4;
+      ret.IcacheLineWidth = 128; // bits: 16 bytes
+      ret.DcacheByteSize  = 32768;
+      ret.DcacheSetAssoc  = 8;
+      ret.DcacheLineWidth = 128;
+      ret.WtDcacheWbufDepth = 7; // HPDcache flush entries and FIFO depth
+      ret.NrLoadBufEntries = 8;
+    end else begin
+      // Map Wally's cache geometry to the equivalent CVA6 user configuration.
+      // Wally specifies capacity per way; CVA6 specifies total cache capacity.
+      ret.IcacheByteSize  = unsigned'(cvwsoc_cfg.wally.ICACHE_NUMWAYS * cvwsoc_cfg.wally.ICACHE_WAYSIZEINBYTES);
+      ret.IcacheSetAssoc  = unsigned'(cvwsoc_cfg.wally.ICACHE_NUMWAYS);
+      ret.IcacheLineWidth = unsigned'(cvwsoc_cfg.wally.ICACHE_LINELENINBITS);
+      ret.DcacheByteSize  = unsigned'(cvwsoc_cfg.wally.DCACHE_NUMWAYS * cvwsoc_cfg.wally.DCACHE_WAYSIZEINBYTES);
+      ret.DcacheSetAssoc  = unsigned'(cvwsoc_cfg.wally.DCACHE_NUMWAYS);
+      ret.DcacheLineWidth = unsigned'(cvwsoc_cfg.wally.DCACHE_LINELENINBITS);
+    end
 
     // Bring the RV32 CVA6 ISA in line with what's used by the 
     // CVWSoC/CVA6 integration.  The upstream RV32 base package is

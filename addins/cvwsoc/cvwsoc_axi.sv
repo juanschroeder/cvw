@@ -317,14 +317,16 @@ module cvwsoc_axi #(
       assign wishbone_axi_req_o = '0;
     end
   endgenerate
+  // DDR initiators share one atomics adapter and one optional LLC.
+  mst_req_t ddr_mem_req;
+  mst_resp_t ddr_mem_resp;
   // ATOPS: This is added to support ATOPs. 
   if (!C.bus.AtopsEnabled) begin
     // DDR master port (external)
-    assign ddr_axi_req_o = mst_req[CB_M_DDR];
-    assign mst_resp[CB_M_DDR] = ddr_axi_resp_i;
+    assign ddr_mem_req = mst_req[CB_M_DDR];
+    assign mst_resp[CB_M_DDR] = ddr_mem_resp;
 
   end else begin
-
     axi_riscv_atomics_structs #(
         .AxiAddrWidth     ( ADDR_W       ),
         .AxiDataWidth     ( DATA_W       ),
@@ -352,13 +354,28 @@ module cvwsoc_axi #(
         .axi_slv_req_i    (mst_req[CB_M_DDR]),
         .axi_slv_rsp_o    (mst_resp[CB_M_DDR]),
 
-        .axi_mst_req_o    (ddr_axi_req_o),
-        .axi_mst_rsp_i    (ddr_axi_resp_i)
+        .axi_mst_req_o    (ddr_mem_req),
+        .axi_mst_rsp_i    (ddr_mem_resp)
     );
 
-    // FIXME: LLC might be instantiated here (in-between) later
+    // Atomics finish against the cached data before the LLC.
 
   end
+
+  if (P.LLC_SUPPORTED) begin : gen_llc
+    cvwsoc_llc #(
+      .P(P), .AxiIdWidth(MST_ID_W),
+      .axi_req_t(mst_req_t), .axi_resp_t(mst_resp_t)
+    ) i_llc (
+      .clk_i(BUSCLK), .rst_ni(BUSRSTn),
+      .slv_req_i(ddr_mem_req), .slv_resp_o(ddr_mem_resp),
+      .mst_req_o(ddr_axi_req_o), .mst_resp_i(ddr_axi_resp_i)
+    );
+  end else begin : gen_no_llc
+    assign ddr_axi_req_o = ddr_mem_req;
+    assign ddr_mem_resp = ddr_axi_resp_i;
+  end
+
   // DDR master control port
   generate
     if (P.LITEDRAM_SUPPORTED) begin : gen_dram_csr_connection
