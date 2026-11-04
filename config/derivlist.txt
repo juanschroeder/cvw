@@ -415,6 +415,26 @@ deriv fpgagenesys2vexsoc fpgagenesys2rv32w64soc
 CPU_VEXRISCV_ENABLED        1
 
 
+# CVA6 HPDcache + LLC has a known issue and internal config override with
+# Cheshire reference HPDcache config, not the one inherited here
+deriv fpgagenesys2llccva6soc fpgagenesys2cva6soc
+LLC_SUPPORTED               1
+
+deriv fpgagenesys2llccva6rv32w64soc fpgagenesys2cva6rv32w64soc
+LLC_SUPPORTED               1
+
+deriv fpgagenesys2llccva6spsoc fpgagenesys2cva6spsoc
+LLC_SUPPORTED               1
+
+deriv fpgagenesys2llcsoc fpgagenesys2soc
+LLC_SUPPORTED               1
+
+deriv fpgagenesys2llcrv32w64soc fpgagenesys2rv32w64soc
+LLC_SUPPORTED               1
+
+deriv fpgagenesys2llcvexsoc fpgagenesys2vexsoc
+LLC_SUPPORTED               1
+
 # temporary spitest configuration
 deriv spitest rv64gc
 UNCORE_RAM_RANGE    64'h0FFFFFFF

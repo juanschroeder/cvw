@@ -1,0 +1,31 @@
+diff --git a/src/axi_llc_top.sv b/src/axi_llc_top.sv
+index 443b5ed..0ab462b 100644
+--- a/src/axi_llc_top.sv
++++ b/src/axi_llc_top.sv
+@@ -153,6 +153,9 @@ module axi_llc_top #(
+   parameter int unsigned AxiIdWidth = 32'd0,
+   /// AXI4+ATOP address field width of both the slave and master port.
+   parameter int unsigned AxiAddrWidth = 32'd0,
++  /// Optional bypass range interval [start,end), one block.
++  parameter logic [AxiAddrWidth-1:0] BypassStartAddr = '0,
++  parameter logic [AxiAddrWidth-1:0] BypassEndAddr   = '0,
+   /// AXI4+ATOP data field width of both the slave and the master port.
+   parameter int unsigned AxiDataWidth = 32'd0,
+   /// AXI4+ATOP user field width of both the slave and the master port.
+@@ -481,8 +484,14 @@ module axi_llc_top #(
+     .rst_ni          ( rst_ni                   ),
+     .test_i          ( test_i                   ),
+     .slv_req_i       ( to_demux_req             ),
+-    .slv_aw_select_i ( slv_aw_bypass            ),
+-    .slv_ar_select_i ( slv_ar_bypass            ),
++    .slv_aw_select_i ( slv_aw_bypass ||
++        ((BypassStartAddr < BypassEndAddr) &&
++         (to_demux_req.aw.addr >= BypassStartAddr) &&
++         (to_demux_req.aw.addr < BypassEndAddr)) ),
++    .slv_ar_select_i ( slv_ar_bypass ||
++        ((BypassStartAddr < BypassEndAddr) &&
++         (to_demux_req.ar.addr >= BypassStartAddr) &&
++         (to_demux_req.ar.addr < BypassEndAddr)) ),
+     .slv_resp_o      ( to_demux_resp            ),
+     .mst_reqs_o      ({bypass_req,  to_llc_req }),
+     .mst_resps_i     ({bypass_resp, to_llc_resp})

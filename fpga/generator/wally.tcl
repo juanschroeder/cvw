@@ -158,7 +158,7 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
 if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"  || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
 
     # CVA6 config
-    # RV32 still on its non-HPDcache configuration.
+    # RV32 selects HPDCACHE_WT; RV64 and S+ select HPDCACHE_WB.
     set cva6_config_pkg "../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/cv64a6_imafdchsclic_sv39_hpdcache_wb_config_pkg.sv"
     if {[info exists ::env(boardconfig)] && [string match "*cva6sprv32w64soc" $::env(boardconfig)]} {
         set cva6_config_pkg "../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/cv32a6_splus_imac_sv32_config_hpdcache_wt_pkg.sv"
@@ -244,6 +244,8 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
     set pulp_srcs [glob -type f ../src/CopiedFiles_do_not_add_to_repo/pulp/*/src/*.sv]
     set pulp_srcs [lsearch -all -inline -not -glob $pulp_srcs "*/cvfpu/*"]
     add_files $pulp_srcs
+    # LLC stuff
+    add_files [glob -type f ../src/CopiedFiles_do_not_add_to_repo/pulp/axi_llc/src/*/*.sv]
 
     add_files ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/include/dummy_l15_pkg.sv
     add_files ../src/CopiedFiles_do_not_add_to_repo/pulp/cva6/core/cache_subsystem/cva6_hpdcache_wrapper.sv

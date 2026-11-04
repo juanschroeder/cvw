@@ -365,7 +365,9 @@ AXI_SOURCES := \
 	$(PULP_AXI_ROOT)/src/axi_to_detailed_mem.sv \
 	$(PULP_AXI_ROOT)/src/axi_id_serialize.sv \
 	$(PULP_AXI_ROOT)/src/axi_serializer.sv \
-	$(PULP_AXI_ROOT)/src/axi_isolate.sv
+	$(PULP_AXI_ROOT)/src/axi_isolate.sv \
+	$(PULP_AXI_ROOT)/src/axi_id_remap.sv \
+	$(PULP_AXI_ROOT)/src/axi_demux_id_counters.sv
 
 
 PULP_REGISTER_INTERFACE_SOURCES := \
@@ -562,7 +564,9 @@ CVA6_PULP_AXI_LLC_SOURCES := \
     $(COPIED_ROOT)/pulp/axi_llc/src/hit_miss_detect/axi_llc_miss_counters.sv \
     $(COPIED_ROOT)/pulp/axi_llc/src/hit_miss_detect/axi_llc_lock_box_bloom.sv \
     $(COPIED_ROOT)/pulp/axi_llc/src/hit_miss_detect/axi_llc_tag_pattern_gen.sv \
-    $(COPIED_ROOT)/pulp/axi_llc/src//hit_miss_detect/axi_llc_evict_box.sv
+    $(COPIED_ROOT)/pulp/axi_llc/src//hit_miss_detect/axi_llc_evict_box.sv \
+    $(WALLY)/addins/cvwsoc/cvwsoc_llc.sv
+
 
 CVA6_PULP_AXI_LLC_INCLUDE := \
     $(COPIED_ROOT)/pulp/axi_llc/include
@@ -607,9 +611,8 @@ CVWSOC_CVA6_CORE_SOURCES := \
     $(CVA6_TECH_CELLS_SOURCES) \
     $(CVA6_UNBENT_SOURCES) \
     $(CVA6_PULP_RV_ATOMICS_SOURCES) \
-    $(CVA6_OTHER_SOURCES)
-
-#    $(CVA6_PULP_AXI_LLC_SOURCES)
+    $(CVA6_OTHER_SOURCES) \
+    $(CVA6_PULP_AXI_LLC_SOURCES)
 #    $(CVA6_CLINT_SOURCES)
 
 

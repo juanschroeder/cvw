@@ -114,6 +114,11 @@ localparam logic SVADU_SUPPORTED   = 1;
 
 // LSU microarchitectural Features
 localparam logic BUS_SUPPORTED = 1;
+// Shared DDR LLC; capacity = ways * lines * blocks * AHBW / 8.
+localparam logic LLC_SUPPORTED = 0;
+localparam int LLC_NUM_WAYS = 4;
+localparam int LLC_NUM_LINES = 256;
+localparam int LLC_NUM_BLOCKS = 8;
 localparam logic DCACHE_SUPPORTED = 1;
 localparam logic ICACHE_SUPPORTED = 1;
 localparam logic VECTORED_INTERRUPTS_SUPPORTED = 1;

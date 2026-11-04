@@ -158,6 +158,13 @@ genesys2vexsoc: export MEM_WIDTH  :=  64
 genesys2vexsoc: FPGA_GENESYS2RV32SOC
 
 
+# Reuse parent board/clock recipes with a distinct LLC configuration.
+LLC_SOC_TARGETS := genesys2llccva6soc genesys2llccva6rv32w64soc genesys2llccva6spsoc \
+    genesys2llcsoc genesys2llcrv32w64soc genesys2llcvexsoc
+.PHONY: $(LLC_SOC_TARGETS)
+$(LLC_SOC_TARGETS):
+	$(MAKE) $(subst llc,,$@) boardconfig=$@
+
 CONFIG_VH = ../../config/deriv/fpga$(boardconfig)/config.vh
 
 # variables computed from config
@@ -364,6 +371,10 @@ PreProcessFilesSoC: PreProcessFiles
 	patchdir="$(PULP_DIR)/axi-vga"; \
 	find "$(PULP_DIR)" -type f -name "*vga*.patch" -print0 | sort -z | \
 	  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
+	# patch AXI LLC (disabled for now: bypass not really needed)
+	#patchdir="$(PULP_DIR)/axi_llc"; \
+	#find "$(PULP_DIR)" -type f -name "*llc*.patch" -print0 | sort -z | \
+	#  xargs -0 -r -I{} sh -c 'echo "Applying {} -> '"$$patchdir"'"; patch -d "'"$$patchdir"'" -p1 -N --forward < "{}"'
 	# patch USB OHCI
 	patchdir="../src/CopiedFiles_do_not_add_to_repo"; \
 	find ../../addins/cvwsoc/usb -type f -name "*.patch" -print0 | sort -z | \
@@ -379,6 +390,8 @@ PreProcessFilesSoC: PreProcessFiles
 	cp -r ../../addins/wb2axip ../src/CopiedFiles_do_not_add_to_repo/
 	# copy uberddr3
 	cp -r ../../addins/uberddr3 ../src/CopiedFiles_do_not_add_to_repo/
+	# UberDDR3 patch: correct read-address advancement in the copied dependency only; fail on rejects.
+	patch --batch --fuzz=0 -d ../src/CopiedFiles_do_not_add_to_repo/uberddr3 -p1 --forward < ../../addins/cvwsoc/patches/0001-uberddr3-read-address-acceptance.patch
 	# copy sdhci
 	cp -r ../../addins/sdhci ../src/CopiedFiles_do_not_add_to_repo/
 	patch -d ../src/CopiedFiles_do_not_add_to_repo/sdhci -p1 -N --forward < ../../addins/cvwsoc/sdhci/zsbl_cheshire_stub.patch

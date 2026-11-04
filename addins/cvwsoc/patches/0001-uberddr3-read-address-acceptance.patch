@@ -1,0 +1,11 @@
+--- a/rtl/axi/aximrd2wbsp.v
++++ b/rtl/axi/aximrd2wbsp.v
+@@ -287,7 +287,7 @@
+ 	always @(posedge S_AXI_ACLK)
+ 	if (accept_request)
+ 		axi_addr <= skid_araddr;
+-	else if (!i_wb_stall)
++	else if (o_wb_stb && !i_wb_stall)
+ 		axi_addr <= next_addr;
+ 	// }}}
+ 
