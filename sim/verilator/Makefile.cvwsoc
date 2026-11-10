@@ -386,6 +386,7 @@ IDMA_GENERATED_SOURCES := \
 	$(IDMA_ROOT)/target/rtl/idma_reg64_1d_top.sv
 
 IDMA_SOURCES := \
+	$(WALLY)/addins/cvwsoc/dma/cvwsoc_idma_pkg.sv \
 	$(IDMA_ROOT)/src/idma_pkg.sv \
 	$(wildcard $(IDMA_ROOT)/src/backend/*.sv) \
 	$(IDMA_GENERATED_SOURCES) \

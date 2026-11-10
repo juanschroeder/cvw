@@ -1,5 +1,5 @@
 ///////////////////////////////////////////
-// idma_wrap.sv
+// idma_axi_axis_wrap.sv
 //
 // Combined AXI descriptor/register frontends and shared AXI backend for PULP iDMA.
 ///////////////////////////////////////////
@@ -10,6 +10,9 @@ module idma_axi_axis_wrap #(
   parameter int unsigned AxiIdWidth        = 4,
   parameter int unsigned AxiUserWidth      = 1,
   parameter int unsigned AxiSlvIdWidth     = 5,
+  parameter logic [AxiAddrWidth-1:0] Desc64BaseAddr = '0,
+  parameter logic [AxiAddrWidth-1:0] Desc64AxisBaseAddr = '0,
+  parameter logic [AxiAddrWidth-1:0] Reg64BaseAddr = '0,
   parameter int unsigned AxiMaxReadTxns    = 4,
   parameter int unsigned AxiMaxWriteTxns   = 4,
   parameter int unsigned NumAxInFlight     = 4,
@@ -67,6 +70,25 @@ module idma_axi_axis_wrap #(
   //localparam int unsigned DmaNSpeculation = 0; // Break the combinational loop
   localparam int unsigned DmaBufferDepth = 8;
   localparam int unsigned DmaBackendDepth = NumAxInFlight + DmaBufferDepth;
+
+  localparam logic [AxiAddrWidth-1:0] DescAddrOffset =
+      AxiAddrWidth'(idma_desc64_reg_pkg::IDMA_DESC64_DESC_ADDR_OFFSET);
+  localparam logic [AxiAddrWidth-1:0] DescSubmitAddr = Desc64BaseAddr + DescAddrOffset;
+  localparam logic [AxiAddrWidth-1:0] AxisSubmitAddr = Desc64AxisBaseAddr + DescAddrOffset;
+  localparam logic [15:0] DescIrqStatusOffset =
+      Desc64BaseAddr[15:0] + cvwsoc_idma_pkg::IDMA_IRQ_STATUS_OFFSET;
+  localparam logic [15:0] DescIrqEnableOffset =
+      Desc64BaseAddr[15:0] + cvwsoc_idma_pkg::IDMA_IRQ_ENABLE_OFFSET;
+  localparam logic [15:0] AxisIrqStatusOffset =
+      Desc64AxisBaseAddr[15:0] + cvwsoc_idma_pkg::IDMA_IRQ_STATUS_OFFSET;
+  localparam logic [15:0] AxisIrqEnableOffset =
+      Desc64AxisBaseAddr[15:0] + cvwsoc_idma_pkg::IDMA_IRQ_ENABLE_OFFSET;
+  localparam logic [15:0] AxisCyclicCtrlOffset =
+      Desc64AxisBaseAddr[15:0] + cvwsoc_idma_pkg::IDMA_AXIS_CYCLIC_CTRL_OFFSET;
+  localparam logic [15:0] IrqStatusOffset =
+      Reg64BaseAddr[15:0] + cvwsoc_idma_pkg::IDMA_IRQ_STATUS_OFFSET;
+  localparam logic [15:0] IrqEnableOffset =
+      Reg64BaseAddr[15:0] + cvwsoc_idma_pkg::IDMA_IRQ_ENABLE_OFFSET;
 
   typedef logic [AxiDataWidth-1:0]      data_t;
   typedef logic [AxiDataWidth/8-1:0]    strb_t;
@@ -194,6 +216,7 @@ module idma_axi_axis_wrap #(
     desc_regs_rsp_t desc_reg_rsp;
     desc_regs_req_t desc_idma_reg_req;
     desc_regs_rsp_t desc_idma_reg_rsp;
+
     (* mark_debug = "true" *) idma_req_t desc_req;
     (* mark_debug = "true" *) idma_rsp_t desc_rsp;
     (* mark_debug = "true" *) logic desc_req_valid;
@@ -262,8 +285,6 @@ module idma_axi_axis_wrap #(
       .irq_o             ( desc64_irq_pulse )
     );
 
-    localparam logic [15:0] DescIrqStatusOffset = 16'h100;
-    localparam logic [15:0] DescIrqEnableOffset = 16'h104;
     localparam int unsigned DescRegBytes = AxiDataWidth / 8;
     localparam int unsigned DescRegByteOffWidth = $clog2(DescRegBytes);
     localparam logic [15:0] DescRegByteMask = 16'(DescRegBytes - 1);
@@ -283,6 +304,7 @@ module idma_axi_axis_wrap #(
         desc_reg_req.valid && ((desc_reg_req.addr[15:0] & ~DescRegByteMask) == DescIrqStatusWordOffset);
     assign desc64_sel_irq_enable_word =
         desc_reg_req.valid && ((desc_reg_req.addr[15:0] & ~DescRegByteMask) == DescIrqEnableWordOffset);
+    // FIXME: Aligned 64-bit regbus addresses here hide +4, and IRQ-enable bit read does not work in either frontends.
     assign desc64_sel_irq_status_lane =
         desc_reg_req.write ? desc_reg_req.wstrb[DescIrqStatusLane] :
                              (desc_reg_req.addr[DescRegByteOffWidth-1:0] == DescRegByteOffWidth'(DescIrqStatusLane));
@@ -308,8 +330,23 @@ module idma_axi_axis_wrap #(
     always_comb begin
       desc_idma_reg_req = desc_reg_req;
       desc_idma_reg_req.valid = desc_reg_req.valid && !desc64_sel_irq;
-
       desc_reg_rsp = desc_idma_reg_rsp;
+
+      // Handle descriptor submit 64-bit writes
+      if (desc_reg_req.valid && desc_reg_req.write && desc_reg_req.addr == DescSubmitAddr) begin
+        // The descriptor FIFO handshake expects a local register address.
+        desc_idma_reg_req.addr = DescAddrOffset;
+        if (desc_reg_req.wstrb == 8'h0f) begin
+          desc_idma_reg_req.wdata[63:32] = '0;
+        end else if (desc_reg_req.wstrb == 8'hf0 && desc_reg_req.wdata[63:32] == 32'h0) begin
+          // On the 32-bit address bus, a zero upper-half write submits nothing.
+          desc_idma_reg_req.valid = 1'b0;
+          desc_reg_rsp.ready = 1'b1;
+          desc_reg_rsp.error = 1'b0;
+          desc_reg_rsp.rdata = '0;
+        end
+      end
+
       if (desc64_sel_irq) begin
         desc_reg_rsp.ready = 1'b1;
         desc_reg_rsp.error = 1'b0;
@@ -380,6 +417,7 @@ module idma_axi_axis_wrap #(
     desc_regs_rsp_t axis_desc_reg_rsp;
     desc_regs_req_t axis_desc_idma_reg_req;
     desc_regs_rsp_t axis_desc_idma_reg_rsp;
+
     //idma_req_t axis_desc_req_raw;
     idma_req_t axis_desc_req;
     idma_rsp_t axis_desc_rsp;
@@ -467,10 +505,6 @@ module idma_axi_axis_wrap #(
       .irq_o             ( desc64_axis_irq_pulse )
     );
 
-    // Regbus retains the low bits of the 0x1008_2000 system address.
-    localparam logic [15:0] AxisIrqStatusOffset = 16'h2100;
-    localparam logic [15:0] AxisIrqEnableOffset = 16'h2104;
-    localparam logic [15:0] AxisCyclicCtrlOffset = 16'h2110;
     localparam int unsigned AxisRegBytes = AxiDataWidth / 8;
     localparam int unsigned AxisRegByteOffWidth = $clog2(AxisRegBytes);
     localparam logic [15:0] AxisRegByteMask = 16'(AxisRegBytes - 1);
@@ -538,10 +572,24 @@ module idma_axi_axis_wrap #(
 
     always_comb begin
       axis_desc_idma_reg_req = axis_desc_reg_req;
-      axis_desc_idma_reg_req.valid = axis_desc_reg_req.valid &&
-                                     !axis_sel_irq && !axis_sel_cyclic_ctrl;
-
+      axis_desc_idma_reg_req.valid = axis_desc_reg_req.valid && !axis_sel_irq && !axis_sel_cyclic_ctrl;
       axis_desc_reg_rsp = axis_desc_idma_reg_rsp;
+
+      // Handle descriptor submit 64-bit writes
+      if (axis_desc_reg_req.valid && axis_desc_reg_req.write && axis_desc_reg_req.addr == AxisSubmitAddr) begin
+        // The descriptor FIFO handshake expects a local register address.
+        axis_desc_idma_reg_req.addr = DescAddrOffset;
+        if (axis_desc_reg_req.wstrb == 8'h0f) begin
+          axis_desc_idma_reg_req.wdata[63:32] = '0;
+        end else if (axis_desc_reg_req.wstrb == 8'hf0 && axis_desc_reg_req.wdata[63:32] == 32'h0) begin
+          // On the 32-bit address bus, a zero upper-half write submits nothing.
+          axis_desc_idma_reg_req.valid = 1'b0;
+          axis_desc_reg_rsp.ready = 1'b1;
+          axis_desc_reg_rsp.error = 1'b0;
+          axis_desc_reg_rsp.rdata = '0;
+        end
+      end
+
       if (axis_sel_irq || axis_sel_cyclic_ctrl) begin
         axis_desc_reg_rsp.ready = 1'b1;
         axis_desc_reg_rsp.error = 1'b0;
@@ -817,9 +865,6 @@ module idma_axi_axis_wrap #(
     assign reg64_rsp_valid = idma_rsp_fe_valid[Reg64Idx];
     assign idma_rsp_fe_ready[Reg64Idx] = reg64_rsp_ready;
 
-    localparam logic [15:0] IrqStatusOffset = 16'h100;
-    localparam logic [15:0] IrqEnableOffset = 16'h104;
-    localparam logic [15:0] EngineStatusOffset = 16'h100;
 
     assign sel_irq_status = dma_reg_req.valid && (dma_reg_req.addr[15:0] == IrqStatusOffset);
     assign sel_irq_enable = dma_reg_req.valid && (dma_reg_req.addr[15:0] == IrqEnableOffset);
