@@ -1,0 +1,5 @@
+/upstream/
+/generated/
+__pycache__/
+
+/README-long.md

@@ -125,6 +125,9 @@ if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc"
     add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/cvwsoc_cpu_vexriscv.sv
     add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/cvwsoc_cpu_cva6.sv
     add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/VexriscvCVWSoC.v
+    add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/cvwsoc_cpu_vexiiriscv.sv
+    add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/VexiiRiscv.v
+    add_files  ../src/CopiedFiles_do_not_add_to_repo/cvwsoc/cpu/VexiiRiscv64.v
 
     set uberddr3_supported [expr {[info exists ::env(UBERDDR3_SUPPORTED)] ? $::env(UBERDDR3_SUPPORTED) : "0"}]
     set litedram_supported  [expr {[info exists ::env(LITEDRAM_SUPPORTED)]  ? $::env(LITEDRAM_SUPPORTED)  : "0"}]

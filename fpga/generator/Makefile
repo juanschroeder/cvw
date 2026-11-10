@@ -42,7 +42,7 @@ nexysa7: FPGA_NEXYSA7
 boardconfig = $(board)
 litedramconfig = genesys2soc
 
-NEXYSA7_SOC_TARGETS := nexysa7soc nexysa7rv32w64soc nexysa7cva6rv32w64soc nexysa7cva6sprv32w64soc nexysa7vexsoc
+NEXYSA7_SOC_TARGETS := nexysa7soc nexysa7rv32w64soc nexysa7cva6rv32w64soc nexysa7cva6sprv32w64soc nexysa7vexsoc nexysa7vexiirv32soc nexysa7vexiisoc
 $(NEXYSA7_SOC_TARGETS): export XILINX_PART := xc7a100tcsg324-1
 $(NEXYSA7_SOC_TARGETS): export XILINX_BOARD := digilentinc.com:nexys-a7-100t:part0:1.0
 $(NEXYSA7_SOC_TARGETS): export MAXSDCCLOCK := 10000000
@@ -50,7 +50,7 @@ $(NEXYSA7_SOC_TARGETS): export MIG_ADDR_WIDTH := 27
 $(NEXYSA7_SOC_TARGETS): export BUSCLOCK := 60000000
 
 GENESYS2_SOC_TARGETS := genesys2soc genesys2cva6soc genesys2cva6spsoc genesys2cva6sprv32w64soc genesys2cva6rv32w64soc \
-	genesys2socxlnx genesys2rv32soc genesys2rv32minsoc genesys2rv32w64soc genesys2vexsoc
+	genesys2socxlnx genesys2rv32soc genesys2rv32minsoc genesys2rv32w64soc genesys2vexsoc genesys2vexiirv32soc genesys2vexiisoc
 $(GENESYS2_SOC_TARGETS): export XILINX_PART := xc7k325tffg900-2
 $(GENESYS2_SOC_TARGETS): export XILINX_BOARD := digilentinc.com:genesys2:part0:1.1
 $(GENESYS2_SOC_TARGETS): export MAXSDCCLOCK := 5000000
@@ -93,6 +93,19 @@ nexysa7vexsoc: FPGA_NEXYSA7RV32W64SOC
 nexysa7vexsoc: export litedramconfig := nexysa7soc
 nexysa7vexsoc: export MEM_WIDTH  :=  64
 
+nexysa7vexiirv32soc: export board := nexysa7rv32w64soc
+nexysa7vexiirv32soc: export boardconfig := nexysa7vexiirv32soc
+nexysa7vexiirv32soc: export SYSTEMCLOCK := 25000000
+nexysa7vexiirv32soc: export MEM_WIDTH := 64
+nexysa7vexiirv32soc: export litedramconfig := nexysa7soc
+nexysa7vexiirv32soc: FPGA_NEXYSA7RV32W64SOC
+
+nexysa7vexiisoc: export board := nexysa7soc
+nexysa7vexiisoc: export boardconfig := nexysa7vexiisoc
+nexysa7vexiisoc: export SYSTEMCLOCK := 20000000
+nexysa7vexiisoc: export MEM_WIDTH := 64
+nexysa7vexiisoc: export litedramconfig := nexysa7soc
+nexysa7vexiisoc: FPGA_NEXYSA7SOC
 
 genesys2soc: export board := genesys2soc
 genesys2soc: export SYSTEMCLOCK := 40000000
@@ -157,6 +170,19 @@ genesys2vexsoc: export SYSTEMCLOCK := 110000000
 genesys2vexsoc: export MEM_WIDTH  :=  64
 genesys2vexsoc: FPGA_GENESYS2RV32SOC
 
+# VEXII
+genesys2vexiirv32soc: export board := genesys2rv32w64soc
+genesys2vexiirv32soc: export boardconfig := genesys2vexiirv32soc
+genesys2vexiirv32soc: export SYSTEMCLOCK := 110000000
+genesys2vexiirv32soc: export MEM_WIDTH := 64
+genesys2vexiirv32soc: FPGA_GENESYS2RV32SOC
+
+genesys2vexiisoc: export board := genesys2soc
+genesys2vexiisoc: export boardconfig := genesys2vexiisoc
+genesys2vexiisoc: export SYSTEMCLOCK := 70000000
+genesys2vexiisoc: export MEM_WIDTH := 64
+genesys2vexiisoc: FPGA_GENESYS2SOC
+
 
 # Reuse parent board/clock recipes with a distinct LLC configuration.
 LLC_SOC_TARGETS := genesys2llccva6soc genesys2llccva6rv32w64soc genesys2llccva6spsoc \
@@ -181,8 +207,8 @@ _UBERDDR3_SUPPORTED = $(shell grep 'UBERDDR3_SUPPORTED' $(CONFIG_VH) | sed -n 's
 
 SOC_CONFIG_TARGETS := \
 	genesys2soc genesys2cva6soc genesys2cva6spsoc genesys2cva6sprv32w64soc genesys2cva6rv32w64soc \
-	genesys2rv32soc genesys2rv32minsoc genesys2rv32w64soc genesys2vexsoc \
-	nexysa7soc nexysa7rv32w64soc nexysa7cva6rv32w64soc nexysa7cva6sprv32w64soc nexysa7vexsoc
+	genesys2rv32soc genesys2rv32minsoc genesys2rv32w64soc genesys2vexsoc genesys2vexiirv32soc genesys2vexiisoc \
+	nexysa7soc nexysa7rv32w64soc nexysa7cva6rv32w64soc nexysa7cva6sprv32w64soc nexysa7vexsoc nexysa7vexiirv32soc nexysa7vexiisoc
 $(SOC_CONFIG_TARGETS): export LITEDRAM_SUPPORTED = $(_LITEDRAM_SUPPORTED)
 $(SOC_CONFIG_TARGETS): export SDHCI_SUPPORTED = $(_SDHCI_SUPPORTED)
 $(SOC_CONFIG_TARGETS): export UBERDDR3_SUPPORTED = $(_UBERDDR3_SUPPORTED)

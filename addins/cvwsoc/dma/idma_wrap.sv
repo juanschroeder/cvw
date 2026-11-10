@@ -256,8 +256,8 @@ module idma_wrap #(
       .irq_o             ( desc64_irq_pulse )
     );
 
-    localparam logic [15:0] DescIrqStatusOffset = 16'h100;
-    localparam logic [15:0] DescIrqEnableOffset = 16'h104;
+    localparam logic [15:0] DescIrqStatusOffset = cvwsoc_idma_pkg::IDMA_IRQ_STATUS_OFFSET;
+    localparam logic [15:0] DescIrqEnableOffset = cvwsoc_idma_pkg::IDMA_IRQ_ENABLE_OFFSET;
     localparam int unsigned DescRegBytes = AxiDataWidth / 8;
     localparam int unsigned DescRegByteOffWidth = $clog2(DescRegBytes);
     localparam logic [15:0] DescRegByteMask = 16'(DescRegBytes - 1);
@@ -607,8 +607,8 @@ module idma_wrap #(
     assign reg64_rsp_valid = idma_rsp_fe_valid[Reg64Idx];
     assign idma_rsp_fe_ready[Reg64Idx] = reg64_rsp_ready;
 
-    localparam logic [15:0] IrqStatusOffset = 16'h100;
-    localparam logic [15:0] IrqEnableOffset = 16'h104;
+    localparam logic [15:0] IrqStatusOffset = cvwsoc_idma_pkg::IDMA_IRQ_STATUS_OFFSET;
+    localparam logic [15:0] IrqEnableOffset = cvwsoc_idma_pkg::IDMA_IRQ_ENABLE_OFFSET;
 
     assign sel_irq_status = dma_reg_req.valid && (dma_reg_req.addr[15:0] == IrqStatusOffset);
     assign sel_irq_enable = dma_reg_req.valid && (dma_reg_req.addr[15:0] == IrqEnableOffset);
