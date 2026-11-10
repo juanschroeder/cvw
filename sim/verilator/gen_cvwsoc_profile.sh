@@ -22,6 +22,8 @@ usage() {
     echo "  cva6sp-rv32"
     echo "  cva6sp-rv64"
     echo "  vex-rv32"
+    echo "  vexii-rv32"
+    echo "  vexii-rv64"
     exit 1
 }
 
@@ -47,6 +49,12 @@ case "$TARGET" in
         ;;
     cva6sp-rv64)
         FLAGS=(CVA6SP=1 RV32=0)
+        ;;
+    vexii-rv64)
+        FLAGS=(VEXII=1 RV32=0)
+        ;;
+    vexii-rv32)
+        FLAGS=(VEXII=1 RV32=1)
         ;;
     vex-rv32)
         FLAGS=(VEX=1 RV32=1)

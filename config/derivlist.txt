@@ -415,6 +415,20 @@ deriv fpgagenesys2vexsoc fpgagenesys2rv32w64soc
 CPU_VEXRISCV_ENABLED        1
 
 
+# ** VEXIIRISCV BUILDS **
+deriv fpgagenesys2vexiirv32soc fpgagenesys2rv32w64soc
+CPU_VEXIIRISCV_ENABLED       1
+
+deriv fpganexysa7vexiirv32soc fpganexysa7rv32w64soc
+CPU_VEXIIRISCV_ENABLED       1
+
+deriv fpgagenesys2vexiisoc fpgagenesys2soc
+CPU_VEXIIRISCV_ENABLED       1
+
+deriv fpganexysa7vexiisoc fpganexysa7soc
+CPU_VEXIIRISCV_ENABLED       1
+
+# ** LLC BUILDS **
 # CVA6 HPDcache + LLC has a known issue and internal config override with
 # Cheshire reference HPDcache config, not the one inherited here
 deriv fpgagenesys2llccva6soc fpgagenesys2cva6soc

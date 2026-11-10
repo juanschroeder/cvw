@@ -308,6 +308,80 @@ module cvwsoc_cpu import cvw::*; #(
     assign FlushM      = vexriscv.core.memory_arbitration_isFlushed;
     assign TrapM       = vexriscv.core.CsrPlugin_exceptionPortCtrl_exceptionValids_memory;
 
+  end else if (C.cpu == CVWSOC_CPU_VEXIIRISCV) begin : gen_cpu_vexiiriscv
+
+    cvwsoc_cpu_vexiiriscv #(
+        .P(P),
+        .AXI_ID_W(AXI_ID_W),
+        .axi_req_t(cpu_int_req_t),
+        .axi_resp_t(cpu_int_resp_t)
+    ) vexiiriscv (
+        .clk_i,
+        .rst_ni,
+        .mtime_i(mtime),
+        .mtip_i(mtip),
+        .msip_i(msip),
+        .meip_i(meip_synced_i),
+        .seip_i(seip_synced_i),
+        .external_stall_i(external_stall_synced_i),
+        .axi_req_o(wally_req),
+        .axi_resp_i(wally_resp) );
+
+    // VexiiRiscv is AXI-native and has no AHB debug port.
+    assign HSELEXT = 1'b0;
+    assign HADDR = '0;
+    assign HWDATA = '0;
+    assign HWSTRB = '0;
+    assign HWRITE = 1'b0;
+    assign HSIZE = '0;
+    assign HBURST = '0;
+    assign HPROT = '0;
+    assign HTRANS = '0;
+    assign HREADY = 1'b0;
+    assign HRDATAEXT = '0;
+    assign HREADYEXT = 1'b0;
+    assign HRESPEXT = 1'b0;
+    assign hsel_axi = 1'b0;
+    assign hready_axi = 1'b0;
+
+    // Preserve the existing testbench-visible AXI probes.
+    assign m_axi_awid = vexiiriscv.cpu_axi_req.aw.id;
+    assign m_axi_awaddr = vexiiriscv.cpu_axi_req.aw.addr;
+    assign m_axi_awlen = vexiiriscv.cpu_axi_req.aw.len;
+    assign m_axi_awsize = vexiiriscv.cpu_axi_req.aw.size;
+    assign m_axi_awburst = vexiiriscv.cpu_axi_req.aw.burst;
+    assign m_axi_awvalid = vexiiriscv.cpu_axi_req.aw_valid;
+    assign m_axi_awready = vexiiriscv.cpu_axi_resp.aw_ready;
+    assign m_axi_wdata = vexiiriscv.cpu_axi_req.w.data;
+    assign m_axi_wstrb = vexiiriscv.cpu_axi_req.w.strb;
+    assign m_axi_wlast = vexiiriscv.cpu_axi_req.w.last;
+    assign m_axi_wvalid = vexiiriscv.cpu_axi_req.w_valid;
+    assign m_axi_wready = vexiiriscv.cpu_axi_resp.w_ready;
+    assign m_axi_bid = vexiiriscv.cpu_axi_resp.b.id;
+    assign m_axi_bresp = vexiiriscv.cpu_axi_resp.b.resp;
+    assign m_axi_bvalid = vexiiriscv.cpu_axi_resp.b_valid;
+    assign m_axi_bready = vexiiriscv.cpu_axi_req.b_ready;
+    assign m_axi_arid = vexiiriscv.cpu_axi_req.ar.id;
+    assign m_axi_araddr = vexiiriscv.cpu_axi_req.ar.addr;
+    assign m_axi_arlen = vexiiriscv.cpu_axi_req.ar.len;
+    assign m_axi_arsize = vexiiriscv.cpu_axi_req.ar.size;
+    assign m_axi_arburst = vexiiriscv.cpu_axi_req.ar.burst;
+    assign m_axi_arvalid = vexiiriscv.cpu_axi_req.ar_valid;
+    assign m_axi_arready = vexiiriscv.cpu_axi_resp.ar_ready;
+    assign m_axi_rid = vexiiriscv.cpu_axi_resp.r.id;
+    assign m_axi_rdata = vexiiriscv.cpu_axi_resp.r.data;
+    assign m_axi_rresp = vexiiriscv.cpu_axi_resp.r.resp;
+    assign m_axi_rlast = vexiiriscv.cpu_axi_resp.r.last;
+    assign m_axi_rvalid = vexiiriscv.cpu_axi_resp.r_valid;
+    assign m_axi_rready = vexiiriscv.cpu_axi_req.r_ready;
+
+    assign PCM = vexiiriscv.dbg_pc;
+    assign InstrM = vexiiriscv.dbg_instr;
+    assign InstrValidM = vexiiriscv.dbg_retire;
+    assign StallM = 1'b0;
+    assign FlushM = 1'b0;
+    assign TrapM = vexiiriscv.dbg_trap;
+
   end else begin : gen_cpu_cva6
 
     // CVA6-only probes.

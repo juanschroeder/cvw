@@ -1,0 +1,91 @@
+diff --git a/src/main/scala/vexiiriscv/execute/lsu/LsuPlugin.scala b/src/main/scala/vexiiriscv/execute/lsu/LsuPlugin.scala
+index 29e4100d..d35ceaca 100644
+--- a/src/main/scala/vexiiriscv/execute/lsu/LsuPlugin.scala
++++ b/src/main/scala/vexiiriscv/execute/lsu/LsuPlugin.scala
+@@ -634,7 +634,8 @@ class LsuPlugin(var layer : LaneLayer,
+       nodes = List.tabulate(ctrlAt+1)(elp.execute(_).down),
+       physicalAddress = stpk.TRANSLATED,
+       forceCheck = _(FROM_ACCESS),
+-      read = e => e(l1.LOAD) || (e(l1.EXECUTE) && e(l1.GUEST)),
++      // Zicbom permits read-only memory, but denied accesses use store-class faults.
++      read = e => e(l1.LOAD) || withCbm.mux(e(l1.CLEAN) || e(l1.INVALID), False) || (e(l1.EXECUTE) && e(l1.GUEST)),
+       write = _(l1.STORE),
+       execute = e => e(l1.EXECUTE) && e(l1.GUEST),
+       portSpec = pmpPortParameter,
+@@ -859,7 +860,7 @@ class LsuPlugin(var layer : LaneLayer,
+           lsuTrap := True
+           trapPort.exception := True
+           trapPort.code := CSR.MCAUSE_ENUM.LOAD_ACCESS_FAULT
+-          trapPort.code(1) setWhen (l1.STORE)
++          trapPort.code(1) setWhen (l1.STORE || withCbm.mux(l1.CLEAN || l1.INVALID, False))
+         }
+ 
+         val l1Failed = l1.SEL && (!onPma.CACHED_RSP.fault && (l1.HAZARD || (l1.MISS || l1.MISS_UNIQUE) && (l1.LOAD || l1.EXECUTE || l1.STORE)))
+@@ -869,7 +870,7 @@ class LsuPlugin(var layer : LaneLayer,
+           trapPort.code := TrapReason.REDO
+         }
+ 
+-        if(withL1Cmb) when(l1.CBM_REDO) {
++        if(withL1Cmb) when(l1.CBM_REDO && !accessFault) {
+           lsuTrap := True
+           trapPort.exception := False
+           trapPort.code := TrapReason.REDO
+@@ -880,21 +881,21 @@ class LsuPlugin(var layer : LaneLayer,
+           lsuTrap := True
+           trapPort.exception := True
+           trapPort.code := CSR.MCAUSE_ENUM.LOAD_ACCESS_FAULT
+-          trapPort.code(1) setWhen (l1.STORE)
++          trapPort.code(1) setWhen (l1.STORE || withCbm.mux(l1.CLEAN || l1.INVALID, False))
+         }
+ 
+         when(MMU_PAGE_FAULT) {
+           lsuTrap := True
+           trapPort.exception := True
+           trapPort.code := CSR.MCAUSE_ENUM.LOAD_PAGE_FAULT
+-          trapPort.code(1) setWhen (l1.STORE)
++          trapPort.code(1) setWhen (l1.STORE || withCbm.mux(l1.CLEAN || l1.INVALID, False))
+         }
+ 
+         when(tpk.ACCESS_FAULT) {
+           lsuTrap := True
+           trapPort.exception := True
+           trapPort.code := CSR.MCAUSE_ENUM.LOAD_ACCESS_FAULT
+-          trapPort.code(1) setWhen (l1.STORE)
++          trapPort.code(1) setWhen (l1.STORE || withCbm.mux(l1.CLEAN || l1.INVALID, False))
+         }
+ 
+         trapPort.arg(0, 2 bits) := (B(l1.EXECUTE) ## B(l1.STORE)).mux(
+@@ -919,7 +920,7 @@ class LsuPlugin(var layer : LaneLayer,
+           lsuTrap := True
+           trapPort.exception := True
+           trapPort.code := CSR.MCAUSE_ENUM.LOAD_ACCESS_FAULT
+-          trapPort.code(1) setWhen (STORE)
++          trapPort.code(1) setWhen (STORE || withCbm.mux(l1.CLEAN || l1.INVALID, False))
+           trapPort.code(3) setWhen (!tpk.BYPASS_TRANSLATION)
+           if (Global.TVAL_WIDTH.get > Global.VIRTUAL_WIDTH.get) {
+             // Only flip when the mark when it is in translation
+@@ -931,14 +932,14 @@ class LsuPlugin(var layer : LaneLayer,
+             lsuTrap := True
+             trapPort.exception := True
+             trapPort.code := CSR.MCAUSE_ENUM.LOAD_GUEST_PAGE_FAULT
+-            trapPort.code(1) setWhen (l1.STORE)
++            trapPort.code(1) setWhen (l1.STORE || withCbm.mux(l1.CLEAN || l1.INVALID, False))
+           }
+ 
+           when(stpk.ACCESS_FAULT) {
+             lsuTrap := True
+             trapPort.exception := True
+             trapPort.code := CSR.MCAUSE_ENUM.LOAD_ACCESS_FAULT
+-            trapPort.code(1) setWhen (l1.STORE)
++            trapPort.code(1) setWhen (l1.STORE || withCbm.mux(l1.CLEAN || l1.INVALID, False))
+           }
+ 
+           when(stpk.REFILL) {
+@@ -1062,6 +1063,7 @@ class LsuPlugin(var layer : LaneLayer,
+       abords += l1.FLUSH_HAZARD
+       abords += !l1.FLUSH && onPma.CACHED_RSP.fault
+       abords += FROM_LSU && (!isValid || isCancel || FENCE)
++      if(withCbm) abords += FROM_LSU && (l1.CLEAN || l1.INVALID) && pmpPort.ACCESS_FAULT
+       abords += mmuNeeded && (MMU_FAILURE || GUEST_MMU_FAILURE)
+       abords += FROM_LSU && (fenceTrap.doIt || fenceTrap.doItReg)
+       if(withStoreBuffer && withL1Cmb) abords += (l1.CLEAN || l1.INVALID) && wb.hit

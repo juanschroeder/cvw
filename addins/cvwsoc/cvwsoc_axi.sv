@@ -1987,6 +1987,9 @@ module cvwsoc_axi #(
 
     idma_axi_axis_wrap #(
       .AxiAddrWidth      ( ADDR_W               ),
+      .Desc64BaseAddr   ( ADDR_W'(P.AXI_IDMA_BASE) ),
+      .Desc64AxisBaseAddr ( ADDR_W'(P.AXIS_IDMA_BASE) ),
+      .Reg64BaseAddr    ( ADDR_W'(P.AXI_IDMA_REG64_BASE) ),
       .AxiDataWidth      ( DATA_W               ),
       .AxiIdWidth        ( SLV_ID_W             ),
       .AxiUserWidth      ( 1                    ),

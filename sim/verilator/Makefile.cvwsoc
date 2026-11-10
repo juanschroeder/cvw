@@ -62,6 +62,13 @@ ifneq ($(CVWSOC_CVA6),)
 $(error VEX=1 and CVA6/CVA6SP=1 select different CPU implementations)
 endif
 endif
+VEXII ?= 0
+CVWSOC_VEXIIRISCV := $(filter $(BOOL_TRUE),$(VEXII))
+ifneq ($(CVWSOC_VEXIIRISCV),)
+ifneq ($(strip $(CVWSOC_CVA6) $(CVWSOC_VEXRISCV)),)
+$(error VEXII=1 cannot be combined with VEX/CVA6/CVA6SP)
+endif
+endif
 SDHCI ?= 0
 DMA ?= 0
 I2S ?= 0
@@ -77,17 +84,17 @@ CVWSOC_LINUX_PRELOAD_SKIP_INITRD := $(if $(CVWSOC_SIM_SDHCI),1,0)
 WALLYCONF ?= fpgagenesys2soc
 # No CPU override
 ifneq ($(filter sim-fast sim-fast-uboot,$(MAKECMDGOALS)),)
-ifeq ($(strip $(CVWSOC_CVA6) $(CVWSOC_VEXRISCV)),)
+ifeq ($(strip $(CVWSOC_CVA6) $(CVWSOC_VEXRISCV) $(CVWSOC_VEXIIRISCV)),)
 CONFIG ?= fpgagenesys2rv32w64soc
 endif
 endif
 # CVA6 and Vexriscv require the RV32 system's 64-bit AXI data bus.
-CONFIG ?= $(if $(CVWSOC_VEXRISCV),fpgagenesys2vexsoc,$(if $(CVWSOC_CVA6SP),$(if $(CVWSOC_RV32),fpgagenesys2cva6sprv32w64soc,fpgagenesys2cva6spsoc),$(if $(CVWSOC_CVA6),$(if $(CVWSOC_RV32),fpgagenesys2cva6rv32w64soc,fpgagenesys2cva6soc),$(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF)))))
+CONFIG ?= $(if $(CVWSOC_VEXIIRISCV),$(if $(CVWSOC_RV32),fpgagenesys2vexiirv32soc,fpgagenesys2vexiisoc),$(if $(CVWSOC_VEXRISCV),fpgagenesys2vexsoc,$(if $(CVWSOC_CVA6SP),$(if $(CVWSOC_RV32),fpgagenesys2cva6sprv32w64soc,fpgagenesys2cva6spsoc),$(if $(CVWSOC_CVA6),$(if $(CVWSOC_RV32),fpgagenesys2cva6rv32w64soc,fpgagenesys2cva6soc),$(if $(CVWSOC_RV32),fpgagenesys2rv32soc,$(WALLYCONF))))))
 CVWSOC_SIM_AXI_RAM ?= $(if $(CVWSOC_SIM_SDHCI),0,1)
 CVWSOC_CONFIG_RV32 := $(findstring rv32,$(CONFIG))
 CVWSOC_CONFIG_RV32W64 := $(findstring rv32w64,$(CONFIG))
 CVWSOC_XLEN ?= $(if $(or $(CVWSOC_RV32),$(CVWSOC_CONFIG_RV32),$(CVWSOC_VEXRISCV)),32,64)
-CVWSOC_BUS_WIDTH ?= $(if $(or $(CVWSOC_CONFIG_RV32W64),$(CVWSOC_VEXRISCV)),64,$(CVWSOC_XLEN))
+CVWSOC_BUS_WIDTH ?= $(if $(or $(CVWSOC_CONFIG_RV32W64),$(CVWSOC_VEXRISCV),$(CVWSOC_VEXIIRISCV)),64,$(CVWSOC_XLEN))
 CVWSOC_WORD_BYTES ?= $(if $(filter 32,$(CVWSOC_BUS_WIDTH)),4,8)
 VERILATOR ?= verilator
 VERILATOR_DIR := $(WALLY)/sim/verilator
@@ -101,13 +108,13 @@ SDHCI_ROOT := $(COPIED_ROOT)/sdhci/hw
 IDMA_ROOT := $(PULP_ROOT)/idma
 
 CVWSOC_DEPLOY_ROOT ?= /yocto/fpga/kas-cvwsoc/build/tmp/deploy/images
-CVWSOC_MACHINE ?= $(if $(CVWSOC_VEXRISCV),vexriscvsoc-virt32,$(if $(CVWSOC_CVA6),$(if $(filter 32,$(CVWSOC_XLEN)),cva6soc-virt32,cva6soc-virt),$(if $(filter 32,$(CVWSOC_XLEN)),cvwsoc-virt32,cvwsoc-virt)))
+CVWSOC_MACHINE ?= $(if $(CVWSOC_VEXIIRISCV),$(if $(filter 64,$(CVWSOC_XLEN)),vexiiriscvsoc-virt,vexiiriscvsoc-virt32),$(if $(CVWSOC_VEXRISCV),vexriscvsoc-virt32,$(if $(CVWSOC_CVA6),$(if $(filter 32,$(CVWSOC_XLEN)),cva6soc-virt32,cva6soc-virt),$(if $(filter 32,$(CVWSOC_XLEN)),cvwsoc-virt32,cvwsoc-virt))))
 CVWSOC_DEPLOY_DIR ?= $(CVWSOC_DEPLOY_ROOT)/$(CVWSOC_MACHINE)
 CVWSOC_PRELOAD_ROOT ?= $(VERILATOR_DIR)/preload/cvwsoc
 # The VexRiscv core is RV32 on a 64-bit memory bus.
 CVWSOC_PRELOAD_MACHINE ?= $(if $(CVWSOC_VEXRISCV),vexriscv-virt32,$(CVWSOC_MACHINE))
 CVWSOC_PRELOAD_DIR ?= $(CVWSOC_PRELOAD_ROOT)/$(CVWSOC_PRELOAD_MACHINE)
-CVWSOC_DTS_CPU ?= $(if $(CVWSOC_VEXRISCV),vexrv32,$(if $(CVWSOC_CVA6),$(if $(filter 32,$(CVWSOC_XLEN)),cva6rv32,cva6),$(if $(filter 32,$(CVWSOC_XLEN)),wallyrv32,wally)))
+CVWSOC_DTS_CPU ?= $(if $(CVWSOC_VEXIIRISCV),$(if $(filter 64,$(CVWSOC_XLEN)),vexii,vexiirv32),$(if $(CVWSOC_VEXRISCV),vexrv32,$(if $(CVWSOC_CVA6),$(if $(filter 32,$(CVWSOC_XLEN)),cva6rv32,cva6),$(if $(filter 32,$(CVWSOC_XLEN)),wallyrv32,wally))))
 CVWSOC_DTS_NAME ?= cvwsoc-$(CVWSOC_DTS_CPU)-virt
 CVWSOC_DTS_DIR ?= $(CVWSOC_DEPLOY_DIR)/dts
 CVWSOC_DTS_SRC ?= $(CVWSOC_DTS_DIR)/$(CVWSOC_DTS_NAME).dts
@@ -681,7 +688,9 @@ SOURCES := \
 	$(WISHBONE_SOURCES) \
 	$(PERIPH_SOURCES) \
 	$(CVWSOC_CVA6_SOURCES) \
-	$(CVWSOC_VEXRISCV_SOURCES)
+	$(CVWSOC_VEXRISCV_SOURCES) \
+	$(if $(CVWSOC_VEXIIRISCV),$(WALLY)/addins/cvwsoc/cpu/$(if $(filter 64,$(CVWSOC_XLEN)),VexiiRiscv64,VexiiRiscv).v,) \
+	$(WALLY)/addins/cvwsoc/cpu/cvwsoc_cpu_vexiiriscv.sv
 
 DEPENDENCIES := \
 	$(lastword $(MAKEFILE_LIST)) \
@@ -1204,10 +1213,10 @@ run-cvwsoc-linux-fast: $(CVWSOC_LINUX_FAST_RUN_DEPS) $(WORKDIR)/V$(TESTBENCH) $(
 PERF_CPUS ?= 4,6
 PERF_JOBS ?= 6
 
-PERF_PGO_KEY_RAW = $(if $(CVWSOC_VEXRISCV),vex-rv32,\
+PERF_PGO_KEY_RAW = $(if $(CVWSOC_VEXIIRISCV),vexii-rv$(CVWSOC_XLEN),$(if $(CVWSOC_VEXRISCV),vex-rv32,\
                $(if $(CVWSOC_CVA6SP),cva6sp-$(if $(CVWSOC_RV32),rv32,rv64),\
                $(if $(CVWSOC_CVA6),cva6-$(if $(CVWSOC_RV32),rv32,rv64),\
-               wally-$(if $(CVWSOC_RV32),rv32,rv64))))
+               wally-$(if $(CVWSOC_RV32),rv32,rv64)))))
 PERF_PGO_KEY = $(strip $(PERF_PGO_KEY_RAW))
 PERF_PGO_FILE = $(VERILATOR_DIR)/profiles/profile-$(PERF_PGO_KEY).vlt
 PERF_PGO_WORKDIR ?= $(VERILATOR_DIR)/wkdir/$(CONFIG)_cvwsoc_pgo2
@@ -1221,7 +1230,7 @@ run-cvwsoc-linux-faster run-cvwsoc-uboot-faster:
 	fi
 	+$(MAKE) -j$(PERF_JOBS) -f $(VERILATOR_DIR)/Makefile.cvwsoc \
 		$(if $(filter run-cvwsoc-linux-faster,$@),run-cvwsoc-linux-fast,run-cvwsoc-uboot) \
-		CVA6=$(CVA6) CVA6SP=$(CVA6SP) VEX=$(VEX) RV32=$(RV32) CONFIG=$(CONFIG) \
+		CVA6=$(CVA6) CVA6SP=$(CVA6SP) VEX=$(VEX) VEXII=$(VEXII) RV32=$(RV32) CONFIG=$(CONFIG) \
 		CROSS_COMPILE="$(CROSS_COMPILE)" \
 		THREADS=2 CPUSETTINGS="taskset -c $(PERF_CPUS)" \
 		WORKDIR="$(PERF_PGO_WORKDIR)" \
@@ -1230,11 +1239,11 @@ run-cvwsoc-linux-faster run-cvwsoc-uboot-faster:
 
 # Fastest road to Linux shell prompt
 sim-fast:
-	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) RV32=$(RV32) CVA6=$(CVA6) CVA6SP=$(CVA6SP) VEX=$(VEX) CONFIG=$(CONFIG) CPUSETTINGS="$(CPUSETTINGS)" run-cvwsoc-linux-fast -j$$(nproc)
+	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) RV32=$(RV32) CVA6=$(CVA6) CVA6SP=$(CVA6SP) VEX=$(VEX) VEXII=$(VEXII) CONFIG=$(CONFIG) CPUSETTINGS="$(CPUSETTINGS)" run-cvwsoc-linux-fast -j$$(nproc)
 
 # Fastest road to U-Boot prompt
 sim-fast-uboot:
-	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) RV32=$(RV32) CVA6=$(CVA6) CVA6SP=$(CVA6SP) VEX=$(VEX) CONFIG=$(CONFIG) CPUSETTINGS="$(CPUSETTINGS)" run-cvwsoc-uboot -j$$(nproc)
+	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) RV32=$(RV32) CVA6=$(CVA6) CVA6SP=$(CVA6SP) VEX=$(VEX) VEXII=$(VEXII) CONFIG=$(CONFIG) CPUSETTINGS="$(CPUSETTINGS)" run-cvwsoc-uboot -j$$(nproc)
 
 run-cvwsoc-uboot: BOOTROM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_UBOOT_BOOTROM_BIN))
 run-cvwsoc-uboot: EXT_RAM_BIN := $(if $(CVWSOC_BOOTROM),,$(CVWSOC_UBOOT_RUN_EXT_RAM_BIN))

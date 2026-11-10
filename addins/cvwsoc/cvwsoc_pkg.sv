@@ -14,14 +14,16 @@ package cvwsoc_pkg;
     CVWSOC_MEM_UBERDDR3
   } cvwsoc_mem_type_t;
 
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     CVWSOC_CPU_WALLY,
     CVWSOC_CPU_CVA6,
     CVWSOC_CPU_VEXRISCV,
-    CVWSOC_CPU_CVA6SP
+    CVWSOC_CPU_CVA6SP,
+    CVWSOC_CPU_VEXIIRISCV
   } cvwsoc_cpu_type_t;
 
   function automatic cvwsoc_cpu_type_t cvwsoc_cpu_from_wally_cfg(input cvw_t cfg);
+    if (cfg.CPU_VEXIIRISCV_ENABLED) return CVWSOC_CPU_VEXIIRISCV;
     if (cfg.CPU_VEXRISCV_ENABLED) return CVWSOC_CPU_VEXRISCV;
     if (cfg.CPU_CVA6SP_ENABLED)   return CVWSOC_CPU_CVA6SP;
     if (cfg.CPU_CVA6_ENABLED)     return CVWSOC_CPU_CVA6;
