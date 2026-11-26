@@ -148,6 +148,7 @@ typedef struct packed {
   logic         XILINX_AXI_BR_SUPPORTED;
   logic         XILINX_CDC_SUPPORTED;
   logic         XILINX_XBAR_SUPPORTED;
+  logic         AXI_XBAR_OPT_SUPPORTED;
   logic         UBERDDR3_SUPPORTED;
   logic         LITEDRAM_SUPPORTED;
   logic [63:0]  LITEDRAM_BASE;

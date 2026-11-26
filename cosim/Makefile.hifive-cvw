@@ -136,6 +136,7 @@ COSIM_RTL_SRCS := \
   $(XILINX_SIM_PRIMITIVES) \
   $(ETH_SOURCES) \
   $(USB_SOURCES) \
+  $(WALLY)/addins/cvwsoc/cvwsoc_axi_xbar.sv \
   $(CVWSOC_AXI_SRC) \
   $(WALLY)/addins/cvwsoc/audio/i2s_sine_source.sv \
   $(OTHER_CVWSOC_SOURCES) \

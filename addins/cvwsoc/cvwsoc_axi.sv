@@ -804,10 +804,8 @@ module cvwsoc_axi #(
         .m_axi_bid(cb_m_axi_bid),
         .m_axi_rid(cb_m_axi_rid)
     );
-  end else begin
-    // -----------------------------------------------------------------------------
-    // PULP axi_xbar drop-in replacement for Xilinx packed-vector AXI crossbar
-    // -----------------------------------------------------------------------------
+  end else begin : gen_sv_xbar
+    // We have a shared configuration for PULP and custom AXI crossbars.
 
     // Crossbar configuration (recommended timing baseline: CUT_ALL_AX, FallThrough=0)
     localparam axi_pkg::xbar_cfg_t XBAR_CFG = '{
@@ -830,7 +828,9 @@ module cvwsoc_axi #(
     // The function builds a compact map; end_addr is exclusive.
     localparam axi_pkg::xbar_rule_32_t [N_RULES-1:0] ADDR_MAP =
         XBAR_OUT.addr_map[N_RULES-1:0];
-    axi_xbar #(
+    if (P.AXI_XBAR_OPT_SUPPORTED) begin : gen_optimized_xbar
+      cvwsoc_axi_xbar #(
+        .AddrMap        (ADDR_MAP),
         .Cfg            (XBAR_CFG),
         .ATOPs          (C.bus.AtopsEnabled),
         .Connectivity   (XBAR_CONNECTIVITY),
@@ -850,7 +850,39 @@ module cvwsoc_axi #(
         .mst_resp_t     (mst_resp_t),
 
         .rule_t         (axi_pkg::xbar_rule_32_t)
-        ) i_axi_xbar (
+      ) i_axi_xbar (
+        .clk_i                 (BUSCLK),
+        .rst_ni                 (BUSCORERSTn),
+        .test_i                (1'b0),
+        .slv_ports_req_i       (slv_req),
+        .slv_ports_resp_o      (slv_resp),
+        .mst_ports_req_o       (mst_req),
+        .mst_ports_resp_i      (mst_resp),
+        .en_default_mst_port_i ('0),
+        .default_mst_port_i    ('0)
+      );
+    end else begin : gen_pulp_xbar
+      axi_xbar #(
+        .Cfg            (XBAR_CFG),
+        .ATOPs          (C.bus.AtopsEnabled),
+        .Connectivity   (XBAR_CONNECTIVITY),
+
+        .slv_aw_chan_t  (slv_aw_t),
+        .mst_aw_chan_t  (mst_aw_t),
+        .w_chan_t       (axi_w_t),
+        .slv_b_chan_t   (slv_b_t),
+        .mst_b_chan_t   (mst_b_t),
+        .slv_ar_chan_t  (slv_ar_t),
+        .mst_ar_chan_t  (mst_ar_t),
+        .slv_r_chan_t   (slv_r_t),
+        .mst_r_chan_t   (mst_r_t),
+        .slv_req_t      (slv_req_t),
+        .slv_resp_t     (slv_resp_t),
+        .mst_req_t      (mst_req_t),
+        .mst_resp_t     (mst_resp_t),
+
+        .rule_t         (axi_pkg::xbar_rule_32_t)
+      ) i_axi_xbar (
         .clk_i                 (BUSCLK),
         .rst_ni                 (BUSCORERSTn),
         .test_i                (1'b0),
@@ -861,7 +893,8 @@ module cvwsoc_axi #(
         .addr_map_i            (ADDR_MAP),
         .en_default_mst_port_i ('0),
         .default_mst_port_i    ('0)
-    );
+      );
+    end
   end
 
 

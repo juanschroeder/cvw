@@ -474,6 +474,7 @@ WISHBONE_SOURCES := \
 # explicit because CORE_SOURCES intentionally excludes the cvwsoc directory.
 CVWSOC_REFACTOR_SOURCES := \
 	$(WALLY)/addins/cvwsoc/cvwsoc_sim_models.sv \
+	$(WALLY)/addins/cvwsoc/cvwsoc_axi_xbar.sv \
 	$(WALLY)/addins/cvwsoc/cvwsoc_axi.sv \
 	$(WALLY)/addins/cvwsoc/cvwsoc_ahb.sv \
 	$(WALLY)/addins/cvwsoc/cvwsoc_cpu.sv \

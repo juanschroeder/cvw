@@ -196,6 +196,7 @@ localparam logic [63:0] SPI_RANGE        = 64'h00000FFF;
 localparam logic XILINX_AXI_BR_SUPPORTED = 1;
 localparam logic XILINX_CDC_SUPPORTED    = 1;
 localparam logic XILINX_XBAR_SUPPORTED   = 1;
+localparam logic AXI_XBAR_OPT_SUPPORTED  = 0;
 localparam logic UBERDDR3_SUPPORTED      = 0;
 localparam logic LITEDRAM_SUPPORTED      = 0;
 localparam logic [63:0] LITEDRAM_BASE    = 64'h100F0000;
