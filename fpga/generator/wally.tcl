@@ -43,6 +43,7 @@ if {$board=="ArtyA7"} {
 }
 
 if {$board=="nexysa7soc" || $board=="nexysa7rv32w64soc" || $board=="genesys2soc" || $board=="genesys2rv32soc" || $board=="genesys2rv32w64soc" || $board=="genesys2socxlnx"} {
+    add_files  ../../addins/cvwsoc/cvwsoc_axi_xbar.sv
     add_files  ../../addins/cvwsoc/cvwsoc_axi.sv
     add_files  ../../addins/cvwsoc/cvwsoc_ram.sv
 }
@@ -82,7 +83,8 @@ if {$board=="ArtyA7" || $board=="genesys2"} {
 }
 
 # read in all other rtl
-add_files [glob -type f  ../src/CopiedFiles_do_not_add_to_repo/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/*/*/*.sv]
+set copied_rtl [glob -type f ../src/CopiedFiles_do_not_add_to_repo/*/*.sv ../src/CopiedFiles_do_not_add_to_repo/*/*/*.sv]
+add_files [lsearch -all -inline -not -glob $copied_rtl "*/cvwsoc/cvwsoc_axi_xbar.sv"]
 
 set_property include_dirs {../src/CopiedFiles_do_not_add_to_repo/config ../../config/shared} [current_fileset]
 
